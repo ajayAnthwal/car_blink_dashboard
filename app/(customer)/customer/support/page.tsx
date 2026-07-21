@@ -1,0 +1,333 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { getBookings, createSupportTicket, getSupportTickets, getSupportTicketById, replySupportTicket } from "@/lib/services";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { HelpCircle, X, Send, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+
+interface Booking {
+  _id: string;
+  vehicleId: { brand: string; model: string };
+  serviceId: { name: string };
+}
+
+interface SupportTicket {
+  _id: string;
+  bookingId: Booking;
+  subject: string;
+  description: string;
+  priority: string;
+  status: string;
+  replies: Array<{
+    _id: string;
+    message: string;
+    createdAt: string;
+    sender: string;
+  }>;
+}
+
+export default function SupportPage() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  
+  const [bookingId, setBookingId] = useState("");
+  const [subject, setSubject] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("MEDIUM");
+  const [replyMessage, setReplyMessage] = useState("");
+  
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReplying, setIsReplying] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      const [bookingsRes, ticketsRes] = await Promise.all([
+        getBookings(),
+        getSupportTickets(),
+      ]);
+      setBookings(bookingsRes?.docs || bookingsRes || []);
+      const data = Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.tickets || ticketsRes?.docs || []);
+      setTickets(data);
+    } catch (err) {
+      console.error("Failed to load initial data", err);
+    } finally {
+      setIsLoadingBookings(false);
+      setIsLoadingTickets(false);
+    }
+  };
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      await createSupportTicket({
+        bookingId,
+        subject,
+        description,
+        priority,
+      });
+      setMessage({ type: "success", text: "Support ticket created successfully!" });
+      setBookingId("");
+      setSubject("");
+      setDescription("");
+      setPriority("MEDIUM");
+      fetchInitialData();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to create support ticket." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleViewDetails = async (ticket: SupportTicket) => {
+    if (expandedId === ticket._id) {
+      setExpandedId(null);
+      setSelectedTicket(null);
+      return;
+    }
+    setIsLoadingDetails(true);
+    try {
+      const res = await getSupportTicketById(ticket._id);
+      setSelectedTicket(res?.docs || res || []);
+      setExpandedId(ticket._id);
+      setReplyMessage("");
+    } catch (err) {
+      console.error("Failed to load ticket details", err);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const handleReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket || !replyMessage.trim()) return;
+    setIsReplying(true);
+    try {
+      const res = await replySupportTicket(selectedTicket._id, { message: replyMessage });
+      setSelectedTicket(res?.docs || res || []);
+      setReplyMessage("");
+      setTickets(prev => prev.map(t => t._id === selectedTicket._id ? (res?.docs || res) : t));
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to send reply." });
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toUpperCase()) {
+      case "HIGH": return "bg-danger/10 text-danger border-danger/20";
+      case "MEDIUM": return "bg-warning/10 text-warning border-warning/20";
+      case "LOW": return "bg-success/10 text-success border-success/20";
+      default: return "bg-neutral-muted/10 text-neutral-muted border-neutral-muted/20";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "OPEN": return "bg-warning/10 text-warning border-warning/20";
+      case "RESOLVED": return "bg-success/10 text-success border-success/20";
+      case "CLOSED": return "bg-neutral-muted/10 text-neutral-muted border-neutral-muted/20";
+      default: return "bg-neutral-muted/10 text-neutral-muted border-neutral-muted/20";
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold text-primary-navy">Support Tickets</h2>
+
+      {message.text && (
+        <div className={`p-3 rounded-lg text-sm border ${
+          message.type === "success" 
+            ? "bg-success/10 text-success border-success/20" 
+            : "bg-danger/10 text-danger border-danger/20"
+        }`}>
+          {message.text}
+        </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <HelpCircle className="w-5 h-5 text-primary-orange" />
+            <span>Create Support Ticket</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateTicket} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                label="Booking"
+                value={bookingId}
+                onChange={(e) => setBookingId(e.target.value)}
+                options={bookings.map(b => ({ 
+                  value: b._id, 
+                  label: `${b.vehicleId?.brand} ${b.vehicleId?.model} - ${b.serviceId?.name}` 
+                }))}
+                disabled={bookings.length === 0}
+                required
+              />
+              <Select
+                label="Priority"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                options={[
+                  { value: "LOW", label: "Low" },
+                  { value: "MEDIUM", label: "Medium" },
+                  { value: "HIGH", label: "High" },
+                ]}
+                required
+              />
+              <div className="md:col-span-2">
+                <Input
+                  label="Subject"
+                  placeholder="Brief description of the issue"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-neutral-dark mb-1.5">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="flex w-full rounded-lg border border-neutral-muted/40 bg-neutral-white px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:border-primary-orange focus:ring-primary-orange/20"
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit" isLoading={isSubmitting} disabled={bookings.length === 0}>
+                Create Ticket
+              </Button>
+            </div>
+            {bookings.length === 0 && (
+              <p className="text-xs text-neutral-muted">You need at least one booking to create a support ticket.</p>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+
+      <div>
+        <h3 className="text-xl font-bold text-primary-navy mb-4">Your Tickets ({tickets.length})</h3>
+        {isLoadingTickets ? (
+          <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
+            <Loader2 className="w-8 h-8 text-primary-orange animate-spin mx-auto mb-3" />
+            <p className="text-neutral-muted">Loading tickets...</p>
+          </div>
+        ) : tickets.length === 0 ? (
+          <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
+            <HelpCircle className="w-12 h-12 text-neutral-muted/30 mb-3 mx-auto" />
+            <p className="text-neutral-muted">No support tickets yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {tickets.map((ticket) => (
+              <Card key={ticket._id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between cursor-pointer" onClick={() => handleViewDetails(ticket)}>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h4 className="font-semibold text-primary-navy">{ticket.subject}</h4>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(ticket.priority)}`}>
+                          {ticket.priority}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(ticket.status)}`}>
+                          {ticket.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-neutral-muted line-clamp-1">{ticket.description}</p>
+                      <p className="text-xs text-neutral-muted mt-1">
+                        Booking: {ticket.bookingId?.vehicleId?.brand} {ticket.bookingId?.vehicleId?.model}
+                      </p>
+                    </div>
+                    <button className="text-neutral-muted hover:text-neutral-dark p-1">
+                      {expandedId === ticket._id ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {expandedId === ticket._id && (
+                    <div className="mt-4 pt-4 border-t border-neutral-muted/20">
+                      {isLoadingDetails ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="w-5 h-5 text-primary-orange animate-spin" />
+                        </div>
+                      ) : selectedTicket && selectedTicket._id === ticket._id ? (
+                        <div className="space-y-4">
+                          <div className="text-sm text-neutral-muted space-y-1">
+                            <p><span className="font-medium text-neutral-dark">Subject:</span> {selectedTicket.subject}</p>
+                            <p><span className="font-medium text-neutral-dark">Description:</span> {selectedTicket.description}</p>
+                            <p><span className="font-medium text-neutral-dark">Priority:</span> {selectedTicket.priority}</p>
+                            <p><span className="font-medium text-neutral-dark">Status:</span> {selectedTicket.status}</p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h5 className="font-medium text-primary-navy">Conversation</h5>
+                            {selectedTicket.replies && selectedTicket.replies.length > 0 ? (
+                              <div className="space-y-3 max-h-60 overflow-y-auto">
+                                {selectedTicket.replies.map((reply) => (
+                                  <div
+                                    key={reply._id}
+                                    className={`p-3 rounded-lg text-sm ${
+                                      reply.sender === "CUSTOMER"
+                                        ? "bg-primary-navy/5 ml-8"
+                                        : "bg-neutral-bg mr-8"
+                                    }`}
+                                  >
+                                    <p className="font-medium text-xs text-neutral-muted mb-1">
+                                      {reply.sender === "CUSTOMER" ? "You" : "Support Team"}
+                                    </p>
+                                    <p>{reply.message}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-neutral-muted">No replies yet.</p>
+                            )}
+                          </div>
+
+                          <form onSubmit={handleReply} className="flex space-x-3">
+                            <Input
+                              placeholder="Type your reply..."
+                              value={replyMessage}
+                              onChange={(e) => setReplyMessage(e.target.value)}
+                              className="flex-1"
+                            />
+                            <Button type="submit" size="sm" isLoading={isReplying} disabled={!replyMessage.trim()}>
+                              <Send className="w-4 h-4" />
+                            </Button>
+                          </form>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
