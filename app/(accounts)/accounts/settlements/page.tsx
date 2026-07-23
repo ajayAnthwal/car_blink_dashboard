@@ -1,35 +1,53 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getAllSettlements, processSettlement } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { BadgeIndianRupee, Loader2, ArrowRightCircle } from "lucide-react";
-import { Input } from "@/components/ui/Input";
+import { getAllSettlements, processSettlement, getEligibleJobsForSettlement, generateSettlement, uploadBankReconciliation } from "@/lib/services";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { BadgeIndianRupee, Loader2, ArrowRightCircle, PlusCircle, CheckCircle2, UploadCloud, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export default function SettlementsPage() {
   const [settlements, setSettlements] = useState<any[]>([]);
+  const [eligibleJobs, setEligibleJobs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isJobsLoading, setIsJobsLoading] = useState(true);
+  
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [transactionRef, setTransactionRef] = useState("");
   const [showProcessFor, setShowProcessFor] = useState<string | null>(null);
 
-  const fetchSettlements = async () => {
+  const [showGenerateFor, setShowGenerateFor] = useState<any | null>(null);
+  const [commissionPercent, setCommissionPercent] = useState<number>(15);
+
+  const [reconFile, setReconFile] = useState<File | null>(null);
+  const [isUploadingRecon, setIsUploadingRecon] = useState(false);
+
+  const fetchData = async () => {
     setIsLoading(true);
+    setIsJobsLoading(true);
     try {
-      const res = await getAllSettlements(1, 50);
-      const data = Array.isArray(res) ? res : (res?.settlements || res?.docs || []);
-      setSettlements(data);
+      const [settleRes, jobsRes] = await Promise.all([
+        getAllSettlements(1, 50).catch(() => []),
+        getEligibleJobsForSettlement().catch(() => [])
+      ]);
+      
+      const sData = Array.isArray(settleRes) ? settleRes : (settleRes?.settlements || settleRes?.docs || []);
+      setSettlements(sData);
+
+      const jData = Array.isArray(jobsRes) ? jobsRes : (jobsRes?.data || jobsRes?.docs || []);
+      setEligibleJobs(jData);
     } catch (err) {
-      console.error("Failed to load settlements", err);
+      console.error("Failed to load settlements data", err);
     } finally {
       setIsLoading(false);
+      setIsJobsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSettlements();
+    fetchData();
   }, []);
 
   const handleProcess = async () => {
@@ -42,11 +60,49 @@ export default function SettlementsPage() {
       setMessage({ type: "success", text: "Settlement processed successfully." });
       setShowProcessFor(null);
       setTransactionRef("");
-      fetchSettlements();
+      fetchData();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || `Failed to process settlement.` });
     } finally {
       setActionId(null);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!showGenerateFor) return;
+    
+    setActionId(showGenerateFor._id);
+    setMessage({ type: "", text: "" });
+    try {
+      await generateSettlement({ jobId: showGenerateFor._id, commissionPercent });
+      setMessage({ type: "success", text: "Settlement generated successfully." });
+      setShowGenerateFor(null);
+      fetchData();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || `Failed to generate settlement.` });
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleUploadRecon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reconFile) return;
+
+    setIsUploadingRecon(true);
+    setMessage({ type: "", text: "" });
+    try {
+      const formData = new FormData();
+      formData.append("file", reconFile);
+      
+      const res = await uploadBankReconciliation(formData);
+      setMessage({ type: "success", text: `Bank reconciliation uploaded successfully! Found ${res.data?.totalProcessed || 0} records.` });
+      setReconFile(null);
+      fetchData(); // Refresh list to show updated statuses if any
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to upload bank reconciliation." });
+    } finally {
+      setIsUploadingRecon(false);
     }
   };
 
@@ -66,11 +122,93 @@ export default function SettlementsPage() {
         </div>
       )}
 
+      {/* Bank Reconciliation Upload Section */}
+      <Card className="bg-primary-navy text-white shadow-lg overflow-hidden border-none">
+        <div className="absolute top-0 right-0 p-8 opacity-10">
+          <FileText className="w-32 h-32" />
+        </div>
+        <CardContent className="p-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex-1">
+            <h3 className="text-xl font-bold mb-2 flex items-center">
+              <UploadCloud className="w-6 h-6 mr-2 text-primary-orange" /> Bulk Bank Reconciliation
+            </h3>
+            <p className="text-neutral-muted text-sm max-w-lg">
+              Upload a CSV from the bank to automatically mark multiple pending settlements as processed. The file must contain a UTR or Reference Number column.
+            </p>
+          </div>
+          <form onSubmit={handleUploadRecon} className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto bg-white/10 p-4 rounded-xl border border-white/20">
+            <input 
+              type="file"
+              accept=".csv"
+              onChange={(e) => setReconFile(e.target.files ? e.target.files[0] : null)}
+              className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-orange file:text-white hover:file:bg-orange-600 cursor-pointer"
+            />
+            <Button type="submit" isLoading={isUploadingRecon} disabled={!reconFile} className="bg-white text-primary-navy hover:bg-gray-100 whitespace-nowrap">
+              Upload CSV
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Eligible Jobs Section */}
+      <Card className="border-l-4 border-l-secondary-blue">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 text-lg">
+            <CheckCircle2 className="w-5 h-5 text-secondary-blue" />
+            <span>Eligible Jobs for Settlement</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isJobsLoading ? (
+            <div className="flex items-center justify-center py-5">
+              <Loader2 className="w-6 h-6 text-secondary-blue animate-spin" />
+            </div>
+          ) : eligibleJobs.length === 0 ? (
+            <div className="text-center py-5 text-neutral-muted">
+              <p>No new eligible jobs found for settlement.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-neutral-muted uppercase bg-neutral-bg">
+                  <tr>
+                    <th className="px-4 py-2 rounded-l-lg">Job ID</th>
+                    <th className="px-4 py-2">Partner</th>
+                    <th className="px-4 py-2">Job Amount</th>
+                    <th className="px-4 py-2 rounded-r-lg text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-muted/10">
+                  {eligibleJobs.map((job) => (
+                    <tr key={job._id} className="hover:bg-neutral-bg/50 transition-colors">
+                      <td className="px-4 py-2 font-medium">#{job._id?.slice(-6).toUpperCase()}</td>
+                      <td className="px-4 py-2">{job.partnerId?.fullName || job.partnerId}</td>
+                      <td className="px-4 py-2 font-bold text-primary-navy">₹{job.finalAmount || job.amount}</td>
+                      <td className="px-4 py-2 text-right">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="border-primary-orange text-primary-orange hover:bg-primary-orange/10"
+                          onClick={() => setShowGenerateFor(job)}
+                        >
+                          <PlusCircle className="w-4 h-4 mr-1" /> Generate
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Existing Settlements Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <BadgeIndianRupee className="w-5 h-5 text-primary-orange" />
-            <span>All Partner Settlements</span>
+            <span>Settlements History</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -88,7 +226,7 @@ export default function SettlementsPage() {
                 <thead className="text-xs text-neutral-muted uppercase bg-neutral-bg">
                   <tr>
                     <th className="px-4 py-3 rounded-l-lg">ID / Partner</th>
-                    <th className="px-4 py-3">Period</th>
+                    <th className="px-4 py-3">Date Generated</th>
                     <th className="px-4 py-3">Amount</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 rounded-r-lg text-right">Actions</th>
@@ -102,7 +240,7 @@ export default function SettlementsPage() {
                         <div className="text-xs text-neutral-muted mt-1">Partner: {settlement.partnerId?.fullName || settlement.partnerId}</div>
                       </td>
                       <td className="px-4 py-3 text-neutral-dark">
-                        {new Date(settlement.periodStart).toLocaleDateString()} - {new Date(settlement.periodEnd).toLocaleDateString()}
+                        {new Date(settlement.createdAt || new Date()).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3 font-bold text-primary-navy">₹{settlement.amount}</td>
                       <td className="px-4 py-3">
@@ -134,6 +272,44 @@ export default function SettlementsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Generate Modal Overlay */}
+      {showGenerateFor && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-xl">
+            <CardHeader>
+              <CardTitle>Generate Settlement</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-3 bg-neutral-bg rounded-lg text-sm mb-2">
+                <p><strong>Job ID:</strong> {showGenerateFor._id}</p>
+                <p><strong>Job Amount:</strong> ₹{showGenerateFor.finalAmount || showGenerateFor.amount}</p>
+              </div>
+              <Input
+                label="Commission Percentage (%)"
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={commissionPercent}
+                onChange={(e) => setCommissionPercent(Number(e.target.value))}
+                required
+              />
+              <div className="flex justify-end space-x-3 pt-2">
+                <Button variant="outline" onClick={() => setShowGenerateFor(null)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleGenerate}
+                  isLoading={actionId === showGenerateFor._id}
+                >
+                  Generate
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Process Modal Overlay */}
       {showProcessFor && (

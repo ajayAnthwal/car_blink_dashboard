@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getBookings, initiatePayment, getPaymentHistory } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CreditCard, Loader2, CheckCircle, XCircle } from "lucide-react";
 
 interface Booking {
@@ -48,8 +48,8 @@ export default function PaymentsPage() {
         getBookings(),
         getPaymentHistory(),
       ]);
-      setBookings(bookingsRes?.docs || bookingsRes || []);
-      setPayments(paymentsRes?.docs || paymentsRes || []);
+      setBookings((Array.isArray(bookingsRes?.docs) ? bookingsRes.docs : (Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes) ? bookingsRes : []))));
+      setPayments((Array.isArray(paymentsRes?.docs) ? paymentsRes.docs : (Array.isArray(paymentsRes?.data) ? paymentsRes.data : (Array.isArray(paymentsRes) ? paymentsRes : []))));
     } catch (err) {
       console.error("Failed to load initial data", err);
     } finally {
@@ -105,8 +105,8 @@ export default function PaymentsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold text-primary-navy">Payments & Invoices</h2>
+    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+      <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Payments & Invoices</h2>
 
       {message.text && (
         <div className={`p-3 rounded-lg text-sm border ${
@@ -118,10 +118,12 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      <Card>
+      <Card className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <CreditCard className="w-5 h-5 text-primary-orange" />
+          <CardTitle className="flex items-center space-x-3 text-xl">
+            <div className="bg-orange-50 p-2 rounded-xl text-primary-orange">
+              <CreditCard className="w-5 h-5" />
+            </div>
             <span>Initiate Payment</span>
           </CardTitle>
         </CardHeader>
@@ -174,26 +176,30 @@ export default function PaymentsPage() {
       </Card>
 
       <div>
-        <h3 className="text-xl font-bold text-primary-navy mb-4">Payment History</h3>
+        <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight mb-5">Payment History</h3>
         {isLoadingPayments ? (
-          <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
+          <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center">
             <Loader2 className="w-8 h-8 text-primary-orange animate-spin mx-auto mb-3" />
-            <p className="text-neutral-muted">Loading payment history...</p>
+            <p className="text-gray-500 font-medium">Loading payment history...</p>
           </div>
         ) : payments.length === 0 ? (
-          <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
-            <CreditCard className="w-12 h-12 text-neutral-muted/30 mb-3 mx-auto" />
-            <p className="text-neutral-muted">No payment history yet.</p>
+          <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center flex flex-col items-center justify-center">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+              <CreditCard className="w-10 h-10 text-gray-300" />
+            </div>
+            <p className="text-gray-500 font-medium">No payment history yet.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {payments.map((payment) => (
-              <Card key={payment._id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
+              <Card key={payment._id} className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
+                <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="font-semibold text-primary-navy text-lg">₹{payment.amount}</h4>
+                        <h4 className="font-heading font-bold text-gray-900 text-xl tracking-tight">
+                          ₹{payment.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </h4>
                         <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(payment.status)}`}>
                           {payment.status}
                         </span>

@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { getUserProfile, updateUserProfile } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { FileUpload } from "@/components/ui/FileUpload";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export function ProfileForm() {
   const { user, login, accessToken } = useAuth();

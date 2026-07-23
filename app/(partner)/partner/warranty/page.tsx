@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getPartnerJobs, issueJobWarranty, uploadFile } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { ShieldCheck, Loader2, Wrench, CheckCircle } from "lucide-react";
 

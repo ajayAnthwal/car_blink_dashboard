@@ -3,6 +3,7 @@ import { Poppins, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/features/auth/hooks/useAuth";
 import { SocketProvider } from "@/lib/SocketContext";
+import { cn } from "@/lib/utils";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -21,13 +22,15 @@ export const metadata: Metadata = {
   description: "Internal and customer dashboard",
 };
 
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} ${inter.variable}`}>
+    <html lang="en" className={cn(poppins.variable, inter.variable, "font-sans")}>
       <body>
         <AuthProvider>
           <SocketProvider>

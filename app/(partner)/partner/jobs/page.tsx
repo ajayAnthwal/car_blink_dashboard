@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, uploadFile } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardContent } from "@/components/ui/Card";
+import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension } from "@/lib/services";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/FileUpload";
-import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car } from "lucide-react";
+import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car, UserCheck, PlusCircle } from "lucide-react";
 
 export default function PartnerJobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -22,9 +22,19 @@ export default function PartnerJobsPage() {
   const [invoiceUrl, setInvoiceUrl] = useState<string>("");
   const [isUploadingInvoice, setIsUploadingInvoice] = useState(false);
 
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [photoType, setPhotoType] = useState<"before" | "after">("before");
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoType, setPhotoType] = useState<"BEFORE" | "AFTER">("BEFORE");
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+
+  // Mechanic Assignment
+  const [mechanicId, setMechanicId] = useState("");
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  // Job Extension
+  const [extPartName, setExtPartName] = useState("");
+  const [extCost, setExtCost] = useState("");
+  const [extReason, setExtReason] = useState("");
+  const [isRequestingExt, setIsRequestingExt] = useState(false);
 
   useEffect(() => {
     fetchJobs();
@@ -89,18 +99,58 @@ export default function PartnerJobsPage() {
   };
 
   const handleUploadPhotos = async (id: string) => {
-    if (photoUrls.length === 0) return;
+    if (photoFiles.length === 0) return;
     setIsUploadingPhotos(true);
     setMessage({ type: "", text: "" });
     try {
-      await uploadJobPhotos(id, { photos: photoUrls, type: photoType });
-      setMessage({ type: "success", text: `${photoType} photos linked successfully!` });
-      setPhotoUrls([]);
+      const formData = new FormData();
+      formData.append("type", photoType);
+      photoFiles.forEach((file) => formData.append("photos", file));
+
+      await uploadJobPhotos(id, formData);
+      setMessage({ type: "success", text: `${photoType} photos uploaded successfully!` });
+      setPhotoFiles([]);
       fetchJobs();
     } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to link photos." });
+      setMessage({ type: "error", text: err?.message || "Failed to upload photos." });
     } finally {
       setIsUploadingPhotos(false);
+    }
+  };
+
+  const handleAssignMechanic = async (id: string) => {
+    if (!mechanicId) return;
+    setIsAssigning(true);
+    setMessage({ type: "", text: "" });
+    try {
+      await assignStaffToJob(id, { staffId: mechanicId });
+      setMessage({ type: "success", text: "Mechanic assigned successfully!" });
+      setMechanicId("");
+      fetchJobs();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to assign mechanic." });
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRequestExtension = async (id: string) => {
+    if (!extPartName || !extCost || !extReason) return;
+    setIsRequestingExt(true);
+    setMessage({ type: "", text: "" });
+    try {
+      await requestJobExtension(id, { 
+        partName: extPartName, 
+        cost: Number(extCost), 
+        reason: extReason 
+      });
+      setMessage({ type: "success", text: "Extension requested from customer!" });
+      setExtPartName(""); setExtCost(""); setExtReason("");
+      fetchJobs();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to request extension." });
+    } finally {
+      setIsRequestingExt(false);
     }
   };
 
@@ -204,37 +254,86 @@ export default function PartnerJobsPage() {
 
                     {/* File Uploads - Available during STARTED or COMPLETED */}
                     {(job.status === "STARTED" || job.status === "COMPLETED") && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Photos Upload */}
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Photos Upload (Multipart) */}
                         <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl">
                           <h4 className="font-semibold text-primary-navy flex items-center">
                             <ImageIcon className="w-4 h-4 mr-2 text-primary-orange" /> Job Photos
                           </h4>
                           <div className="flex space-x-4 mb-2">
                             <label className="flex items-center space-x-2 text-sm cursor-pointer">
-                              <input type="radio" checked={photoType === "before"} onChange={() => setPhotoType("before")} className="text-primary-orange focus:ring-primary-orange" />
+                              <input type="radio" checked={photoType === "BEFORE"} onChange={() => setPhotoType("BEFORE")} className="text-primary-orange focus:ring-primary-orange" />
                               <span>Before Service</span>
                             </label>
                             <label className="flex items-center space-x-2 text-sm cursor-pointer">
-                              <input type="radio" checked={photoType === "after"} onChange={() => setPhotoType("after")} className="text-primary-orange focus:ring-primary-orange" />
+                              <input type="radio" checked={photoType === "AFTER"} onChange={() => setPhotoType("AFTER")} className="text-primary-orange focus:ring-primary-orange" />
                               <span>After Service</span>
                             </label>
                           </div>
-                          <FileUpload
-                            folder="job_photos"
-                            onUploadSuccess={(url) => setPhotoUrls([url])}
-                            currentValue={photoUrls[0]}
+                          <input 
+                            type="file" 
+                            multiple 
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files) setPhotoFiles(Array.from(e.target.files));
+                            }}
+                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-primary-orange hover:file:bg-orange-100 cursor-pointer"
                           />
                           <Button 
                             variant="outline" 
                             className="w-full" 
-                            disabled={photoUrls.length === 0}
+                            disabled={photoFiles.length === 0}
                             isLoading={isUploadingPhotos}
                             onClick={() => handleUploadPhotos(job._id)}
                           >
-                            Save Photos to Job
+                            Upload Photos
                           </Button>
                         </div>
+
+                        {/* Assign Mechanic */}
+                        <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl">
+                          <h4 className="font-semibold text-primary-navy flex items-center">
+                            <UserCheck className="w-4 h-4 mr-2 text-primary-navy" /> Assign Mechanic
+                          </h4>
+                          <Input 
+                            placeholder="Enter Staff ID..." 
+                            value={mechanicId} 
+                            onChange={(e) => setMechanicId(e.target.value)} 
+                          />
+                          <Button 
+                            variant="outline" 
+                            className="w-full"
+                            disabled={!mechanicId}
+                            isLoading={isAssigning}
+                            onClick={() => handleAssignMechanic(job._id)}
+                          >
+                            Assign to Job
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Request Extension */}
+                      <div className="mt-6 space-y-3 border border-neutral-muted/20 p-4 rounded-xl bg-orange-50/30">
+                        <h4 className="font-semibold text-primary-navy flex items-center">
+                          <PlusCircle className="w-4 h-4 mr-2 text-primary-orange" /> Request Job Extension (Extra Part)
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <Input placeholder="Part Name (e.g. Brake Pads)" value={extPartName} onChange={(e) => setExtPartName(e.target.value)} />
+                          <Input type="number" placeholder="Cost (₹)" value={extCost} onChange={(e) => setExtCost(e.target.value)} />
+                          <Input placeholder="Reason" value={extReason} onChange={(e) => setExtReason(e.target.value)} />
+                        </div>
+                        <Button 
+                          className="w-full bg-primary-navy text-white hover:bg-primary-navy-light" 
+                          disabled={!extPartName || !extCost || !extReason}
+                          isLoading={isRequestingExt}
+                          onClick={() => handleRequestExtension(job._id)}
+                        >
+                          Send Extension Request to Customer
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 mt-6">
 
                         {/* Invoice Upload */}
                         <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl">
@@ -257,6 +356,7 @@ export default function PartnerJobsPage() {
                           </Button>
                         </div>
                       </div>
+                      </>
                     )}
                   </div>
                 )}

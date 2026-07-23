@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getEarningsSummary } from "@/lib/services";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/card";
 import { PieChart, Loader2, IndianRupee, CheckCircle2, TrendingUp } from "lucide-react";
 
 export default function EarningsSummaryPage() {

@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getKycDocuments, uploadKycDocument, uploadFile } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/Select";
 import { FileUpload } from "@/components/ui/FileUpload";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { FileText, Loader2, CheckCircle, Clock } from "lucide-react";
 
 interface KycDocument {

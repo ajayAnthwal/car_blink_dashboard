@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getCustomerStatus } from "@/lib/services";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Users, Loader2, Phone, Mail, Clock, CheckCircle } from "lucide-react";
 
 export default function CustomerStatusPage() {
@@ -17,7 +17,7 @@ export default function CustomerStatusPage() {
     try {
       setIsLoading(true);
       const res = await getCustomerStatus(1, 50);
-      setCustomers(res?.docs || res || []);
+      setCustomers(Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.customers) ? res.customers : (Array.isArray(res?.data?.customers) ? res.data.customers : (Array.isArray(res) ? res : []))));
     } catch (err) {
       console.error("Failed to load customer status", err);
     } finally {

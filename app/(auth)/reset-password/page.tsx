@@ -3,9 +3,10 @@
 import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { resetPassword } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import AuthLayout from "@/components/layout/AuthLayout";
+import { ArrowRight, LockKeyhole } from "lucide-react";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -42,69 +43,88 @@ function ResetPasswordContent() {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle>Create New Password</CardTitle>
-        <CardDescription>Enter the code sent to you and your new password</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="bg-success/10 text-success text-sm p-3 rounded-lg border border-success/20">
-              {success}
-            </div>
-          )}
-          
+    <AuthLayout>
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-orange/10 text-primary-orange mb-6 shadow-inner">
+          <LockKeyhole className="w-8 h-8" />
+        </div>
+        <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight mb-2">Create New Password</h2>
+        <p className="text-gray-500 text-sm">Enter the code sent to you and your new password</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div className="bg-danger/10 text-danger text-sm p-4 rounded-xl border border-danger/20 flex items-start space-x-2">
+            <div className="mt-0.5 font-bold">!</div>
+            <div>{error}</div>
+          </div>
+        )}
+        {success && (
+          <div className="bg-success/10 text-success text-sm p-4 rounded-xl border border-success/20 flex items-start space-x-2">
+            <div className="mt-0.5 font-bold">✓</div>
+            <div>{success}</div>
+          </div>
+        )}
+        
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email or Phone</label>
           <Input
-            label="Email or Phone"
             type="text"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
             required
             readOnly={!!initialIdentifier}
-            className={initialIdentifier ? "bg-neutral-bg text-neutral-muted" : ""}
+            className={`h-12 border-gray-200 transition-colors ${initialIdentifier ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "bg-gray-50 focus:bg-white"}`}
           />
-          
-          <Input
-            label="Reset Code (OTP)"
-            type="text"
-            placeholder="123456"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            maxLength={6}
-            required
-            className="text-center tracking-widest"
-          />
-          
-          <Input
-            label="New Password"
-            type="password"
-            placeholder="••••••••"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-          />
-          
-          <Button type="submit" className="w-full" isLoading={isLoading}>
-            Reset Password
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Reset Code (OTP)</label>
+            <Input
+              type="text"
+              placeholder="123456"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              maxLength={6}
+              required
+              className="h-12 bg-gray-50 border-gray-200 focus:bg-white transition-colors text-center tracking-[0.3em] font-bold text-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">New Password</label>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              className="h-12 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+            />
+          </div>
+        </div>
+        
+        <Button 
+          type="submit" 
+          className="w-full h-12 mt-2 text-base font-bold bg-primary-navy hover:bg-primary-navy-light text-white shadow-lg shadow-primary-navy/20 transition-all group" 
+          isLoading={isLoading}
+        >
+          Reset Password
+          {!isLoading && <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-bg p-4">
-      <Suspense fallback={<div className="w-full max-w-md h-72 bg-neutral-white animate-pulse rounded-2xl" />}>
-        <ResetPasswordContent />
-      </Suspense>
-    </div>
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-white p-4">
+        <div className="w-full max-w-md h-72 bg-gray-100 animate-pulse rounded-2xl" />
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

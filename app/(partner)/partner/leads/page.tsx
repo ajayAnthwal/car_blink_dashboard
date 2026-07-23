@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { getLeads, createBid } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Target, Loader2, MapPin, Calendar, Car, Wrench, X } from "lucide-react";
 
 export default function LeadsPage() {

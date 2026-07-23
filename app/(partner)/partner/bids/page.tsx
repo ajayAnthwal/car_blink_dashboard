@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { getPartnerBids, withdrawBid } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { MessageSquareQuote, Loader2, IndianRupee, Clock, FileText, CheckCircle2, XCircle } from "lucide-react";
 
 export default function PartnerBidsPage() {

@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getAllRefunds, approveRefund, processRefund, rejectRefund } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Undo2, Check, X, Loader2, ArrowRightCircle } from "lucide-react";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/ui/input";
 
 export default function RefundsPage() {
   const [refunds, setRefunds] = useState<any[]>([]);

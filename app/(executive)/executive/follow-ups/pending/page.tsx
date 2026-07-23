@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { getPendingFollowUps, updateFollowUp } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Loader2, CheckCircle2, User, Briefcase, Calendar } from "lucide-react";
 
 export default function PendingFollowUpsPage() {

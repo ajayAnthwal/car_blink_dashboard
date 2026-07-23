@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getMyReviews, createReview, getBookings } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Star, Loader2, MessageSquare } from "lucide-react";
 
 interface Review {
@@ -50,10 +50,10 @@ export default function MyReviewsPage() {
         getBookings(),
       ]);
       
-      setReviews(reviewsRes?.docs || reviewsRes || []);
+      setReviews((Array.isArray(reviewsRes?.docs) ? reviewsRes.docs : (Array.isArray(reviewsRes?.data) ? reviewsRes.data : (Array.isArray(reviewsRes) ? reviewsRes : []))));
       
       // Filter bookings that are COMPLETED to allow reviewing them
-      const completedBookings = (bookingsRes?.docs || bookingsRes || []).filter(
+      const completedBookings = ((Array.isArray(bookingsRes?.docs) ? bookingsRes.docs : (Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes) ? bookingsRes : [])))).filter(
         (b: Booking) => b.status === "COMPLETED"
       );
       setBookings(completedBookings);
@@ -109,8 +109,8 @@ export default function MyReviewsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold text-primary-navy">My Reviews</h2>
+    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+      <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">My Reviews</h2>
 
       {message.text && (
         <div className={`p-3 rounded-lg text-sm border ${
@@ -123,10 +123,12 @@ export default function MyReviewsPage() {
       )}
 
       {/* Review Submission Form */}
-      <Card>
+      <Card className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Star className="w-5 h-5 text-primary-orange" />
+          <CardTitle className="flex items-center space-x-3 text-xl">
+            <div className="bg-orange-50 p-2 rounded-xl text-primary-orange">
+              <Star className="w-5 h-5" />
+            </div>
             <span>Write a Review</span>
           </CardTitle>
         </CardHeader>
@@ -183,25 +185,27 @@ export default function MyReviewsPage() {
 
       {/* Reviews List */}
       <div>
-        <h3 className="text-xl font-bold text-primary-navy mb-4">Past Reviews ({reviews.length})</h3>
+        <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight mb-5">Past Reviews ({reviews.length})</h3>
         {isLoading ? (
-          <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
+          <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center">
             <Loader2 className="w-8 h-8 text-primary-orange animate-spin mx-auto mb-3" />
-            <p className="text-neutral-muted">Loading reviews...</p>
+            <p className="text-gray-500 font-medium">Loading reviews...</p>
           </div>
         ) : reviews.length === 0 ? (
-          <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
-            <MessageSquare className="w-12 h-12 text-neutral-muted/30 mb-3 mx-auto" />
-            <p className="text-neutral-muted">You haven&apos;t written any reviews yet.</p>
+          <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center flex flex-col items-center justify-center">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+              <MessageSquare className="w-10 h-10 text-gray-300" />
+            </div>
+            <p className="text-gray-500 font-medium">You haven&apos;t written any reviews yet.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {reviews.map((review) => (
-              <Card key={review._id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
+              <Card key={review._id} className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
+                <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h4 className="font-semibold text-primary-navy">
+                      <h4 className="font-heading font-bold text-gray-900 text-lg">
                         {review.bookingId?.serviceId?.name || "Service"}
                       </h4>
                       <p className="text-xs text-neutral-muted">
@@ -212,7 +216,7 @@ export default function MyReviewsPage() {
                       {renderStars(review.rating)}
                     </div>
                   </div>
-                  <p className="text-sm text-neutral-dark bg-neutral-bg p-3 rounded-lg border border-neutral-muted/10">
+                  <p className="text-sm text-gray-700 bg-gray-50/50 p-4 rounded-xl border border-gray-100 mt-2 font-medium">
                     &quot;{review.comment}&quot;
                   </p>
                   <p className="text-xs text-neutral-muted mt-3 text-right">

@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { deactivateAccount } from "@/lib/services";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 export function DeactivateAccount() {
   const { logout } = useAuth();

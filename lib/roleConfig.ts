@@ -1,0 +1,221 @@
+import {
+  LayoutDashboard,
+  Car,
+  CalendarCheck,
+  ShieldCheck,
+  CreditCard,
+  HelpCircle,
+  Star,
+  Settings,
+  Camera,
+  GitCompare,
+  Home,
+  FileText,
+  MessageSquareQuote,
+  Wrench,
+  IndianRupee,
+  Calendar,
+  Users,
+  Activity,
+  HeadphonesIcon,
+  Target,
+  PhoneCall,
+  Clock,
+  AlertTriangle,
+  Briefcase,
+  AlertCircle,
+  BadgeCheck,
+  Gift,
+  Package,
+  ShoppingCart,
+  Users as UsersIcon,
+  Truck,
+  Undo2,
+  FileBarChart,
+  Landmark,
+  Ticket,
+  Store,
+  PieChart,
+  ClipboardList,
+  Key,
+  User,
+  MapPin,
+  Sliders
+} from "lucide-react";
+import { Role } from "@/lib/constants";
+
+export interface NavItem {
+  name: string;
+  href: string;
+  icon: any; // LucideIcon type
+  badge?: string;
+  badgeColor?: string;
+}
+
+export interface NavSection {
+  label?: string;
+  items: NavItem[];
+}
+
+export interface RoleConfigData {
+  roleName: string;
+  portalTitle: string;
+  themeColor: string; // Tailwind text color class
+  accentBgColor: string; // Tailwind bg color class
+  navSections: NavSection[];
+}
+
+export const roleConfig: Record<Role, RoleConfigData> = {
+  CUSTOMER: {
+    roleName: "Customer",
+    portalTitle: "Customer Portal",
+    themeColor: "text-secondary-blue",
+    accentBgColor: "bg-secondary-blue",
+    navSections: [
+      {
+        label: "Overview",
+        items: [
+          { name: "Dashboard", href: "/customer/dashboard", icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: "My Services",
+        items: [
+          { name: "My Garage", href: "/customer/garage", icon: Car },
+          { name: "Book Service", href: "/customer/book", icon: Wrench },
+          { name: "My Bookings", href: "/customer/bookings", icon: CalendarCheck },
+          { name: "My Warranties", href: "/customer/warranty", icon: ShieldCheck },
+        ],
+      },
+      {
+        label: "Account",
+        items: [
+          { name: "Subscriptions", href: "/customer/subscriptions", icon: BadgeCheck },
+          { name: "Refer & Earn", href: "/customer/referrals", icon: Gift },
+          { name: "Support / Tickets", href: "/customer/support", icon: HelpCircle },
+          { name: "Profile", href: "/customer/profile", icon: User },
+        ],
+      },
+    ],
+  },
+  PARTNER: {
+    roleName: "Service Partner",
+    portalTitle: "Partner Dashboard",
+    themeColor: "text-primary-orange",
+    accentBgColor: "bg-primary-orange",
+    navSections: [
+      {
+        label: "Overview",
+        items: [
+          { name: "Dashboard", href: "/partner/dashboard", icon: Home },
+        ],
+      },
+      {
+        label: "Leads & Jobs",
+        items: [
+          { name: "New Leads", href: "/partner/leads", icon: Target },
+          { name: "My Bids", href: "/partner/bids", icon: MessageSquareQuote },
+          { name: "Active Jobs", href: "/partner/jobs", icon: Wrench },
+        ],
+      },
+      {
+        label: "Management",
+        items: [
+          { name: "Staff / Mechanics", href: "/partner/staff", icon: Users },
+          { name: "Inventory & POS", href: "/partner/inventory", icon: Package },
+          { name: "Earnings & Settlements", href: "/partner/earnings", icon: IndianRupee },
+          { name: "KYC & Profile", href: "/partner/profile", icon: ShieldCheck },
+        ],
+      },
+    ],
+  },
+  EXECUTIVE: {
+    roleName: "Executive (Driver)",
+    portalTitle: "Executive Console",
+    themeColor: "text-primary-navy",
+    accentBgColor: "bg-primary-navy",
+    navSections: [
+      {
+        label: "Overview",
+        items: [
+          { name: "Dashboard", href: "/executive/dashboard", icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: "Operations",
+        items: [
+          { name: "My Assignments", href: "/executive/assignments", icon: ClipboardList },
+          { name: "Active Trip", href: "/executive/trip", icon: MapPin },
+          { name: "Vehicle Inspection", href: "/executive/inspection", icon: Camera },
+          { name: "Secure Handover", href: "/executive/handover", icon: Key },
+        ],
+      },
+      {
+        label: "Account",
+        items: [
+          { name: "Earnings & Incentives", href: "/executive/earnings", icon: IndianRupee },
+          { name: "Profile", href: "/executive/profile", icon: User },
+        ],
+      },
+    ],
+  },
+  ACCOUNTS: {
+    roleName: "Accounts",
+    portalTitle: "Financial Dashboard",
+    themeColor: "text-primary-navy",
+    accentBgColor: "bg-primary-navy",
+    navSections: [
+      {
+        label: "Overview",
+        items: [
+          { name: "Financial Dashboard", href: "/accounts/dashboard", icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: "Finance",
+        items: [
+          { name: "Transactions", href: "/accounts/transactions", icon: CreditCard },
+          { name: "Partner Settlements", href: "/accounts/settlements", icon: Landmark },
+          { name: "Executive Payouts", href: "/accounts/payouts", icon: IndianRupee },
+          { name: "Invoices", href: "/accounts/invoices", icon: FileText },
+        ],
+      },
+      {
+        label: "Analytics",
+        items: [
+          { name: "Reports", href: "/accounts/reports", icon: FileBarChart },
+        ],
+      },
+    ],
+  },
+  SUPER_ADMIN: {
+    roleName: "Super Admin",
+    portalTitle: "Master Dashboard",
+    themeColor: "text-primary-orange",
+    accentBgColor: "bg-primary-orange",
+    navSections: [
+      {
+        label: "Overview",
+        items: [
+          { name: "Master Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: "Management",
+        items: [
+          { name: "User Management", href: "/admin/users", icon: UsersIcon },
+          { name: "Verifications (KYC)", href: "/admin/kyc", icon: ShieldCheck },
+          { name: "Master Data", href: "/admin/master-data", icon: Settings },
+        ],
+      },
+      {
+        label: "Monitoring",
+        items: [
+          { name: "Global Booking Oversight", href: "/admin/bookings", icon: Activity },
+          { name: "Dispute & Support", href: "/admin/support", icon: HelpCircle },
+          { name: "Platform Settings", href: "/admin/platform-settings", icon: Sliders },
+        ],
+      },
+    ],
+  },
+};

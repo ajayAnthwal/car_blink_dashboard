@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getPartnerStatus } from "@/lib/services";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Briefcase, Loader2, Phone, Mail, Clock, ShieldCheck, MapPin } from "lucide-react";
 
 export default function PartnerStatusPage() {
@@ -17,7 +17,7 @@ export default function PartnerStatusPage() {
     try {
       setIsLoading(true);
       const res = await getPartnerStatus(1, 50);
-      setPartners(res?.docs || res || []);
+      setPartners(Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.partners) ? res.partners : (Array.isArray(res?.data?.partners) ? res.data.partners : (Array.isArray(res) ? res : []))));
     } catch (err) {
       console.error("Failed to load partner status", err);
     } finally {

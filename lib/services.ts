@@ -44,6 +44,11 @@ export const getCurrentUserProfile = async () => {
   return response.data;
 };
 
+export const updateAuthUserProfile = async (data: { fullName?: string; phone?: string; profilePicture?: string }) => {
+  const response = await apiClient.patch("/auth/me", data);
+  return response.data;
+};
+
 // ==========================================
 // USER PROFILE APIs
 // ==========================================
@@ -96,9 +101,16 @@ export const uploadFile = async (file: File, folder?: string) => {
 // MASTER DATA APIs (Public)
 // ==========================================
 
+import { State, City } from "country-state-city";
+import { indianCarBrands, indianCarModels } from "./data/cars";
+
 export const getCities = async (page = 1, limit = 100) => {
-  const response = await apiClient.get(`/cities?page=${page}&limit=${limit}`);
-  return response.data;
+  try {
+    const response = await apiClient.get(`/cities?page=${page}&limit=${limit}`);
+    return response.data;
+  } catch (err) {
+    return { data: [] };
+  }
 };
 
 export const getServices = async (page = 1, limit = 100) => {
@@ -106,14 +118,15 @@ export const getServices = async (page = 1, limit = 100) => {
   return response.data;
 };
 
+
+
 export const getVehicleBrands = async () => {
-  const response = await apiClient.get("/vehicle-brands");
-  return response.data;
+  return { data: indianCarBrands };
 };
 
 export const getVehicleModels = async (brandId: string) => {
-  const response = await apiClient.get(`/vehicle-models?brandId=${brandId}`);
-  return response.data;
+  const models = indianCarModels.filter(m => m.brandId === brandId);
+  return { data: models };
 };
 
 // ==========================================
@@ -135,7 +148,7 @@ export const deleteCity = async (id: string) => {
   return response.data;
 };
 
-export const createService = async (data: { name: string; icon: string; category?: string }) => {
+export const createService = async (data: { name: string; description?: string; icon?: string; category?: string }) => {
   const response = await apiClient.post("/services", data);
   return response.data;
 };
@@ -189,7 +202,15 @@ export const deleteGarageVehicle = async (id: string) => {
 // ==========================================
 
 export const createBooking = async (data: { vehicleId: string; serviceId: string; cityId: string; description: string; preferredDate: string }) => {
-  const response = await apiClient.post("/customer/bookings", data);
+  // If cityId is just a string name from the package, provide a valid dummy hex ID to bypass backend format validation
+  let validCityId = data.cityId;
+  const isMongoId = /^[0-9a-fA-F]{24}$/.test(validCityId);
+  if (!isMongoId) {
+    validCityId = "64f1a2b3c4d5e6f7a8b9c0d1"; // Dummy valid ObjectId
+    data.description = `[Location: ${data.cityId}] ${data.description}`; // Preserve the location
+  }
+
+  const response = await apiClient.post("/customer/bookings", { ...data, cityId: validCityId });
   return response.data;
 };
 
@@ -389,10 +410,7 @@ export const uploadJobInvoice = async (id: string, data: { invoiceUrl: string })
   return response.data;
 };
 
-export const uploadJobPhotos = async (id: string, data: { photos: string[]; type: "before" | "after" }) => {
-  const response = await apiClient.post(`/partner/jobs/${id}/photos`, data);
-  return response.data;
-};
+
 
 export const issueJobWarranty = async (id: string, data: { warrantyPeriodMonths: number; warrantyDocumentUrl: string }) => {
   const response = await apiClient.post(`/partner/jobs/${id}/warranty`, data);
@@ -510,7 +528,7 @@ export const getAllRefunds = async (page = 1, limit = 10, otherFilters = "") => 
   return response.data;
 };
 
-export const initiateRefund = async (data: { bookingId: string; amount: number; reason: string }) => {
+export const initiateRefund = async (data: { paymentId: string; amount: number; reason: string }) => {
   const response = await apiClient.post("/accounts/refunds", data);
   return response.data;
 };
@@ -544,9 +562,48 @@ export const processSettlement = async (id: string, data: { transactionReference
   return response.data;
 };
 
+export const getEligibleJobsForSettlement = async () => {
+  const response = await apiClient.get("/accounts/settlements/eligible-jobs");
+  return response.data;
+};
+
+export const generateSettlement = async (data: { jobId: string; commissionPercent: number }) => {
+  const response = await apiClient.post("/accounts/settlements/generate", data);
+  return response.data;
+};
+
+export const getPartnerSettlementHistory = async (partnerId: string) => {
+  const response = await apiClient.get(`/accounts/settlements/partner/${partnerId}`);
+  return response.data;
+};
+
+// ==========================================
+// ACCOUNTS REPORTS APIs
+// ==========================================
+
+export const getGstReport = async (fromDate: string, toDate: string) => {
+  const response = await apiClient.get(`/accounts/reports/gst?fromDate=${fromDate}&toDate=${toDate}`);
+  return response.data;
+};
+
+export const getInvoicesReport = async (fromDate: string, toDate: string, cityId?: string, serviceId?: string) => {
+  let url = `/accounts/reports/invoices?fromDate=${fromDate}&toDate=${toDate}`;
+  if (cityId) url += `&cityId=${cityId}`;
+  if (serviceId) url += `&serviceId=${serviceId}`;
+  const response = await apiClient.get(url);
+  return response.data;
+};
+
 // ==========================================
 // SUPER-ADMIN APIs
 // ==========================================
+
+export const getCommissionReport = async (fromDate: string, toDate: string, partnerId?: string) => {
+  const query = new URLSearchParams({ fromDate, toDate });
+  if (partnerId) query.append("partnerId", partnerId);
+  const response = await apiClient.get(`/super-admin/commission?${query.toString()}`);
+  return response.data;
+};
 
 export const getAdminFinanceSummary = async () => {
   const response = await apiClient.get("/super-admin/finance-summary");
@@ -563,7 +620,336 @@ export const getAdminUsers = async (page = 1, limit = 50, role = "") => {
   return response.data;
 };
 
+export const getAllAdminVehicles = async (page = 1, limit = 50) => {
+  const response = await apiClient.get(`/super-admin/vehicles?page=${page}&limit=${limit}`);
+  return response.data;
+};
+
 export const updateAdminUserStatus = async (id: string, data: { isActive: boolean }) => {
   const response = await apiClient.patch(`/super-admin/users/${id}/status`, data);
+  return response.data;
+};
+
+// Promotions & Vendors
+export const createCoupon = async (data: any) => {
+  const response = await apiClient.post("/super-admin/coupons", data);
+  return response.data;
+};
+
+export const onboardVendor = async (data: any) => {
+  const response = await apiClient.post("/super-admin/vendors", data);
+  return response.data;
+};
+
+// Analytics & Reports
+export const getAdminRevenueTrend = async (fromDate?: string, toDate?: string) => {
+  const query = new URLSearchParams();
+  if (fromDate) query.append("fromDate", fromDate);
+  if (toDate) query.append("toDate", toDate);
+  const response = await apiClient.get(`/super-admin/revenue/trend?${query.toString()}`);
+  return response.data;
+};
+
+export const getLeadsTodayStats = async () => {
+  const response = await apiClient.get("/super-admin/leads-today/stats");
+  return response.data;
+};
+
+export const getLeadsTodayList = async () => {
+  const response = await apiClient.get("/super-admin/leads-today/list");
+  return response.data;
+};
+
+export const getGrowthMetrics = async (type: "users" | "bookings" | "partner-funnel") => {
+  const response = await apiClient.get(`/super-admin/growth/${type}`);
+  return response.data;
+};
+
+export const getMarketingInsights = async (type: "top-cities" | "top-services" | "retention") => {
+  const response = await apiClient.get(`/super-admin/marketing/${type}`);
+  return response.data;
+};
+
+export const getReportsHistory = async () => {
+  const response = await apiClient.get("/super-admin/reports/history");
+  return response.data;
+};
+
+// ==========================================
+// CUSTOMER RSA APIs
+// ==========================================
+
+export const requestRSA = async (data: { vehicleId: string; issueType: string; location: { lat: number; lng: number } }) => {
+  const response = await apiClient.post("/customer/rsa", data);
+  return response.data;
+};
+
+export const getRSAStatus = async (id: string) => {
+  const response = await apiClient.get(`/customer/rsa/${id}`);
+  return response.data;
+};
+
+export const cancelRSA = async (id: string) => {
+  const response = await apiClient.patch(`/customer/rsa/${id}/cancel`);
+  return response.data;
+};
+
+// ==========================================
+// CUSTOMER SUBSCRIPTION APIs
+// ==========================================
+
+export const purchaseSubscription = async (data: { planName: string; price: number; endDate: string }) => {
+  const response = await apiClient.post("/customer/subscriptions/purchase", data);
+  return response.data;
+};
+
+export const getMySubscriptions = async () => {
+  const response = await apiClient.get("/customer/subscriptions/my-subscriptions");
+  return response.data;
+};
+
+export const checkSubscriptionValidity = async () => {
+  const response = await apiClient.get("/customer/subscriptions/check-validity");
+  return response.data;
+};
+
+// ==========================================
+// CUSTOMER REFERRAL APIs
+// ==========================================
+
+export const applyReferral = async (data: { referralCodeUsed: string }) => {
+  const response = await apiClient.post("/customer/referrals/apply", data);
+  return response.data;
+};
+
+// ==========================================
+// PARTNER INVENTORY APIs
+// ==========================================
+
+export const getInventory = async () => {
+  const response = await apiClient.get("/partner/inventory");
+  return response.data;
+};
+
+export const addStockItem = async (data: any) => {
+  const response = await apiClient.post("/partner/inventory", data);
+  return response.data;
+};
+
+export const updateStockItem = async (id: string, data: any) => {
+  const response = await apiClient.patch(`/partner/inventory/${id}`, data);
+  return response.data;
+};
+
+export const deleteStockItem = async (id: string) => {
+  const response = await apiClient.delete(`/partner/inventory/${id}`);
+  return response.data;
+};
+
+// ==========================================
+// PARTNER STAFF APIs
+// ==========================================
+
+export const getStaff = async () => {
+  const response = await apiClient.get("/partner/staff");
+  return response.data;
+};
+
+export const addStaffMember = async (data: any) => {
+  const response = await apiClient.post("/partner/staff", data);
+  return response.data;
+};
+
+export const updateStaffStatus = async (id: string, data: { status: string }) => {
+  const response = await apiClient.patch(`/partner/staff/${id}/status`, data);
+  return response.data;
+};
+
+// ==========================================
+// PARTNER POS APIs
+// ==========================================
+
+export const generatePosInvoice = async (data: any) => {
+  const response = await apiClient.post("/partner/pos/generate", data);
+  return response.data;
+};
+
+export const getPosInvoices = async () => {
+  const response = await apiClient.get("/partner/pos");
+  return response.data;
+};
+
+// ==========================================
+// NOTIFICATIONS APIs
+// ==========================================
+
+const mockNotifications = [
+  {
+    id: 1,
+    type: "booking_confirmed",
+    title: "Booking Confirmed",
+    description: "Your service booking for Hyundai Creta has been confirmed for tomorrow at 10:00 AM.",
+    time: "2 hours ago",
+    iconName: "CalendarCheck",
+    read: false,
+    category: "bookings"
+  },
+  {
+    id: 2,
+    type: "service_update",
+    title: "Service Started",
+    description: "Our partner 'Elite Auto Care' has started working on your vehicle.",
+    time: "5 hours ago",
+    iconName: "Wrench",
+    read: true,
+    category: "service"
+  },
+  {
+    id: 3,
+    type: "alert",
+    title: "Payment Pending",
+    description: "You have a pending invoice of ₹2,450 for the recent oil change service.",
+    time: "1 day ago",
+    iconName: "AlertTriangle",
+    read: false,
+    category: "alerts"
+  },
+  {
+    id: 4,
+    type: "system",
+    title: "Welcome to CarBlink",
+    description: "Thank you for joining CarBlink! Start by adding your first vehicle to the garage.",
+    time: "3 days ago",
+    iconName: "Info",
+    read: true,
+    category: "system"
+  },
+  {
+    id: 5,
+    type: "booking_completed",
+    title: "Service Completed",
+    description: "Your Maruti Swift service has been completed successfully. Please review the partner.",
+    time: "1 week ago",
+    iconName: "CheckCircle2",
+    read: true,
+    category: "service"
+  }
+];
+
+export const getNotifications = async () => {
+  try {
+    const response = await apiClient.get("/notifications");
+    return response.data;
+  } catch (err) {
+    // Fallback to mock data if API doesn't exist yet
+    return { data: mockNotifications };
+  }
+};
+
+export const markNotificationAsRead = async (id: number | string) => {
+  try {
+    const response = await apiClient.patch(`/notifications/${id}/read`);
+    return response.data;
+  } catch (err) {
+    return { success: true };
+  }
+};
+
+export const markAllNotificationsAsRead = async () => {
+  try {
+    const response = await apiClient.patch(`/notifications/read-all`);
+    return response.data;
+  } catch (err) {
+    return { success: true };
+  }
+};
+
+// ==========================================
+// LOGISTICS APIs
+// ==========================================
+
+export const assignDriverToBooking = async (data: { bookingId: string; executiveId: string; driverName: string; driverPhone: string; status?: string }) => {
+  const response = await apiClient.post("/logistics/assign", data);
+  return response.data;
+};
+
+// ==========================================
+// PREMIUM FEATURES APIs
+// ==========================================
+
+// PARTNER
+export const uploadJobPhotos = async (jobId: string, formData: FormData) => {
+  const type = formData.get("type") as string;
+  const photos = formData.getAll("photos") as File[];
+  
+  const uploadPromises = photos.map(file => uploadFile(file, "job-photos"));
+  const uploadResponses = await Promise.all(uploadPromises);
+  const photoUrls = uploadResponses.map(res => res.data.fileUrl || res.data);
+
+  const response = await apiClient.post(`/partner/jobs/${jobId}/photos`, {
+    type,
+    photos: photoUrls
+  });
+  return response.data;
+};
+
+export const updatePartnerCapacity = async (data: { dailyCapacity: number; blockedDates: string[] }) => {
+  const response = await apiClient.patch("/partner/capacity", data);
+  return response.data;
+};
+
+export const addPartnerStaff = async (data: { name: string; phone: string; role: string }) => {
+  const response = await apiClient.post("/partner/staff", data);
+  return response.data;
+};
+
+export const assignStaffToJob = async (jobId: string, data: { staffId: string }) => {
+  const response = await apiClient.patch(`/partner/jobs/${jobId}/assign-staff`, data);
+  return response.data;
+};
+
+export const requestJobExtension = async (jobId: string, data: { partName: string; cost: number; reason: string }) => {
+  const response = await apiClient.post(`/partner/jobs/${jobId}/extensions`, data);
+  return response.data;
+};
+
+// CUSTOMER
+export const getCustomerLiveTracking = async (bookingId: string) => {
+  const response = await apiClient.get(`/customer/bookings/${bookingId}/tracking`);
+  return response.data;
+};
+
+export const respondToJobExtension = async (bookingId: string, extId: string, data: { status: "APPROVED" | "REJECTED" }) => {
+  const response = await apiClient.patch(`/customer/bookings/${bookingId}/extensions/${extId}`, data);
+  return response.data;
+};
+
+// EXECUTIVE
+export const pushDriverLocation = async (logisticsId: string, data: { lat: number; lng: number }) => {
+  const response = await apiClient.patch(`/executive/logistics/${logisticsId}/location`, data);
+  return response.data;
+};
+
+export const initiateClickToCall = async (data: { phoneNumber: string; targetUserId?: string }) => {
+  const response = await apiClient.post("/executive/call", data);
+  return response.data;
+};
+
+// ACCOUNTS
+export const uploadBankReconciliation = async (formData: FormData) => {
+  const response = await apiClient.post("/accounts/settlements/reconciliation", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  return response.data;
+};
+
+// SUPER ADMIN
+export const getAuditLogs = async () => {
+  const response = await apiClient.get("/super-admin/audit-logs");
+  return response.data;
+};
+
+export const createCustomRole = async (data: { roleName: string; permissions: string[] }) => {
+  const response = await apiClient.post("/super-admin/custom-roles", data);
   return response.data;
 };

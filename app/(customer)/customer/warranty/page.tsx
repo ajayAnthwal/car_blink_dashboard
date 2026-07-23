@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getWarranties, getWarrantyById } from "@/lib/services";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ShieldCheck, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 
 interface Warranty {
@@ -30,7 +30,7 @@ export default function WarrantiesPage() {
   const fetchWarranties = async () => {
     try {
       const res = await getWarranties();
-      setWarranties(res?.docs || res || []);
+      setWarranties((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
     } catch (err) {
       console.error("Failed to load warranties", err);
     } finally {
@@ -47,7 +47,7 @@ export default function WarrantiesPage() {
     setIsLoadingDetails(true);
     try {
       const res = await getWarrantyById(warranty._id);
-      setSelectedWarranty(res?.docs || res || []);
+      setSelectedWarranty((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
       setExpandedId(warranty._id);
     } catch (err) {
       console.error("Failed to load warranty details", err);
@@ -66,36 +66,43 @@ export default function WarrantiesPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold text-primary-navy">Warranties</h2>
+    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+      <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">My Warranties</h2>
 
       {isLoading ? (
-        <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
+        <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center">
           <Loader2 className="w-8 h-8 text-primary-orange animate-spin mx-auto mb-3" />
-          <p className="text-neutral-muted">Loading warranties...</p>
+          <p className="text-gray-500 font-medium">Loading warranties...</p>
         </div>
       ) : warranties.length === 0 ? (
-        <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
-          <ShieldCheck className="w-12 h-12 text-neutral-muted/30 mb-3 mx-auto" />
-          <p className="text-neutral-muted">No warranties found.</p>
+        <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center flex flex-col items-center justify-center">
+          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+            <ShieldCheck className="w-10 h-10 text-gray-300" />
+          </div>
+          <p className="text-gray-500 font-medium">You don't have any active warranties.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {warranties.map((warranty) => (
-            <Card key={warranty._id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-5">
+            <Card key={warranty._id} className="bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-md shadow-subtle border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+                <ShieldCheck className="w-32 h-32" />
+              </div>
+              <CardContent className="p-6 relative z-10">
                 <div className="flex items-start justify-between cursor-pointer" onClick={() => handleViewDetails(warranty)}>
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <ShieldCheck className="w-5 h-5 text-primary-orange" />
-                      <h4 className="font-semibold text-primary-navy">
+                      <div className="bg-orange-50 p-2 rounded-xl text-primary-orange">
+                        <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <h4 className="font-heading font-bold text-gray-900 text-lg">
                         {warranty.serviceId || "Service Warranty"}
                       </h4>
                       <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(warranty.status)}`}>
                         {warranty.status}
                       </span>
                     </div>
-                    <p className="text-sm text-neutral-muted">
+                    <p className="text-sm font-medium text-gray-500 mt-1">
                       Valid: {new Date(warranty.startDate).toLocaleDateString()} - {new Date(warranty.endDate).toLocaleDateString()}
                     </p>
                   </div>
@@ -115,26 +122,26 @@ export default function WarrantiesPage() {
                         <Loader2 className="w-5 h-5 text-primary-orange animate-spin" />
                       </div>
                     ) : selectedWarranty ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm bg-gray-50/50 p-5 rounded-xl border border-gray-100 mt-4">
                         <div>
-                          <p className="text-neutral-muted">Vehicle</p>
-                          <p className="font-medium">{selectedWarranty.vehicleId || "N/A"}</p>
+                          <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">Vehicle</p>
+                          <p className="font-bold text-gray-900">{selectedWarranty.vehicleId || "N/A"}</p>
                         </div>
                         <div>
-                          <p className="text-neutral-muted">Service</p>
-                          <p className="font-medium">{selectedWarranty.serviceId || "N/A"}</p>
+                          <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">Service</p>
+                          <p className="font-bold text-gray-900">{selectedWarranty.serviceId || "N/A"}</p>
                         </div>
                         <div>
-                          <p className="text-neutral-muted">Start Date</p>
-                          <p className="font-medium">{new Date(selectedWarranty.startDate).toLocaleDateString()}</p>
+                          <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">Start Date</p>
+                          <p className="font-bold text-gray-900">{new Date(selectedWarranty.startDate).toLocaleDateString()}</p>
                         </div>
                         <div>
-                          <p className="text-neutral-muted">End Date</p>
-                          <p className="font-medium">{new Date(selectedWarranty.endDate).toLocaleDateString()}</p>
+                          <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">End Date</p>
+                          <p className="font-bold text-gray-900">{new Date(selectedWarranty.endDate).toLocaleDateString()}</p>
                         </div>
                         <div className="md:col-span-2">
-                          <p className="text-neutral-muted">Coverage Details</p>
-                          <p className="font-medium">{selectedWarranty.coverageDetails}</p>
+                          <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">Coverage Details</p>
+                          <p className="font-medium text-gray-700">{selectedWarranty.coverageDetails}</p>
                         </div>
                       </div>
                     ) : null}

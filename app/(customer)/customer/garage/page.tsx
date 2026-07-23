@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getVehicleBrands, getVehicleModels, createGarageVehicle, getGarageVehicles, updateGarageVehicle, deleteGarageVehicle } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Car, Pencil, Trash2, Plus } from "lucide-react";
 
 interface Vehicle {
@@ -53,7 +53,7 @@ export default function MyGaragePage() {
       setIsLoadingModels(true);
       try {
         const res = await getVehicleModels(selectedBrand);
-        setModels(res?.docs || res || []);
+        setModels((Array.isArray((res as any)?.docs) ? (res as any).docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
       } catch (err) {
         console.error("Failed to load models", err);
       } finally {
@@ -67,7 +67,7 @@ export default function MyGaragePage() {
   const fetchBrands = async () => {
     try {
       const res = await getVehicleBrands();
-      setBrands(res?.docs || res || []);
+      setBrands((Array.isArray((res as any)?.docs) ? (res as any).docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
     } catch (err) {
       console.error("Failed to load brands", err);
     } finally {
@@ -78,7 +78,7 @@ export default function MyGaragePage() {
   const fetchVehicles = async () => {
     try {
       const res = await getGarageVehicles();
-      setVehicles(res?.docs || res || []);
+      setVehicles((Array.isArray((res as any)?.docs) ? (res as any).docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
     } catch (err) {
       console.error("Failed to load vehicles", err);
     } finally {
@@ -180,13 +180,15 @@ export default function MyGaragePage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold text-primary-navy">My Garage</h2>
+    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+      <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">My Garage</h2>
 
-      <Card>
+      <Card className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Car className="w-5 h-5 text-primary-orange" />
+          <CardTitle className="flex items-center space-x-3 text-xl">
+            <div className="bg-orange-50 p-2 rounded-xl text-primary-orange">
+              <Car className="w-5 h-5" />
+            </div>
             <span>{editingId ? "Edit Vehicle" : "Add a Vehicle"}</span>
           </CardTitle>
         </CardHeader>
@@ -269,34 +271,36 @@ export default function MyGaragePage() {
       </Card>
 
       <div>
-        <h3 className="text-xl font-bold text-primary-navy mb-4">Saved Vehicles ({vehicles.length})</h3>
+        <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight mb-5">Saved Vehicles ({vehicles.length})</h3>
         {isLoadingVehicles ? (
-          <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
-            <p className="text-neutral-muted">Loading vehicles...</p>
+          <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center">
+            <p className="text-gray-500 font-medium">Loading vehicles...</p>
           </div>
         ) : vehicles.length === 0 ? (
-          <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center flex flex-col items-center justify-center">
-            <Car className="w-12 h-12 text-neutral-muted/30 mb-3" />
-            <p className="text-neutral-muted">You haven&apos;t added any vehicles to your garage yet.</p>
+          <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center flex flex-col items-center justify-center">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+              <Car className="w-10 h-10 text-gray-300" />
+            </div>
+            <p className="text-gray-500 font-medium">You haven&apos;t added any vehicles to your garage yet.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {vehicles.map((vehicle) => (
-              <Card key={vehicle._id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
+              <Card key={vehicle._id} className="bg-white/90 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
+                <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="font-semibold text-primary-navy text-lg">
+                      <h4 className="font-heading font-bold text-gray-900 text-xl tracking-tight">
                         {vehicle.brand} {vehicle.model}
                       </h4>
-                      <p className="text-sm text-neutral-muted mt-1">
+                      <p className="text-sm font-medium text-gray-500 mt-0.5">
                         {vehicle.registrationNumber}
                       </p>
-                      <div className="flex items-center space-x-3 mt-2 text-xs text-neutral-muted">
-                        <span className="bg-neutral-bg px-2 py-1 rounded-md border border-neutral-muted/20">
+                      <div className="flex items-center space-x-2 mt-4 text-xs font-semibold text-gray-600">
+                        <span className="bg-gray-100/80 px-2.5 py-1 rounded-md border border-gray-200/50">
                           {vehicle.fuelType}
                         </span>
-                        <span className="bg-neutral-bg px-2 py-1 rounded-md border border-neutral-muted/20">
+                        <span className="bg-gray-100/80 px-2.5 py-1 rounded-md border border-gray-200/50">
                           {vehicle.year}
                         </span>
                       </div>

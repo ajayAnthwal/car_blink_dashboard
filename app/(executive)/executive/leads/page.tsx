@@ -1,14 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getExecutiveLeads, assignLeadToPartner } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { getExecutiveLeads, assignLeadToPartner, getPartnerStatus } from "@/lib/services";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Select } from "@/components/ui/Select";
 import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus } from "lucide-react";
 
 export default function ExecutiveLeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
@@ -26,8 +28,12 @@ export default function ExecutiveLeadsPage() {
     try {
       setIsLoading(true);
       // Fetch available leads for assignment (PENDING status)
-      const res = await getExecutiveLeads(1, 50, "status=PENDING"); 
-      setLeads(res?.docs || res || []);
+      const [res, partnersRes] = await Promise.all([
+        getExecutiveLeads(1, 50, "status=PENDING"),
+        getPartnerStatus(1, 100, "status=ACTIVE")
+      ]); 
+      setLeads(Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.leads) ? res.leads : (Array.isArray(res) ? res : [])));
+      setPartners(Array.isArray(partnersRes?.docs) ? partnersRes.docs : (Array.isArray(partnersRes?.partners) ? partnersRes.partners : (Array.isArray(partnersRes?.data?.partners) ? partnersRes.data.partners : (Array.isArray(partnersRes) ? partnersRes : []))));
     } catch (err) {
       console.error("Failed to load leads", err);
     } finally {
@@ -150,11 +156,18 @@ export default function ExecutiveLeadsPage() {
               </div>
 
               <form onSubmit={handleAssignLead} className="space-y-4">
-                <Input
-                  label="Partner ID"
-                  placeholder="Enter Partner Object ID"
+                <Select
+                  label="Select Partner"
+                  name="partnerId"
                   value={partnerId}
                   onChange={(e) => setPartnerId(e.target.value)}
+                  options={[
+                    { value: "", label: "Select a Partner..." },
+                    ...partners.map(p => ({
+                      value: p._id,
+                      label: `${p.businessName || p.fullName} (${p.city?.name || 'Unknown Location'})`
+                    }))
+                  ]}
                   required
                 />
                 
@@ -170,10 +183,10 @@ export default function ExecutiveLeadsPage() {
                 </div>
 
                 <div className="flex space-x-3 pt-2">
-                  <Button type="button" variant="outline" className="w-full" onClick={() => setSelectedLead(null)}>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setSelectedLead(null)}>
                     Cancel
                   </Button>
-                  <Button type="submit" className="w-full bg-secondary-blue hover:bg-secondary-blue/90" isLoading={isSubmitting}>
+                  <Button type="submit" className="flex-1 bg-secondary-blue hover:bg-secondary-blue/90" isLoading={isSubmitting}>
                     Assign Partner
                   </Button>
                 </div>

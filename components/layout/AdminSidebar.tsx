@@ -8,12 +8,14 @@ import {
   Users, 
   Map, 
   Settings,
-  Car
+  Car,
+  IndianRupee
 } from "lucide-react";
 
 const navItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Users", href: "/admin/users", icon: Users },
+  { name: "Finance", href: "/admin/finance", icon: IndianRupee },
   { name: "Master Data", href: "/admin/master-data", icon: Map },
   { name: "Vehicles", href: "/admin/vehicles", icon: Car },
 ];

@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getPartnerProfile, updatePartnerProfile, createPartnerProfile, getCities, getServices } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { User, Store, MapPin, Briefcase, FileText, Loader2 } from "lucide-react";
 
 export default function PartnerProfilePage() {

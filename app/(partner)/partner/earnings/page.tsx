@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getPartnerEarnings } from "@/lib/services";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/card";
 import { IndianRupee, Loader2, Calendar, Filter } from "lucide-react";
 
 export default function EarningsPage() {

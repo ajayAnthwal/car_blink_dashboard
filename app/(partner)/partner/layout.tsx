@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { registerDeviceToken } from "@/lib/services";
-import { PartnerSidebar } from "@/components/layout/PartnerSidebar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { useRouter } from "next/navigation";
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (user && user.role !== "PARTNER") {
@@ -37,16 +38,20 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-neutral-bg flex">
       {/* Fixed Sidebar */}
-      <PartnerSidebar />
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        toggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+      />
       
       {/* Main Content Area (offset by sidebar width) */}
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
+      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         <Header />
         
-        <main className="flex-1 p-6 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
           {children}
         </main>
       </div>
     </div>
   );
 }
+

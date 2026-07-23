@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { getEscalations, assignEscalationToSelf, resolveEscalation } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { AlertTriangle, Loader2, CheckCircle2, UserPlus, Clock, User, ShieldAlert } from "lucide-react";
 
 export default function EscalationsPage() {
@@ -25,7 +25,7 @@ export default function EscalationsPage() {
     try {
       setIsLoading(true);
       const res = await getEscalations(1, 50, "status=OPEN");
-      setEscalations(res?.docs || res || []);
+      setEscalations(Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.escalations) ? res.escalations : (Array.isArray(res?.data?.escalations) ? res.data.escalations : (Array.isArray(res) ? res : []))));
     } catch (err) {
       console.error("Failed to load escalations", err);
     } finally {
@@ -109,7 +109,7 @@ export default function EscalationsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {escalations.map((esc) => (
-            <Card key={esc._id} className="hover:shadow-md transition-shadow">
+            <Card key={esc._id} className={`transition-shadow ${esc.isSlaBreached ? 'border-danger/50 shadow-sm shadow-danger/20 bg-danger/5' : 'hover:shadow-md'}`}>
               <CardContent className="p-5">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center space-x-2">
@@ -119,6 +119,11 @@ export default function EscalationsPage() {
                     <span className="text-xs bg-neutral-muted/10 px-2 py-1 rounded border border-neutral-muted/20 flex items-center">
                       <User className="w-3 h-3 mr-1"/> Raised by: {esc.raisedBy}
                     </span>
+                    {esc.isSlaBreached && (
+                      <span className="text-xs bg-danger text-white px-2 py-1 rounded font-bold uppercase animate-pulse">
+                        SLA BREACH
+                      </span>
+                    )}
                   </div>
                   <span className="text-xs text-neutral-muted flex items-center">
                     <Clock className="w-3 h-3 mr-1" />

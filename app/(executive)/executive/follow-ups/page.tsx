@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getFollowUps, createFollowUp } from "@/lib/services";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { getFollowUps, createFollowUp, initiateClickToCall } from "@/lib/services";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PhoneCall, Loader2, Plus, User, Briefcase, Calendar } from "lucide-react";
 
 export default function FollowUpsPage() {
@@ -15,6 +15,10 @@ export default function FollowUpsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+
+  const [callNumber, setCallNumber] = useState("");
+  const [isCalling, setIsCalling] = useState(false);
+  const [callMessage, setCallMessage] = useState({ type: "", text: "" });
 
   const [formData, setFormData] = useState({
     relatedTo: "CUSTOMER",
@@ -33,7 +37,7 @@ export default function FollowUpsPage() {
     try {
       setIsLoading(true);
       const res = await getFollowUps(1, 50);
-      setFollowUps(res?.docs || res || []);
+      setFollowUps(Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.followUps) ? res.followUps : (Array.isArray(res?.data?.followUps) ? res.data.followUps : (Array.isArray(res) ? res : []))));
     } catch (err) {
       console.error("Failed to load follow-ups", err);
     } finally {
@@ -75,6 +79,22 @@ export default function FollowUpsPage() {
     }
   };
 
+  const handleQuickCall = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!callNumber) return;
+    setIsCalling(true);
+    setCallMessage({ type: "", text: "" });
+    try {
+      await initiateClickToCall({ phoneNumber: callNumber });
+      setCallMessage({ type: "success", text: `Calling ${callNumber}... Check your phone.` });
+      setCallNumber("");
+    } catch (err: any) {
+      setCallMessage({ type: "error", text: err?.message || "Failed to initiate call." });
+    } finally {
+      setIsCalling(false);
+    }
+  };
+
   const getOutcomeColor = (outcome: string) => {
     switch (outcome) {
       case "RESOLVED": return "bg-success/10 text-success border-success/20";
@@ -95,6 +115,35 @@ export default function FollowUpsPage() {
           <Plus className="w-4 h-4 mr-2" /> Log Call
         </Button>
       </div>
+
+      <Card className="shadow-subtle mb-6">
+        <CardContent className="p-4">
+          <h3 className="font-semibold text-primary-navy mb-3 flex items-center">
+            <PhoneCall className="w-4 h-4 mr-2 text-primary-orange" /> Quick Click-to-Call
+          </h3>
+          {callMessage.text && (
+            <div className={`p-2 mb-3 rounded-lg text-xs border ${
+              callMessage.type === "success" 
+                ? "bg-success/10 text-success border-success/20" 
+                : "bg-danger/10 text-danger border-danger/20"
+            }`}>
+              {callMessage.text}
+            </div>
+          )}
+          <form onSubmit={handleQuickCall} className="flex space-x-3">
+            <Input 
+              placeholder="Enter phone number (e.g. +91 9876543210)" 
+              value={callNumber}
+              onChange={(e) => setCallNumber(e.target.value)}
+              className="flex-1"
+              required
+            />
+            <Button type="submit" isLoading={isCalling} className="bg-success hover:bg-success-dark">
+              Call Now
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {message.text && !showCreateModal && (
         <div className={`p-3 rounded-lg text-sm border ${
@@ -127,7 +176,7 @@ export default function FollowUpsPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-primary-navy">{log.relatedTo}</h3>
-                      <p className="text-xs text-neutral-muted">ID: {log.relatedUserId?.substring(0,8)}</p>
+                      <p className="text-xs text-neutral-muted">ID: {typeof log.relatedUserId === 'object' ? log.relatedUserId?._id?.substring(0,8) : String(log.relatedUserId || "").substring(0,8)}</p>
                     </div>
                   </div>
                   <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${getOutcomeColor(log.callOutcome)}`}>
