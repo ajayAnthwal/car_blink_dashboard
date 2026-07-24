@@ -30,7 +30,7 @@ export default function WarrantiesPage() {
   const fetchWarranties = async () => {
     try {
       const res = await getWarranties();
-      setWarranties((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+      setWarranties((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
     } catch (err) {
       console.error("Failed to load warranties", err);
     } finally {
@@ -47,7 +47,7 @@ export default function WarrantiesPage() {
     setIsLoadingDetails(true);
     try {
       const res = await getWarrantyById(warranty._id);
-      setSelectedWarranty((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+      setSelectedWarranty((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
       setExpandedId(warranty._id);
     } catch (err) {
       console.error("Failed to load warranty details", err);

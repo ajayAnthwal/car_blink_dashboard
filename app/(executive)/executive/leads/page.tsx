@@ -106,8 +106,8 @@ export default function ExecutiveLeadsPage() {
                       <span className="flex items-center"><Calendar className="w-3 h-3 mr-1"/> {new Date(lead.preferredDate).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <span className="bg-secondary-blue/10 text-secondary-blue text-xs px-2.5 py-1 rounded-full font-medium border border-secondary-blue/20">
-                    Unassigned
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${lead.assignment?.assignedPartnerId ? 'bg-success/10 text-success border-success/20' : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'}`}>
+                    {lead.assignment?.assignedPartnerId ? 'Assigned' : 'Unassigned'}
                   </span>
                 </div>
                 
@@ -122,13 +122,25 @@ export default function ExecutiveLeadsPage() {
                   </div>
                 </div>
 
+                {lead.assignment?.assignedPartnerId && (
+                  <div className="mb-4 p-2 bg-success/5 rounded text-xs text-success-dark flex items-center border border-success/10">
+                    <UserPlus className="w-3 h-3 mr-1" />
+                    Assigned to: {lead.assignment.assignedPartnerId.businessName || 'Partner'}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-xs text-neutral-muted mb-4 border-t border-neutral-muted/10 pt-3">
                   <span>Customer ID: {lead.customerId?._id?.substring(0,8) || "Unknown"}</span>
                   <span>Booking ID: {lead._id.substring(0,8)}</span>
                 </div>
 
-                <Button className="w-full flex items-center justify-center bg-secondary-blue hover:bg-secondary-blue/90" onClick={() => setSelectedLead(lead)}>
-                  <UserPlus className="w-4 h-4 mr-2" /> Assign to Partner
+                <Button 
+                  className={`w-full flex items-center justify-center ${lead.assignment?.assignedPartnerId ? 'bg-neutral-muted/20 text-neutral-dark hover:bg-neutral-muted/30' : 'bg-secondary-blue hover:bg-secondary-blue/90'}`}
+                  onClick={() => setSelectedLead(lead)}
+                  variant={lead.assignment?.assignedPartnerId ? "outline" : "default"}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" /> 
+                  {lead.assignment?.assignedPartnerId ? "Re-assign Partner" : "Assign to Partner"}
                 </Button>
               </CardContent>
             </Card>

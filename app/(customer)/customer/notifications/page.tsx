@@ -19,7 +19,7 @@ export default function NotificationsPage() {
     try {
       setLoading(true);
       const res = await getNotifications();
-      const docs = Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+      const docs = (Array.isArray(res) ? res : (res?.docs || res?.data || []));
       setNotifications(docs);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);

@@ -33,7 +33,8 @@ export default function PartnerKycPage() {
     try {
       setIsLoading(true);
       const res = await getKycDocuments();
-      setDocuments(res?.docs || res || []);
+      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+      setDocuments(Array.isArray(dataArray) ? dataArray : []);
     } catch (err) {
       console.error("Failed to load KYC documents", err);
     } finally {

@@ -25,7 +25,7 @@ export default function RSAPage() {
   const fetchVehicles = async () => {
     try {
       const res = await getGarageVehicles();
-      const docs = Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+      const docs = (Array.isArray(res) ? res : (res?.docs || res?.data || []));
       setVehicles(docs);
     } catch (err) {
       console.error("Failed to load vehicles", err);

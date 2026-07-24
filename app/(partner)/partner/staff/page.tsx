@@ -24,7 +24,8 @@ export default function StaffPage() {
   const fetchStaff = async () => {
     try {
       const res = await getStaff();
-      setStaff(res?.data || []);
+      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+      setStaff(Array.isArray(dataArray) ? dataArray : []);
     } catch (err) {
       console.error("Failed to load staff", err);
     } finally {

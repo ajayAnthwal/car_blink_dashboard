@@ -58,8 +58,8 @@ export default function SupportPage() {
         getBookings(),
         getSupportTickets(),
       ]);
-      setBookings((Array.isArray(bookingsRes?.docs) ? bookingsRes.docs : (Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes) ? bookingsRes : []))));
-      const data = Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.tickets || ticketsRes?.docs || []);
+      setBookings((Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || [])));
+      const data = (Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.docs || ticketsRes?.data || []));
       setTickets(data);
     } catch (err) {
       console.error("Failed to load initial data", err);
@@ -103,7 +103,7 @@ export default function SupportPage() {
     setIsLoadingDetails(true);
     try {
       const res = await getSupportTicketById(ticket._id);
-      setSelectedTicket((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+      setSelectedTicket((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
       setExpandedId(ticket._id);
       setReplyMessage("");
     } catch (err) {
@@ -119,7 +119,7 @@ export default function SupportPage() {
     setIsReplying(true);
     try {
       const res = await replySupportTicket(selectedTicket._id, { message: replyMessage });
-      setSelectedTicket((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+      setSelectedTicket((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
       setReplyMessage("");
       setTickets(prev => prev.map(t => t._id === selectedTicket._id ? (res?.docs || res) : t));
     } catch (err: any) {

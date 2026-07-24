@@ -70,7 +70,7 @@ export default function QuotesPage() {
     setIsLoading(true);
     try {
       const res = await getBookings();
-      setBookings((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+      setBookings((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
     } catch (err) {
       console.error("Failed to load bookings", err);
     } finally {
@@ -90,7 +90,7 @@ export default function QuotesPage() {
       setIsLoadingQuotes(true);
       try {
         const res = await getBookingQuotes(booking._id);
-        setQuotesByBooking((prev) => ({ ...prev, [booking._id]: (Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))) }));
+        setQuotesByBooking((prev) => ({ ...prev, [booking._id]: (Array.isArray(res) ? res : (res?.docs || res?.data || [])) }));
       } catch (err) {
         console.error("Failed to load quotes", err);
       } finally {

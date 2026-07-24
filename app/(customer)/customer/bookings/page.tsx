@@ -88,10 +88,10 @@ export default function BookingsPage() {
         getCities(),
         getBookings(),
       ]);
-      setVehicles(Array.isArray(vehiclesRes?.docs) ? vehiclesRes.docs : (Array.isArray(vehiclesRes?.vehicles) ? vehiclesRes.vehicles : (Array.isArray(vehiclesRes?.data?.vehicles) ? vehiclesRes.data.vehicles : (Array.isArray(vehiclesRes?.data) ? vehiclesRes.data : (Array.isArray(vehiclesRes) ? vehiclesRes : [])))));
-      setServices(Array.isArray(servicesRes?.docs) ? servicesRes.docs : (Array.isArray(servicesRes?.services) ? servicesRes.services : (Array.isArray(servicesRes?.data?.services) ? servicesRes.data.services : (Array.isArray(servicesRes?.data) ? servicesRes.data : (Array.isArray(servicesRes) ? servicesRes : [])))));
-      setCities(Array.isArray(citiesRes?.docs) ? citiesRes.docs : (Array.isArray(citiesRes?.cities) ? citiesRes.cities : (Array.isArray(citiesRes?.data?.cities) ? citiesRes.data.cities : (Array.isArray(citiesRes?.data) ? citiesRes.data : (Array.isArray(citiesRes) ? citiesRes : [])))));
-      setBookings(Array.isArray(bookingsRes?.docs) ? bookingsRes.docs : (Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : (Array.isArray(bookingsRes?.data?.bookings) ? bookingsRes.data.bookings : (Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes) ? bookingsRes : [])))));
+      setVehicles(Array.isArray(vehiclesRes) ? vehiclesRes : (vehiclesRes?.docs || vehiclesRes?.data || []));
+      setServices(Array.isArray(servicesRes) ? servicesRes : (servicesRes?.docs || servicesRes?.data || []));
+      setCities(Array.isArray(citiesRes) ? citiesRes : (citiesRes?.docs || citiesRes?.data || []));
+      setBookings(Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || []));
     } catch (err) {
       console.error("Failed to load initial data", err);
     } finally {
@@ -102,28 +102,46 @@ export default function BookingsPage() {
   const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setMessage({ type: "", text: "" });
+    setMessage({ type: "", text: "Getting your location..." });
 
-    try {
-      await createBooking({
-        vehicleId,
-        serviceId,
-        cityId,
-        description,
-        preferredDate: new Date(preferredDate).toISOString(),
-      });
-      setMessage({ type: "success", text: "Booking created successfully!" });
-      setVehicleId("");
-      setServiceId("");
-      setSelectedStateIso("");
-      setCityId("");
-      setDescription("");
-      setPreferredDate("");
-      fetchInitialData();
-    } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to create booking." });
-    } finally {
-      setIsSubmitting(false);
+    const doCreateBooking = async (lat?: number, lng?: number) => {
+      try {
+        await createBooking({
+          vehicleId,
+          serviceId,
+          cityId,
+          description,
+          preferredDate: new Date(preferredDate).toISOString(),
+          ...(lat && lng ? { latitude: lat, longitude: lng } : {})
+        });
+        setMessage({ type: "success", text: "Booking created successfully!" });
+        setVehicleId("");
+        setServiceId("");
+        setSelectedStateIso("");
+        setCityId("");
+        setDescription("");
+        setPreferredDate("");
+        fetchInitialData();
+      } catch (err: any) {
+        setMessage({ type: "error", text: err?.message || "Failed to create booking." });
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          doCreateBooking(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.warn("Geolocation failed", error);
+          doCreateBooking(); // fallback without GPS
+        },
+        { timeout: 8000 }
+      );
+    } else {
+      doCreateBooking();
     }
   };
 
@@ -133,7 +151,7 @@ export default function BookingsPage() {
     setIsLoadingQuotes(true);
     try {
       const res = await getBookingQuotes(booking._id);
-      setQuotes((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+      setQuotes((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
     } catch (err) {
       console.error("Failed to load quotes", err);
     } finally {

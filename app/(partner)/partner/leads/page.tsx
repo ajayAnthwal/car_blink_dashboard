@@ -27,7 +27,8 @@ export default function LeadsPage() {
     try {
       setIsLoading(true);
       const res = await getLeads(1, 50); // Get recent leads
-      setLeads(res?.docs || res || []);
+      const leadsArray = res?.data?.bookings || res?.data?.docs || res?.data || res?.docs || [];
+      setLeads(Array.isArray(leadsArray) ? leadsArray : (leadsArray.bookings || []));
     } catch (err) {
       console.error("Failed to load leads", err);
     } finally {
@@ -131,8 +132,8 @@ export default function LeadsPage() {
       {/* Bidding Modal */}
       {selectedLead && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-muted/10 pb-4">
+          <Card className="w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-muted/10 pb-4 flex-shrink-0">
               <CardTitle>Submit Your Quote</CardTitle>
               <button 
                 onClick={() => setSelectedLead(null)}
@@ -141,7 +142,7 @@ export default function LeadsPage() {
                 <X className="w-5 h-5" />
               </button>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="pt-4 overflow-y-auto custom-scrollbar flex-1">
               <div className="mb-4 bg-primary-navy/5 p-3 rounded-lg text-sm">
                 <p className="font-medium text-primary-navy">{selectedLead.serviceId?.name}</p>
                 <p className="text-neutral-muted">{selectedLead.vehicleId?.brand} {selectedLead.vehicleId?.model}</p>
@@ -177,12 +178,12 @@ export default function LeadsPage() {
                   />
                 </div>
 
-                <div className="flex space-x-3 pt-2">
-                  <Button type="button" variant="outline" className="w-full" onClick={() => setSelectedLead(null)}>
-                    Cancel
-                  </Button>
+                <div className="flex flex-col space-y-3 pt-2">
                   <Button type="submit" className="w-full" isLoading={isSubmitting}>
                     Submit Bid
+                  </Button>
+                  <Button type="button" variant="outline" className="w-full" onClick={() => setSelectedLead(null)}>
+                    Cancel
                   </Button>
                 </div>
               </form>

@@ -66,6 +66,20 @@ apiClient.interceptors.response.use(
       if (!response.data.success) {
         return Promise.reject(response.data);
       }
+      
+      const payload = response.data.data;
+      
+      // MAGIC FIX for UI components:
+      // If payload is an object (e.g. { bookings: [] }), alias the array to .docs and .data
+      // This prevents the UI from failing when it does res?.data?.docs or res?.docs
+      if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+        const arrayKey = Object.keys(payload).find(key => Array.isArray(payload[key]));
+        if (arrayKey) {
+          payload.docs = payload[arrayKey];
+          payload.data = payload[arrayKey];
+        }
+      }
+
       return response.data;
     }
     return response;

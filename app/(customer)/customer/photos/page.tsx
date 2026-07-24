@@ -40,7 +40,7 @@ export default function PhotosPage() {
     setIsLoading(true);
     try {
       const res = await getBookings();
-      const withPhotos = ((Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : [])))).filter(
+      const withPhotos = ((Array.isArray(res) ? res : (res?.docs || res?.data || []))).filter(
         (b: Booking) => (b.beforePhotos && b.beforePhotos.length > 0) || (b.afterPhotos && b.afterPhotos.length > 0)
       );
       setBookings(withPhotos);

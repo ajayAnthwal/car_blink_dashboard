@@ -18,7 +18,8 @@ export default function EarningsPage() {
     try {
       setIsLoading(true);
       const res = await getPartnerEarnings(period);
-      setEarnings(res?.docs || res || []);
+      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+      setEarnings(Array.isArray(dataArray) ? dataArray : []);
     } catch (err) {
       console.error("Failed to load earnings", err);
     } finally {

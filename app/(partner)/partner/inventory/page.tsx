@@ -27,7 +27,8 @@ export default function InventoryPage() {
   const fetchInventory = async () => {
     try {
       const res = await getInventory();
-      setItems(res?.data || []);
+      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+      setItems(Array.isArray(dataArray) ? dataArray : []);
     } catch (err) {
       console.error("Failed to load inventory", err);
     } finally {

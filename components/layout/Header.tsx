@@ -19,12 +19,9 @@ import { roleConfig } from "@/lib/roleConfig";
 import { Sidebar } from "./Sidebar";
 import { usePathname } from "next/navigation";
 
-// Mock notifications for the bell dropdown
-const mockNotifications = [
-  { id: 1, title: "New Lead", message: "You have a new lead for Honda City.", time: "5m ago", read: false },
-  { id: 2, title: "Payout Processed", message: "Your payout of ₹12,500 has been processed.", time: "2h ago", read: false },
-  { id: 3, title: "Review Received", message: "Rahul Verma left a 5-star review.", time: "1d ago", read: true },
-];
+import { getNotifications, markAllNotificationsAsRead } from "@/lib/services";
+import { useSocket } from "@/lib/SocketContext";
+import { formatDistanceToNow } from "date-fns";
 
 export function Header() {
   const { logout, user } = useAuth();
@@ -37,7 +34,49 @@ export function Header() {
     return user?.fullName || "User";
   };
 
-  const unreadCount = mockNotifications.filter((n) => !n.read).length;
+  const { socket } = useSocket();
+  const [notifications, setNotifications] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  React.useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = (payload: any) => {
+      setNotifications(prev => [payload, ...prev]);
+    };
+
+    socket.on("notification:new", handleNewNotification);
+
+    return () => {
+      socket.off("notification:new", handleNewNotification);
+    };
+  }, [socket]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await getNotifications();
+      const docs = Array.isArray(res) ? res : (res?.docs || res?.data || []);
+      setNotifications(docs.slice(0, 5)); // Show top 5 in dropdown
+    } catch (err) {
+      console.error("Failed to load notifications in header", err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error("Failed to mark all as read", err);
+    }
+  };
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 shadow-subtle transition-all duration-200">
@@ -151,17 +190,19 @@ export function Header() {
                 )}
               </div>
               <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                {mockNotifications.length === 0 ? (
+                {notifications.length === 0 ? (
                   <div className="p-8 text-center text-gray-500">
                     <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
                     <p className="text-sm">No new notifications</p>
                   </div>
                 ) : (
-                  mockNotifications.map((notif) => (
-                    <div key={notif.id} className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors duration-200 cursor-pointer ${notif.read ? 'opacity-70' : `${config.accentBgColor}/5`}`}>
+                  notifications.map((notif: any) => (
+                    <div key={notif._id || notif.id || Math.random()} className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors duration-200 cursor-pointer ${notif.isRead ? 'opacity-70' : `${config.accentBgColor}/5`}`}>
                       <div className="flex justify-between items-start mb-1">
                         <h4 className="text-sm font-semibold text-gray-900">{notif.title}</h4>
-                        <span className="text-[10px] font-medium text-gray-500">{notif.time}</span>
+                        <span className="text-[10px] font-medium text-gray-500">
+                          {notif.createdAt ? formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true }) : "Just now"}
+                        </span>
                       </div>
                       <p className="text-xs text-gray-600 line-clamp-2">{notif.message}</p>
                     </div>
@@ -169,7 +210,7 @@ export function Header() {
                 )}
               </div>
               <div className="p-3 border-t border-gray-50 bg-gray-50/50 flex justify-between items-center rounded-b-xl">
-                <button className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center transition-colors duration-200">
+                <button onClick={handleMarkAllRead} className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center transition-colors duration-200">
                   <CheckCircle className="w-3.5 h-3.5 mr-1" /> Mark all read
                 </button>
                 <Link href={`/${currentRole.toLowerCase()}/notifications`} className={`text-xs font-semibold ${config.themeColor} hover:opacity-80 transition-opacity duration-200`}>

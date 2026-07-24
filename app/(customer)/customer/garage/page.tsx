@@ -53,7 +53,7 @@ export default function MyGaragePage() {
       setIsLoadingModels(true);
       try {
         const res = await getVehicleModels(selectedBrand);
-        setModels((Array.isArray((res as any)?.docs) ? (res as any).docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+        setModels(Array.isArray(res) ? res : (res?.docs || res?.data || []));
       } catch (err) {
         console.error("Failed to load models", err);
       } finally {
@@ -67,7 +67,7 @@ export default function MyGaragePage() {
   const fetchBrands = async () => {
     try {
       const res = await getVehicleBrands();
-      setBrands((Array.isArray((res as any)?.docs) ? (res as any).docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+      setBrands(Array.isArray(res) ? res : (res?.docs || res?.data || []));
     } catch (err) {
       console.error("Failed to load brands", err);
     } finally {
@@ -78,7 +78,7 @@ export default function MyGaragePage() {
   const fetchVehicles = async () => {
     try {
       const res = await getGarageVehicles();
-      setVehicles((Array.isArray((res as any)?.docs) ? (res as any).docs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))));
+      setVehicles(Array.isArray(res) ? res : (res?.docs || res?.data || []));
     } catch (err) {
       console.error("Failed to load vehicles", err);
     } finally {

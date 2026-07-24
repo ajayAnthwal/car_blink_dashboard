@@ -26,10 +26,12 @@ export default function MasterDataPage() {
     try {
       if (activeTab === "services") {
         const res = await getServices(1, 100);
-        setServices(res.data?.docs || res.data || []);
+        const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+        setServices(Array.isArray(dataArray) ? dataArray : []);
       } else {
         const res = await getCities(1, 100);
-        setCities(res.data?.docs || res.data || []);
+        const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+        setCities(Array.isArray(dataArray) ? dataArray : []);
       }
     } catch (err) {
       console.error("Failed to load master data", err);

@@ -44,7 +44,8 @@ export default function PartnerJobsPage() {
     try {
       setIsLoading(true);
       const res = await getPartnerJobs();
-      setJobs(res?.docs || res || []);
+      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+      setJobs(Array.isArray(dataArray) ? dataArray : []);
     } catch (err) {
       console.error("Failed to load jobs", err);
     } finally {

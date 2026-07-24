@@ -23,6 +23,8 @@ export default function PartnerProfilePage() {
     cityId: "",
     servicesOffered: [] as string[],
     gstNumber: "",
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
   });
 
   useEffect(() => {
@@ -36,18 +38,28 @@ export default function PartnerProfilePage() {
         getCities(),
         getServices()
       ]);
-      setCities(citiesRes?.docs || citiesRes || []);
-      setServices(servicesRes?.docs || servicesRes || []);
+      const citiesArray = citiesRes?.data?.docs || citiesRes?.data || citiesRes?.docs || [];
+      setCities(Array.isArray(citiesArray) ? citiesArray : []);
+      const servicesArray = servicesRes?.data?.docs || servicesRes?.data || servicesRes?.docs || [];
+      setServices(Array.isArray(servicesArray) ? servicesArray : []);
 
       try {
         const profileRes = await getPartnerProfile();
-        if (profileRes.data) {
+        
+        let profileData = profileRes;
+        if (profileRes?.data && typeof profileRes.data === 'object' && !Array.isArray(profileRes.data) && profileRes.data.businessName) {
+          profileData = profileRes.data;
+        }
+        
+        if (profileData && profileData.businessName) {
           setFormData({
-            businessName: profileRes.data.businessName || "",
-            businessAddress: profileRes.data.businessAddress || "",
-            cityId: profileRes.data.cityId?._id || profileRes.data.cityId || "",
-            servicesOffered: (profileRes.data.servicesOffered || []).map((s: any) => s._id || s),
-            gstNumber: profileRes.data.gstNumber || "",
+            businessName: profileData.businessName || "",
+            businessAddress: profileData.businessAddress || "",
+            cityId: profileData.cityId?._id || profileData.cityId || "",
+            servicesOffered: (profileData.servicesOffered || []).map((s: any) => s._id || s),
+            gstNumber: profileData.gstNumber || "",
+            latitude: profileData.location?.coordinates?.[1] || profileData.latitude || undefined,
+            longitude: profileData.location?.coordinates?.[0] || profileData.longitude || undefined,
           });
           setIsNewProfile(false);
         } else {
@@ -82,6 +94,29 @@ export default function PartnerProfilePage() {
     });
   };
 
+  const handleGetLocation = () => {
+    if ("geolocation" in navigator) {
+      setMessage({ type: "", text: "Getting location..." });
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData(prev => ({
+            ...prev,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          }));
+          setMessage({ type: "success", text: "Location captured successfully!" });
+        },
+        (error) => {
+          console.warn("Geolocation failed", error);
+          setMessage({ type: "error", text: "Failed to get location. Please allow location permissions." });
+        },
+        { timeout: 8000 }
+      );
+    } else {
+      setMessage({ type: "error", text: "Geolocation is not supported by your browser." });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -92,7 +127,11 @@ export default function PartnerProfilePage() {
         if (formData.servicesOffered.length === 0) {
           throw new Error("Please select at least one service offered.");
         }
-        await createPartnerProfile(formData);
+        await createPartnerProfile({
+          ...formData,
+          latitude: formData.latitude,
+          longitude: formData.longitude
+        });
         setMessage({ type: "success", text: "Profile created successfully!" });
         setIsNewProfile(false);
       } else {
@@ -100,7 +139,9 @@ export default function PartnerProfilePage() {
         await updatePartnerProfile({
           businessName: formData.businessName,
           businessAddress: formData.businessAddress,
-          gstNumber: formData.gstNumber
+          gstNumber: formData.gstNumber,
+          latitude: formData.latitude,
+          longitude: formData.longitude
         });
         setMessage({ type: "success", text: "Profile updated successfully!" });
       }
@@ -166,6 +207,23 @@ export default function PartnerProfilePage() {
                   onChange={handleInputChange}
                   required
                 />
+                <div className="mt-3 flex items-center justify-between p-3 bg-neutral-bg border border-neutral-muted/20 rounded-lg">
+                  <div className="flex items-center">
+                    {formData.latitude && formData.longitude ? (
+                      <span className="text-sm font-semibold text-success flex items-center">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        Location set: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-neutral-muted">
+                        No GPS location set. Helps customers find you.
+                      </span>
+                    )}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={handleGetLocation}>
+                    <MapPin className="w-4 h-4 mr-2" /> Get Current Location
+                  </Button>
+                </div>
               </div>
 
               {isNewProfile ? (

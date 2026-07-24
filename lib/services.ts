@@ -201,7 +201,7 @@ export const deleteGarageVehicle = async (id: string) => {
 // CUSTOMER BOOKING APIs
 // ==========================================
 
-export const createBooking = async (data: { vehicleId: string; serviceId: string; cityId: string; description: string; preferredDate: string }) => {
+export const createBooking = async (data: { vehicleId: string; serviceId: string; cityId: string; description: string; preferredDate: string; latitude?: number; longitude?: number }) => {
   // If cityId is just a string name from the package, provide a valid dummy hex ID to bypass backend format validation
   let validCityId = data.cityId;
   const isMongoId = /^[0-9a-fA-F]{24}$/.test(validCityId);
@@ -329,7 +329,7 @@ export const getPartnerReviews = async (partnerId: string) => {
 // PARTNER PROFILE APIs
 // ==========================================
 
-export const createPartnerProfile = async (data: { businessName: string; businessAddress: string; cityId: string; servicesOffered: string[]; gstNumber?: string }) => {
+export const createPartnerProfile = async (data: { businessName: string; businessAddress: string; cityId: string; servicesOffered: string[]; gstNumber?: string; latitude?: number; longitude?: number }) => {
   const response = await apiClient.post("/partner/profile", data);
   return response.data;
 };
@@ -339,7 +339,7 @@ export const getPartnerProfile = async () => {
   return response.data;
 };
 
-export const updatePartnerProfile = async (data: Partial<{ businessName: string; businessAddress: string; gstNumber: string }>) => {
+export const updatePartnerProfile = async (data: Partial<{ businessName: string; businessAddress: string; gstNumber: string; latitude?: number; longitude?: number }>) => {
   const response = await apiClient.patch("/partner/profile", data);
   return response.data;
 };
@@ -841,8 +841,7 @@ export const getNotifications = async () => {
     const response = await apiClient.get("/notifications");
     return response.data;
   } catch (err) {
-    // Fallback to mock data if API doesn't exist yet
-    return { data: mockNotifications };
+    throw err;
   }
 };
 
@@ -881,7 +880,7 @@ export const assignDriverToBooking = async (data: { bookingId: string; executive
 export const uploadJobPhotos = async (jobId: string, formData: FormData) => {
   const type = formData.get("type") as string;
   const photos = formData.getAll("photos") as File[];
-  
+
   const uploadPromises = photos.map(file => uploadFile(file, "job-photos"));
   const uploadResponses = await Promise.all(uploadPromises);
   const photoUrls = uploadResponses.map(res => res.data.fileUrl || res.data);

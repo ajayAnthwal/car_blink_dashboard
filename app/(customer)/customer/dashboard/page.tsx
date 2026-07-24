@@ -50,9 +50,9 @@ export default function CustomerDashboardPage() {
           getWarranties().catch(() => ({ data: [] }))
         ]);
 
-        const allBookings: Booking[] = Array.isArray(bookingsRes?.docs) ? bookingsRes.docs : (Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes) ? bookingsRes : []));
-        const allPayments: Payment[] = Array.isArray(paymentsRes?.docs) ? paymentsRes.docs : (Array.isArray(paymentsRes?.data) ? paymentsRes.data : (Array.isArray(paymentsRes) ? paymentsRes : []));
-        const allWarranties: Warranty[] = Array.isArray(warrantiesRes?.docs) ? warrantiesRes.docs : (Array.isArray(warrantiesRes?.data) ? warrantiesRes.data : (Array.isArray(warrantiesRes) ? warrantiesRes : []));
+        const allBookings: Booking[] = (Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || []));
+        const allPayments: Payment[] = (Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes?.docs || paymentsRes?.data || []));
+        const allWarranties: Warranty[] = (Array.isArray(warrantiesRes) ? warrantiesRes : (warrantiesRes?.docs || warrantiesRes?.data || []));
 
         setBookings(allBookings);
 

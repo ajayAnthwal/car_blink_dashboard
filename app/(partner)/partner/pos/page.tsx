@@ -28,8 +28,10 @@ export default function POSPage() {
   const fetchData = async () => {
     try {
       const [invRes, posRes] = await Promise.all([getInventory(), getPosInvoices()]);
-      setInventory(invRes?.data || []);
-      setInvoices(posRes?.data || []);
+      const invArray = invRes?.data?.docs || invRes?.data || invRes?.docs || [];
+      setInventory(Array.isArray(invArray) ? invArray : []);
+      const posArray = posRes?.data?.docs || posRes?.data || posRes?.docs || [];
+      setInvoices(Array.isArray(posArray) ? posArray : []);
     } catch (err) {
       console.error("Failed to load data", err);
     } finally {

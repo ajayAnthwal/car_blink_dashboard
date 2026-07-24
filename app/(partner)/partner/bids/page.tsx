@@ -20,7 +20,8 @@ export default function PartnerBidsPage() {
     try {
       setIsLoading(true);
       const res = await getPartnerBids();
-      setBids(res?.docs || res || []);
+      const bidsArray = res?.data?.docs || res?.data || res?.docs || [];
+      setBids(Array.isArray(bidsArray) ? bidsArray : []);
     } catch (err) {
       console.error("Failed to load bids", err);
     } finally {

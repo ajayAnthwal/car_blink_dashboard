@@ -50,10 +50,10 @@ export default function MyReviewsPage() {
         getBookings(),
       ]);
       
-      setReviews((Array.isArray(reviewsRes?.docs) ? reviewsRes.docs : (Array.isArray(reviewsRes?.data) ? reviewsRes.data : (Array.isArray(reviewsRes) ? reviewsRes : []))));
+      setReviews((Array.isArray(reviewsRes) ? reviewsRes : (reviewsRes?.docs || reviewsRes?.data || [])));
       
       // Filter bookings that are COMPLETED to allow reviewing them
-      const completedBookings = ((Array.isArray(bookingsRes?.docs) ? bookingsRes.docs : (Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes) ? bookingsRes : [])))).filter(
+      const completedBookings = ((Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || []))).filter(
         (b: Booking) => b.status === "COMPLETED"
       );
       setBookings(completedBookings);

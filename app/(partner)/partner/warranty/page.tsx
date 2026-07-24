@@ -28,7 +28,8 @@ export default function PartnerWarrantyPage() {
       setIsLoading(true);
       // Fetch only completed jobs
       const res = await getPartnerJobs("COMPLETED");
-      setCompletedJobs(res?.docs || res || []);
+      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+      setCompletedJobs(Array.isArray(dataArray) ? dataArray : []);
     } catch (err) {
       console.error("Failed to load completed jobs", err);
     } finally {

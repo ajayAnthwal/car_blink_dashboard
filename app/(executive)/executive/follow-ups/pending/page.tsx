@@ -20,7 +20,8 @@ export default function PendingFollowUpsPage() {
     try {
       setIsLoading(true);
       const res = await getPendingFollowUps(1, 50);
-      setPending(res?.docs || res || []);
+      const dataArray = res?.data?.docs || res?.data || (Array.isArray(res) ? res : (res?.docs || (Array.isArray(res) ? res : (res?.docs || res?.data || []))));
+      setPending(Array.isArray(dataArray) ? dataArray : []);
     } catch (err) {
       console.error("Failed to load pending follow-ups", err);
     } finally {

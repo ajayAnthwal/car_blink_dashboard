@@ -82,7 +82,6 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         label: "My Services",
         items: [
           { name: "My Garage", href: "/customer/garage", icon: Car },
-          { name: "Book Service", href: "/customer/book", icon: Wrench },
           { name: "My Bookings", href: "/customer/bookings", icon: CalendarCheck },
           { name: "My Warranties", href: "/customer/warranty", icon: ShieldCheck },
         ],
@@ -130,7 +129,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
     ],
   },
   EXECUTIVE: {
-    roleName: "Executive (Driver)",
+    roleName: "Operations Executive",
     portalTitle: "Executive Console",
     themeColor: "text-primary-navy",
     accentBgColor: "bg-primary-navy",
@@ -139,22 +138,17 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         label: "Overview",
         items: [
           { name: "Dashboard", href: "/executive/dashboard", icon: LayoutDashboard },
+          { name: "Customer Status", href: "/executive/customer-status", icon: Users },
+          { name: "Partner Status", href: "/executive/partner-status", icon: Briefcase },
         ],
       },
       {
         label: "Operations",
         items: [
-          { name: "My Assignments", href: "/executive/assignments", icon: ClipboardList },
-          { name: "Active Trip", href: "/executive/trip", icon: MapPin },
-          { name: "Vehicle Inspection", href: "/executive/inspection", icon: Camera },
-          { name: "Secure Handover", href: "/executive/handover", icon: Key },
-        ],
-      },
-      {
-        label: "Account",
-        items: [
-          { name: "Earnings & Incentives", href: "/executive/earnings", icon: IndianRupee },
-          { name: "Profile", href: "/executive/profile", icon: User },
+          { name: "Leads / Assignments", href: "/executive/leads", icon: Target },
+          { name: "Follow-Ups", href: "/executive/follow-ups", icon: PhoneCall },
+          { name: "Escalations", href: "/executive/escalations", icon: AlertTriangle },
+          { name: "Logistics", href: "/executive/logistics", icon: Car },
         ],
       },
     ],

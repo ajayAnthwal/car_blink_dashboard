@@ -48,8 +48,8 @@ export default function PaymentsPage() {
         getBookings(),
         getPaymentHistory(),
       ]);
-      setBookings((Array.isArray(bookingsRes?.docs) ? bookingsRes.docs : (Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes) ? bookingsRes : []))));
-      setPayments((Array.isArray(paymentsRes?.docs) ? paymentsRes.docs : (Array.isArray(paymentsRes?.data) ? paymentsRes.data : (Array.isArray(paymentsRes) ? paymentsRes : []))));
+      setBookings((Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || [])));
+      setPayments((Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes?.docs || paymentsRes?.data || [])));
     } catch (err) {
       console.error("Failed to load initial data", err);
     } finally {
