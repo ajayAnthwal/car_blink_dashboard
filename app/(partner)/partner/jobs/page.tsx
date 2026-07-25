@@ -22,9 +22,10 @@ export default function PartnerJobsPage() {
   const [invoiceUrl, setInvoiceUrl] = useState<string>("");
   const [isUploadingInvoice, setIsUploadingInvoice] = useState(false);
 
-  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [photoType, setPhotoType] = useState<"BEFORE" | "AFTER">("BEFORE");
-  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [beforePhotoFiles, setBeforePhotoFiles] = useState<File[]>([]);
+  const [afterPhotoFiles, setAfterPhotoFiles] = useState<File[]>([]);
+  const [isUploadingBeforePhotos, setIsUploadingBeforePhotos] = useState(false);
+  const [isUploadingAfterPhotos, setIsUploadingAfterPhotos] = useState(false);
 
   // Mechanic Assignment
   const [mechanicId, setMechanicId] = useState("");
@@ -99,23 +100,31 @@ export default function PartnerJobsPage() {
     }
   };
 
-  const handleUploadPhotos = async (id: string) => {
-    if (photoFiles.length === 0) return;
-    setIsUploadingPhotos(true);
+  const handleUploadPhotos = async (id: string, type: "BEFORE" | "AFTER") => {
+    const files = type === "BEFORE" ? beforePhotoFiles : afterPhotoFiles;
+    if (files.length === 0) return;
+    
+    if (type === "BEFORE") setIsUploadingBeforePhotos(true);
+    else setIsUploadingAfterPhotos(true);
+    
     setMessage({ type: "", text: "" });
     try {
       const formData = new FormData();
-      formData.append("type", photoType);
-      photoFiles.forEach((file) => formData.append("photos", file));
+      formData.append("type", type);
+      files.forEach((file) => formData.append("photos", file));
 
       await uploadJobPhotos(id, formData);
-      setMessage({ type: "success", text: `${photoType} photos uploaded successfully!` });
-      setPhotoFiles([]);
+      setMessage({ type: "success", text: `${type === "BEFORE" ? "Before" : "After"} service photos uploaded successfully!` });
+      
+      if (type === "BEFORE") setBeforePhotoFiles([]);
+      else setAfterPhotoFiles([]);
+      
       fetchJobs();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to upload photos." });
     } finally {
-      setIsUploadingPhotos(false);
+      if (type === "BEFORE") setIsUploadingBeforePhotos(false);
+      else setIsUploadingAfterPhotos(false);
     }
   };
 
@@ -158,8 +167,8 @@ export default function PartnerJobsPage() {
   const getStatusColor = (status: string) => {
     switch(status?.toUpperCase()) {
       case 'COMPLETED': return "bg-success/10 text-success border-success/20";
-      case 'STARTED': return "bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20";
-      case 'ASSIGNED': return "bg-warning/10 text-warning border-warning/20";
+      case 'IN_PROGRESS': return "bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20";
+      case 'NOT_STARTED': return "bg-warning/10 text-warning border-warning/20";
       default: return "bg-neutral-muted/10 text-neutral-muted border-neutral-muted/20";
     }
   };
@@ -216,80 +225,77 @@ export default function PartnerJobsPage() {
 
                 {expandedId === job._id && (
                   <div className="mt-4 pt-4 border-t border-neutral-muted/20 space-y-6">
-                    {/* Job Actions based on Status */}
-                    <div className="bg-neutral-bg p-4 rounded-xl border border-neutral-muted/10">
-                      <h4 className="font-semibold text-primary-navy mb-3">Job Actions</h4>
-                      
-                      {job.status === "ASSIGNED" && (
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-neutral-muted">Customer has approved your bid. Ready to start?</p>
-                          <Button onClick={() => handleStartJob(job._id)} isLoading={isStarting}>
-                            <PlayCircle className="w-4 h-4 mr-2" /> Start Job
-                          </Button>
-                        </div>
-                      )}
-
-                      {job.status === "STARTED" && (
-                        <div className="space-y-4">
-                          <div className="flex items-end space-x-3">
-                            <Input
-                              label="Final Amount (₹) (Optional)"
-                              type="number"
-                              placeholder="If different from bid"
-                              value={finalAmount}
-                              onChange={(e) => setFinalAmount(e.target.value)}
-                            />
-                            <Button onClick={() => handleCompleteJob(job._id)} isLoading={isCompleting} className="bg-success hover:bg-success/90">
-                              <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Complete
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {job.status === "COMPLETED" && (
-                        <p className="text-sm text-success font-medium flex items-center">
-                          <CheckCircle2 className="w-4 h-4 mr-2" /> This job is completed. Great work!
-                        </p>
-                      )}
-                    </div>
-
-                    {/* File Uploads - Available during STARTED or COMPLETED */}
-                    {(job.status === "STARTED" || job.status === "COMPLETED") && (
+                    {/* File Uploads - Available during IN_PROGRESS or COMPLETED */}
+                    {(job.status === "IN_PROGRESS" || job.status === "COMPLETED") && (
                       <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Photos Upload (Multipart) */}
-                        <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl">
-                          <h4 className="font-semibold text-primary-navy flex items-center">
-                            <ImageIcon className="w-4 h-4 mr-2 text-primary-orange" /> Job Photos
-                          </h4>
-                          <div className="flex space-x-4 mb-2">
-                            <label className="flex items-center space-x-2 text-sm cursor-pointer">
-                              <input type="radio" checked={photoType === "BEFORE"} onChange={() => setPhotoType("BEFORE")} className="text-primary-orange focus:ring-primary-orange" />
-                              <span>Before Service</span>
-                            </label>
-                            <label className="flex items-center space-x-2 text-sm cursor-pointer">
-                              <input type="radio" checked={photoType === "AFTER"} onChange={() => setPhotoType("AFTER")} className="text-primary-orange focus:ring-primary-orange" />
-                              <span>After Service</span>
-                            </label>
+                        <div className="space-y-4">
+                          {/* Before Service Photos */}
+                          <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl bg-white">
+                            <h4 className="font-semibold text-primary-navy flex items-center">
+                              <ImageIcon className="w-4 h-4 mr-2 text-primary-orange" /> Before Service Photos
+                            </h4>
+                            <input 
+                              type="file" 
+                              multiple 
+                              accept="image/*"
+                              onChange={(e) => {
+                                if (e.target.files) setBeforePhotoFiles(Array.from(e.target.files));
+                              }}
+                              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-primary-orange hover:file:bg-orange-100 cursor-pointer"
+                            />
+                            {job.beforePhotos && job.beforePhotos.length > 0 && (
+                              <div className="flex gap-2 overflow-x-auto py-2">
+                                {job.beforePhotos.map((url: string, idx: number) => (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" key={idx} className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border border-neutral-muted/20">
+                                    <img src={url} alt="Before" className="w-full h-full object-cover" />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            <Button 
+                              className="w-full" 
+                              disabled={beforePhotoFiles.length === 0}
+                              isLoading={isUploadingBeforePhotos}
+                              onClick={() => handleUploadPhotos(job._id, "BEFORE")}
+                            >
+                              Upload Before Photos
+                            </Button>
                           </div>
-                          <input 
-                            type="file" 
-                            multiple 
-                            accept="image/*"
-                            onChange={(e) => {
-                              if (e.target.files) setPhotoFiles(Array.from(e.target.files));
-                            }}
-                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-primary-orange hover:file:bg-orange-100 cursor-pointer"
-                          />
-                          <Button 
-                            variant="outline" 
-                            className="w-full" 
-                            disabled={photoFiles.length === 0}
-                            isLoading={isUploadingPhotos}
-                            onClick={() => handleUploadPhotos(job._id)}
-                          >
-                            Upload Photos
-                          </Button>
+
+                          {/* After Service Photos */}
+                          <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl bg-white">
+                            <h4 className="font-semibold text-primary-navy flex items-center">
+                              <ImageIcon className="w-4 h-4 mr-2 text-primary-orange" /> After Service Photos
+                            </h4>
+                            <input 
+                              type="file" 
+                              multiple 
+                              accept="image/*"
+                              onChange={(e) => {
+                                if (e.target.files) setAfterPhotoFiles(Array.from(e.target.files));
+                              }}
+                              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-primary-orange hover:file:bg-orange-100 cursor-pointer"
+                            />
+                            {job.afterPhotos && job.afterPhotos.length > 0 && (
+                              <div className="flex gap-2 overflow-x-auto py-2">
+                                {job.afterPhotos.map((url: string, idx: number) => (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" key={idx} className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border border-neutral-muted/20">
+                                    <img src={url} alt="After" className="w-full h-full object-cover" />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            <Button 
+                              className="w-full" 
+                              disabled={afterPhotoFiles.length === 0}
+                              isLoading={isUploadingAfterPhotos}
+                              onClick={() => handleUploadPhotos(job._id, "AFTER")}
+                            >
+                              Upload After Photos
+                            </Button>
+                          </div>
                         </div>
 
                         {/* Assign Mechanic */}
@@ -359,6 +365,44 @@ export default function PartnerJobsPage() {
                       </div>
                       </>
                     )}
+
+                    {/* Job Actions based on Status - Moved to bottom */}
+                    <div className="bg-neutral-bg p-4 rounded-xl border border-neutral-muted/10 mt-6">
+                      <h4 className="font-semibold text-primary-navy mb-3">Job Actions</h4>
+                      
+                      {job.status === "NOT_STARTED" && (
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-neutral-muted">Customer has approved your bid. Ready to start?</p>
+                          <Button onClick={() => handleStartJob(job._id)} isLoading={isStarting}>
+                            <PlayCircle className="w-4 h-4 mr-2" /> Start Job
+                          </Button>
+                        </div>
+                      )}
+
+                      {job.status === "IN_PROGRESS" && (
+                        <div className="space-y-4">
+                          <div className="flex items-end space-x-3">
+                            <Input
+                              label="Final Amount (₹) (Optional)"
+                              type="number"
+                              placeholder="If different from bid"
+                              value={finalAmount}
+                              onChange={(e) => setFinalAmount(e.target.value)}
+                            />
+                            <Button onClick={() => handleCompleteJob(job._id)} isLoading={isCompleting} className="bg-success hover:bg-success/90 w-48">
+                              <CheckCircle2 className="w-4 h-4 mr-2" /> Complete Job
+                            </Button>
+                          </div>
+                          <p className="text-xs text-neutral-muted">Review all details above (Photos, Invoices, Mechanics) before completing the job.</p>
+                        </div>
+                      )}
+
+                      {job.status === "COMPLETED" && (
+                        <p className="text-sm text-success font-medium flex items-center justify-center p-3">
+                          <CheckCircle2 className="w-5 h-5 mr-2" /> This job is completed. Great work!
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>

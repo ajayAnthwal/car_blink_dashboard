@@ -888,8 +888,11 @@ export const uploadJobPhotos = async (jobId: string, formData: FormData) => {
 
   const uploadPromises = photos.map(file => uploadFile(file, "job-photos"));
   const uploadResponses = await Promise.all(uploadPromises);
-  const photoUrls = uploadResponses.map(res => res.data.fileUrl || res.data);
-
+  const photoUrls = uploadResponses.map(res => {
+    if (typeof res === 'string') return res;
+    return res.fileUrl || res.data?.fileUrl || res.data || res;
+  });
+  
   const response = await apiClient.post(`/partner/jobs/${jobId}/photos`, {
     type,
     photos: photoUrls
