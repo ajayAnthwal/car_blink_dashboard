@@ -235,7 +235,7 @@ export const getBookingQuotes = async (id: string) => {
 };
 
 export const selectBookingQuote = async (id: string, data: { bidId: string }) => {
-  const response = await apiClient.post(`/customer/bookings/${id}/select-quote`, data);
+  const response = await apiClient.patch(`/customer/bookings/${id}/quotes`, data);
   return response.data;
 };
 
@@ -447,8 +447,13 @@ export const getExecutiveLeadById = async (id: string) => {
   return response.data;
 };
 
-export const assignLeadToPartner = async (id: string, data: { partnerId: string; notes?: string }) => {
+export const assignLeadToPartner = async (id: string, data: { partnerIds: string[]; notes?: string }) => {
   const response = await apiClient.patch(`/executive/leads/${id}/assign-partner`, data);
+  return response.data;
+};
+
+export const forwardQuoteToCustomer = async (id: string, data: { bidIds: string[]; notes?: string }) => {
+  const response = await apiClient.post(`/executive/leads/${id}/forward-quote`, data);
   return response.data;
 };
 

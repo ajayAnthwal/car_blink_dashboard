@@ -32,8 +32,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Connect to the backend
-    // Typically the API URL is process.env.NEXT_PUBLIC_API_URL or localhost:5000
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    // Typically the API URL is process.env.NEXT_PUBLIC_API_BASE_URL or localhost:8000
+    const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
     
     // The backend uses a base URL like /api usually, but socket is often at the root.
     // We will connect to the root API_URL. If your backend socket path is different, adjust it here.

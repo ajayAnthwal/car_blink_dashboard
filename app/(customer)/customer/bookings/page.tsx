@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CalendarCheck, X, Check, ChevronDown, ChevronUp, Loader2, MapPin, AlertCircle } from "lucide-react";
 import { State, City as CountryCity } from "country-state-city";
+import { useSocket } from "@/lib/SocketContext";
 
 interface Vehicle {
   _id: string;
@@ -36,6 +37,7 @@ interface Booking {
   preferredDate: string;
   status: string;
   selectedQuote?: any;
+  acceptedBidId?: string;
   quotes?: any[];
   jobExtensions?: any[];
 }
@@ -43,12 +45,13 @@ interface Booking {
 interface Quote {
   _id: string;
   partnerId: any;
-  amount: number;
-  estimatedDays: number;
+  quotedAmount: number;
+  estimatedDuration: string;
   status: string;
 }
 
 export default function BookingsPage() {
+  const { socket } = useSocket();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -79,6 +82,21 @@ export default function BookingsPage() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("quote_accepted", fetchInitialData);
+    socket.on("new_quote", fetchInitialData);
+    socket.on("booking_status_update", fetchInitialData);
+    socket.on("booking_confirmed", fetchInitialData);
+
+    return () => {
+      socket.off("quote_accepted", fetchInitialData);
+      socket.off("new_quote", fetchInitialData);
+      socket.off("booking_status_update", fetchInitialData);
+      socket.off("booking_confirmed", fetchInitialData);
+    };
+  }, [socket]);
 
   const fetchInitialData = async () => {
     try {
@@ -505,22 +523,22 @@ export default function BookingsPage() {
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-medium text-neutral-dark">Partner: {quote.partnerId?.fullName || "Service Partner"}</p>
-                            <p className="text-sm text-neutral-muted">Estimated: {quote.estimatedDays} days</p>
+                            <p className="font-medium text-neutral-dark">Partner: {quote.partnerId?.businessName || quote.partnerId?.fullName || "Service Partner"}</p>
+                            <p className="text-sm text-neutral-muted">Estimated: {quote.estimatedDuration || "N/A"}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-primary-navy">₹{quote.amount}</p>
-                            {selectedBooking.selectedQuote?._id === quote._id && (
+                            <p className="text-lg font-bold text-primary-navy">₹{quote.quotedAmount}</p>
+                            {(selectedBooking.acceptedBidId === quote._id || quote.status === "ACCEPTED" || selectedBooking.selectedQuote?._id === quote._id) && (
                               <span className="text-xs text-success font-medium">Selected</span>
                             )}
                           </div>
                         </div>
-                        {selectedBooking.status !== "CANCELLED" && selectedBooking.status !== "COMPLETED" && !selectedBooking.selectedQuote && (
+                        {selectedBooking.status !== "CANCELLED" && selectedBooking.status !== "COMPLETED" && selectedBooking.status !== "ACCEPTED" && !selectedBooking.selectedQuote && !selectedBooking.acceptedBidId && !quotes.some(q => q.status === "ACCEPTED") && (
                           <div className="mt-3 flex justify-end">
                             <Button
                               size="sm"
                               onClick={() => { setSelectedQuoteId(quote._id); handleSelectQuote(); }}
-                              isLoading={isSelectingQuote}
+                              isLoading={isSelectingQuote && selectedQuoteId === quote._id}
                             >
                               <Check className="w-4 h-4 mr-1" /> Select Quote
                             </Button>

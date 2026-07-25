@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Target, Loader2, MapPin, Calendar, Car, Wrench, X } from "lucide-react";
+import { useSocket } from "@/lib/SocketContext";
 
 export default function LeadsPage() {
+  const { socket } = useSocket();
   const [leads, setLeads] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -22,6 +24,14 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchLeads();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("new_lead", fetchLeads);
+    return () => {
+      socket.off("new_lead", fetchLeads);
+    };
+  }, [socket]);
 
   const fetchLeads = async () => {
     try {
@@ -110,9 +120,12 @@ export default function LeadsPage() {
                 </div>
                 
                 <div className="bg-neutral-bg rounded-lg p-3 mb-4 text-sm border border-neutral-muted/10">
-                  <div className="flex items-center mb-2">
-                    <Car className="w-4 h-4 text-neutral-muted mr-2" />
-                    <span className="font-medium text-neutral-dark">{lead.vehicleId?.brand} {lead.vehicleId?.model}</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <Car className="w-4 h-4 text-neutral-muted mr-2" />
+                      <span className="font-medium text-neutral-dark">{lead.vehicleId?.brand} {lead.vehicleId?.model}</span>
+                    </div>
+                    <span className="text-xs text-neutral-muted font-mono">ID: {lead._id.substring(0,8)}</span>
                   </div>
                   <div className="flex items-start">
                     <Wrench className="w-4 h-4 text-neutral-muted mr-2 mt-0.5" />

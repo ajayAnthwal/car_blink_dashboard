@@ -93,7 +93,7 @@ export default function PendingFollowUpsPage() {
                   
                   <div className="bg-neutral-bg rounded-lg p-3 text-sm border border-neutral-muted/10">
                     <p className="text-neutral-dark">Previous notes: {log.notes}</p>
-                    <p className="text-xs text-neutral-muted mt-1">Outcome: {log.callOutcome.replace(/_/g, " ")}</p>
+                    <p className="text-xs text-neutral-muted mt-1">Outcome: {log.callOutcome?.replace(/_/g, " ") || "Pending"}</p>
                   </div>
                 </div>
                 

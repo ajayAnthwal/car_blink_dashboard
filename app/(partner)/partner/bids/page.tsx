@@ -5,8 +5,10 @@ import { getPartnerBids, withdrawBid } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MessageSquareQuote, Loader2, IndianRupee, Clock, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { useSocket } from "@/lib/SocketContext";
 
 export default function PartnerBidsPage() {
+  const { socket } = useSocket();
   const [bids, setBids] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
@@ -15,6 +17,16 @@ export default function PartnerBidsPage() {
   useEffect(() => {
     fetchBids();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("bid_status_updated", fetchBids);
+    socket.on("booking_confirmed", fetchBids);
+    return () => {
+      socket.off("bid_status_updated", fetchBids);
+      socket.off("booking_confirmed", fetchBids);
+    };
+  }, [socket]);
 
   const fetchBids = async () => {
     try {
@@ -100,11 +112,11 @@ export default function PartnerBidsPage() {
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                       <div className="bg-neutral-bg p-3 rounded-lg border border-neutral-muted/10">
                         <p className="text-xs text-neutral-muted flex items-center mb-1"><IndianRupee className="w-3 h-3 mr-1"/> Quoted Amount</p>
-                        <p className="font-bold text-primary-navy text-lg">₹{bid.amount}</p>
+                        <p className="font-bold text-primary-navy text-lg">₹{bid.quotedAmount}</p>
                       </div>
                       <div className="bg-neutral-bg p-3 rounded-lg border border-neutral-muted/10">
                         <p className="text-xs text-neutral-muted flex items-center mb-1"><Clock className="w-3 h-3 mr-1"/> Est. Duration</p>
-                        <p className="font-medium text-neutral-dark">{bid.estimatedDays} days</p>
+                        <p className="font-medium text-neutral-dark">{bid.estimatedDuration}</p>
                       </div>
                     </div>
 
