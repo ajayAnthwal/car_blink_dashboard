@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension } from "@/lib/services";
+import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension, deleteJobPhoto } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -128,6 +128,17 @@ export default function PartnerJobsPage() {
     }
   };
 
+  const handleDeletePhoto = async (id: string, photoUrl: string, type: "BEFORE" | "AFTER") => {
+    setMessage({ type: "", text: "" });
+    try {
+      await deleteJobPhoto(id, photoUrl, type);
+      setMessage({ type: "success", text: "Photo deleted successfully!" });
+      fetchJobs();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to delete photo." });
+    }
+  };
+
   const handleAssignMechanic = async (id: string) => {
     if (!mechanicId) return;
     setIsAssigning(true);
@@ -248,9 +259,16 @@ export default function PartnerJobsPage() {
                             {job.beforePhotos && job.beforePhotos.length > 0 && (
                               <div className="flex gap-2 overflow-x-auto py-2">
                                 {job.beforePhotos.map((url: string, idx: number) => (
-                                  <a href={url} target="_blank" rel="noopener noreferrer" key={idx} className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border border-neutral-muted/20">
-                                    <img src={url} alt="Before" className="w-full h-full object-cover" />
-                                  </a>
+                                  <div key={idx} className="relative flex-shrink-0 w-24 h-24 rounded-md overflow-hidden border border-neutral-muted/20 group">
+                                    <img src={url} alt={`Before ${idx}`} className="w-full h-full object-cover" />
+                                    <button
+                                      onClick={() => handleDeletePhoto(job._id, url, "BEFORE")}
+                                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Delete Photo"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -281,9 +299,16 @@ export default function PartnerJobsPage() {
                             {job.afterPhotos && job.afterPhotos.length > 0 && (
                               <div className="flex gap-2 overflow-x-auto py-2">
                                 {job.afterPhotos.map((url: string, idx: number) => (
-                                  <a href={url} target="_blank" rel="noopener noreferrer" key={idx} className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border border-neutral-muted/20">
-                                    <img src={url} alt="After" className="w-full h-full object-cover" />
-                                  </a>
+                                  <div key={idx} className="relative flex-shrink-0 w-24 h-24 rounded-md overflow-hidden border border-neutral-muted/20 group">
+                                    <img src={url} alt={`After ${idx}`} className="w-full h-full object-cover" />
+                                    <button
+                                      onClick={() => handleDeletePhoto(job._id, url, "AFTER")}
+                                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Delete Photo"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -350,7 +375,7 @@ export default function PartnerJobsPage() {
                           <FileUpload
                             folder="invoices"
                             onUploadSuccess={(url) => setInvoiceUrl(url)}
-                            currentValue={invoiceUrl}
+                            currentValue={invoiceUrl || job.invoiceUrl}
                           />
                           <Button 
                             variant="outline" 
@@ -359,7 +384,7 @@ export default function PartnerJobsPage() {
                             isLoading={isUploadingInvoice}
                             onClick={() => handleUploadInvoice(job._id)}
                           >
-                            Save Invoice to Job
+                            {invoiceUrl ? "Save Invoice to Job" : job.invoiceUrl ? "✓ Invoice Saved" : "Save Invoice to Job"}
                           </Button>
                         </div>
                       </div>

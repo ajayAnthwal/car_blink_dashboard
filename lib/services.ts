@@ -900,6 +900,13 @@ export const uploadJobPhotos = async (jobId: string, formData: FormData) => {
   return response.data;
 };
 
+export const deleteJobPhoto = async (jobId: string, photoUrl: string, type: string) => {
+  const response = await apiClient.delete(`/partner/jobs/${jobId}/photos`, {
+    data: { photoUrl, type }
+  });
+  return response.data;
+};
+
 export const updatePartnerCapacity = async (data: { dailyCapacity: number; blockedDates: string[] }) => {
   const response = await apiClient.patch("/partner/capacity", data);
   return response.data;

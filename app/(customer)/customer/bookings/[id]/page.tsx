@@ -7,7 +7,7 @@ import { useSocket } from "@/lib/SocketContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText } from "lucide-react";
 import { format } from "date-fns";
 
 export default function CustomerBookingDetailsPage() {
@@ -322,6 +322,45 @@ export default function CustomerBookingDetailsPage() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Job Extensions Section */}
+              {booking.jobDetails?.jobExtensions?.length > 0 && (
+                <div className="pt-4 border-t border-neutral-muted/10">
+                  <h4 className="text-xs font-semibold text-neutral-muted uppercase tracking-wider mb-3">Extra Parts / Extensions</h4>
+                  <div className="space-y-3">
+                    {booking.jobDetails.jobExtensions.map((ext: any, idx: number) => (
+                      <div key={idx} className="bg-neutral-bg p-4 rounded-lg flex items-center justify-between border border-neutral-muted/10">
+                        <div>
+                          <p className="font-semibold text-primary-navy">{ext.partName}</p>
+                          <p className="text-xs font-medium mt-1">
+                            Status: <span className={
+                              ext.status === 'APPROVED' ? 'text-success' : 
+                              ext.status === 'REJECTED' ? 'text-danger' : 
+                              'text-warning'
+                            }>{ext.status || 'PENDING'}</span>
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-primary-orange text-lg">₹{ext.cost}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Invoice Section */}
+              {booking.jobDetails?.invoiceUrl && (
+                <div className="pt-4 border-t border-neutral-muted/10">
+                  <h4 className="text-xs font-semibold text-neutral-muted uppercase tracking-wider mb-3">Invoice</h4>
+                  <a href={booking.jobDetails.invoiceUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full justify-start text-primary-navy border-neutral-muted/20 hover:bg-neutral-bg">
+                      <FileText className="w-4 h-4 mr-2 text-primary-orange" />
+                      View / Download Invoice
+                    </Button>
+                  </a>
                 </div>
               )}
             </CardContent>

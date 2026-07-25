@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { UploadCloud, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { UploadCloud, X, Loader2, Image as ImageIcon, FileText } from "lucide-react";
 import { uploadFile } from "@/lib/services";
 
 interface FileUploadProps {
@@ -30,8 +30,9 @@ export function FileUpload({
 
     setIsUploading(true);
     try {
-      const response = await uploadFile(file, folder);
-      onUploadSuccess(response.data.fileUrl);
+      const response: any = await uploadFile(file, folder);
+      // The response is the data payload { fileUrl: "..." }
+      onUploadSuccess(response.fileUrl || response.data?.fileUrl || response);
     } catch (error: unknown) {
       if (onUploadError) {
         const err = error as Error;
@@ -58,10 +59,17 @@ export function FileUpload({
         <div className="relative rounded-xl border border-neutral-muted/20 overflow-hidden bg-neutral-bg group h-40">
           {currentValue.match(/\.(jpeg|jpg|gif|png|webp)$/i) || currentValue.includes("image/upload") ? (
             <img src={currentValue} alt="Uploaded" className="w-full h-full object-cover" />
+          ) : currentValue.match(/\.pdf$/i) ? (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-primary-orange/5 text-primary-navy">
+              <FileText className="w-10 h-10 mb-2 text-primary-orange" />
+              <span className="text-sm font-bold truncate max-w-[80%]">PDF Document</span>
+              <a href={currentValue} target="_blank" rel="noopener noreferrer" className="text-xs text-secondary-blue mt-1 hover:underline">Preview</a>
+            </div>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-primary-navy">
-              <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+              <FileText className="w-8 h-8 mb-2 opacity-50" />
               <span className="text-xs truncate max-w-[80%] opacity-70">Document Attached</span>
+              <a href={currentValue} target="_blank" rel="noopener noreferrer" className="text-xs text-secondary-blue mt-1 hover:underline">Preview</a>
             </div>
           )}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
