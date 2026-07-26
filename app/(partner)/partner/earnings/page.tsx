@@ -7,6 +7,7 @@ import { IndianRupee, Loader2, Calendar, Filter } from "lucide-react";
 
 export default function EarningsPage() {
   const [earnings, setEarnings] = useState<any[]>([]);
+  const [summary, setSummary] = useState({ totalEarnings: 0, cashCollected: 0, onlineEarnings: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<"today" | "week" | "month">("month");
 
@@ -18,8 +19,13 @@ export default function EarningsPage() {
     try {
       setIsLoading(true);
       const res = await getPartnerEarnings(period);
-      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
-      setEarnings(Array.isArray(dataArray) ? dataArray : []);
+      const dataArray = res?.docs || res?.transactions || [];
+      setEarnings(res?.transactions || []);
+      setSummary({ 
+        totalEarnings: res?.totalEarnings || 0, 
+        cashCollected: res?.cashCollected || 0, 
+        onlineEarnings: res?.onlineEarnings || 0 
+      });
     } catch (err) {
       console.error("Failed to load earnings", err);
     } finally {
@@ -27,9 +33,10 @@ export default function EarningsPage() {
     }
   };
 
-  const calculateTotal = () => {
-    return earnings.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  };
+
+  
+
+
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -64,11 +71,22 @@ export default function EarningsPage() {
           </p>
           <h3 className="text-4xl font-bold flex items-center">
             <IndianRupee className="w-8 h-8 mr-1" />
-            {isLoading ? "..." : calculateTotal()}
+            {isLoading ? "..." : summary.totalEarnings}
           </h3>
         </div>
         <div className="bg-neutral-white/10 p-4 rounded-full">
           <IndianRupee className="w-10 h-10 text-neutral-white" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white p-4 rounded-2xl border shadow-sm">
+          <p className="text-sm text-neutral-muted">Online Earnings</p>
+          <h4 className="text-xl font-bold text-success-dark">₹{summary.onlineEarnings}</h4>
+        </div>
+        <div className="bg-white p-4 rounded-2xl border shadow-sm">
+          <p className="text-sm text-neutral-muted">Cash Collected</p>
+          <h4 className="text-xl font-bold text-primary-orange">₹{summary.cashCollected}</h4>
         </div>
       </div>
 

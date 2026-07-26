@@ -175,6 +175,8 @@ export default function SettlementsPage() {
                     <th className="px-4 py-2 rounded-l-lg">Job ID</th>
                     <th className="px-4 py-2">Partner</th>
                     <th className="px-4 py-2">Job Amount</th>
+                    <th className="px-4 py-2">Cash Collected</th>
+                    <th className="px-4 py-2">Online Paid</th>
                     <th className="px-4 py-2 rounded-r-lg text-right">Actions</th>
                   </tr>
                 </thead>
@@ -182,8 +184,10 @@ export default function SettlementsPage() {
                   {eligibleJobs.map((job) => (
                     <tr key={job._id} className="hover:bg-neutral-bg/50 transition-colors">
                       <td className="px-4 py-2 font-medium">#{job._id?.slice(-6).toUpperCase()}</td>
-                      <td className="px-4 py-2">{job.partnerId?.fullName || job.partnerId}</td>
+                      <td className="px-4 py-2">{job.partnerId?.businessName || "Unknown Partner"}</td>
                       <td className="px-4 py-2 font-bold text-primary-navy">₹{job.finalAmount || job.amount}</td>
+                      <td className="px-4 py-2 text-warning font-semibold">₹{job.cashCollected || 0}</td>
+                      <td className="px-4 py-2 text-success font-semibold">₹{job.onlinePaid || 0}</td>
                       <td className="px-4 py-2 text-right">
                         <Button 
                           size="sm" 
@@ -237,12 +241,12 @@ export default function SettlementsPage() {
                     <tr key={settlement._id} className="hover:bg-neutral-bg/50 transition-colors">
                       <td className="px-4 py-3 font-medium text-primary-navy">
                         #{settlement._id?.slice(-6).toUpperCase()}
-                        <div className="text-xs text-neutral-muted mt-1">Partner: {settlement.partnerId?.fullName || settlement.partnerId}</div>
+                        <div className="text-xs text-neutral-muted mt-1">Partner: {settlement.partnerId?.businessName || "Unknown Partner"}</div>
                       </td>
                       <td className="px-4 py-3 text-neutral-dark">
                         {new Date(settlement.createdAt || new Date()).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3 font-bold text-primary-navy">₹{settlement.amount}</td>
+                      <td className="px-4 py-3 font-bold text-primary-navy">₹{settlement.netPayoutAmount}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           settlement.status === 'PROCESSED' ? 'bg-green-100 text-green-700' :

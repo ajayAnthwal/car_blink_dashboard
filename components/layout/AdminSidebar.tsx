@@ -9,13 +9,25 @@ import {
   Map, 
   Settings,
   Car,
-  IndianRupee
+  IndianRupee,
+  Calendar,
+  Store,
+  Megaphone,
+  LifeBuoy,
+  UserCheck,
+  Bell
 } from "lucide-react";
 
 const navItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "Bookings", href: "/admin/bookings", icon: Calendar },
+  { name: "Helpdesk", href: "/admin/helpdesk", icon: LifeBuoy },
+  { name: "Partners", href: "/admin/partners", icon: Store },
   { name: "Users", href: "/admin/users", icon: Users },
-  { name: "Finance", href: "/admin/finance", icon: IndianRupee },
+  { name: "Staff", href: "/admin/staff", icon: UserCheck },
+  { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
+  { name: "Notifications", href: "/admin/marketing/notifications", icon: Bell },
+  { name: "Finance", href: "/admin/finance/settlements", icon: IndianRupee },
   { name: "Master Data", href: "/admin/master-data", icon: Map },
   { name: "Vehicles", href: "/admin/vehicles", icon: Car },
 ];

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { getCommissionReport, getAdminFinanceSummary } from "@/lib/services";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, IndianRupee, TrendingUp, Calendar, Building2 } from "lucide-react";
+import { Loader2, IndianRupee, TrendingUp, Calendar, Building2, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -26,10 +26,10 @@ export default function AdminFinancePage() {
     try {
       const [reportRes, summaryRes] = await Promise.all([
         getCommissionReport(new Date(fromDate).toISOString(), new Date(toDate).toISOString(), partnerId || undefined),
-        getAdminFinanceSummary()
+        getAdminFinanceSummary(new Date(fromDate).toISOString(), new Date(toDate).toISOString())
       ]);
-      setReport(reportRes.data);
-      setSummary(summaryRes.data);
+      setReport(reportRes);
+      setSummary(summaryRes);
     } catch (err) {
       console.error("Failed to load finance data", err);
     } finally {
@@ -46,19 +46,61 @@ export default function AdminFinancePage() {
     fetchFinanceData();
   };
 
+  const handleExportCSV = () => {
+    if (!report?.settlements || report.settlements.length === 0) return alert("No data to export.");
+    const headers = ["Garage Name", "Total Job Value", "Commission (10%)", "Cash Collected", "Garage to pay Admin", "Admin to pay Garage"];
+    const csvRows = [headers.join(",")];
+    
+    // Grouping logic (simplified) to export
+    const groupedData = report.settlements.reduce((acc: any, s: any) => {
+      const garageName = s.partnerId?.businessName || 'Unknown';
+      if (!acc[garageName]) acc[garageName] = { totalJobValue: 0, totalCommission: 0, cashCollected: 0, adminOwesPartner: 0, partnerOwesAdmin: 0 };
+      acc[garageName].totalJobValue += s.grossAmount;
+      acc[garageName].totalCommission += s.platformCommission;
+      if (s.paymentMode === 'CASH') {
+        acc[garageName].cashCollected += s.grossAmount;
+        acc[garageName].partnerOwesAdmin += s.platformCommission;
+      } else {
+        acc[garageName].adminOwesPartner += (s.grossAmount - s.platformCommission);
+      }
+      return acc;
+    }, {});
+
+    Object.keys(groupedData).forEach(garage => {
+      const d = groupedData[garage];
+      csvRows.push([
+        `"${garage}"`, d.totalJobValue, d.totalCommission, d.cashCollected, d.partnerOwesAdmin, d.adminOwesPartner
+      ].join(","));
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", `commissions_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12 p-4">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-green-900 via-primary-navy to-primary-navy border border-primary-navy/20 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-elevated">
+      <div className="bg-gradient-to-r from-primary-navy to-indigo-900 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-elevated">
         <div className="flex items-center gap-5 text-white">
-          <div className="w-16 h-16 bg-white/10 rounded-2xl shadow-sm flex items-center justify-center shrink-0 border border-white/20 backdrop-blur-sm">
+          <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20">
             <IndianRupee className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h2 className="text-xl md:text-2xl font-bold font-heading tracking-tight">Finance & Commissions</h2>
-            <p className="text-white/80 mt-1 font-medium">Track platform earnings, partner revenue, and payouts.</p>
+            <h1 className="text-3xl font-bold font-heading">Finance Overview</h1>
+            <p className="text-white/80 mt-1 font-medium">Track platform earnings and partner commissions.</p>
           </div>
         </div>
+        <button 
+          onClick={handleExportCSV}
+          className="bg-white/20 hover:bg-white/30 text-white border border-white/40 px-4 py-2 rounded-xl flex items-center gap-2 font-medium transition-colors"
+        >
+          <FileText className="w-4 h-4" /> Export CSV
+        </button>
       </div>
 
       {isLoading && !report ? (
@@ -108,7 +150,7 @@ export default function AdminFinancePage() {
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">Partner Revenue Generated</p>
                     <h3 className="text-3xl font-bold text-gray-900 font-heading">
-                      {report?.totalRevenue?.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }) || '₹0'}
+                      {summary?.totalPayouts?.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }) || '₹0'}
                     </h3>
                   </div>
                   <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100">
@@ -160,30 +202,32 @@ export default function AdminFinancePage() {
                   <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 border-b border-gray-100">
                     <tr>
                       <th className="px-6 py-4 font-bold tracking-wider">Partner Info</th>
-                      <th className="px-6 py-4 font-bold tracking-wider text-right">Total Revenue</th>
+                      <th className="px-6 py-4 font-bold tracking-wider text-right">Job Revenue</th>
                       <th className="px-6 py-4 font-bold tracking-wider text-right">Commission Due</th>
-                      <th className="px-6 py-4 font-bold tracking-wider text-center">Breakdown</th>
+                      <th className="px-6 py-4 font-bold tracking-wider text-right">Cash Collected</th>
+                      <th className="px-6 py-4 font-bold tracking-wider text-right">Online Paid</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {!report?.details || report.details.length === 0 ? (
+                    {!report?.settlements || report.settlements.length === 0 ? (
                       <tr><td colSpan={4} className="text-center py-10 text-gray-400 font-medium">No transactions found for this period.</td></tr>
-                    ) : report.details.map((row: any, idx: number) => (
+                    ) : report.settlements.map((row: any, idx: number) => (
                       <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                         <td className="px-6 py-4">
                           <div className="font-bold text-gray-900">{row.partnerId?.businessName || row.partnerId?.fullName || "Unknown Partner"}</div>
-                          <div className="text-xs text-gray-500 font-mono mt-1">{row.partnerId?._id || row._id || "-"}</div>
+                          <div className="text-xs text-gray-500 font-mono mt-1">Settlement ID: {row._id || "-"}</div>
                         </td>
                         <td className="px-6 py-4 text-right font-medium text-gray-900">
-                          {row.partnerRevenue?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                          {row.grossAmount?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                         </td>
                         <td className="px-6 py-4 text-right font-bold text-green-600">
-                          {row.commissionAmount?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                          {row.platformCommission?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                            {row.totalBookings || 0} Bookings
-                          </span>
+                        <td className="px-6 py-4 text-right text-orange-600 font-semibold">
+                          {row.cashCollected?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                        </td>
+                        <td className="px-6 py-4 text-right text-blue-600 font-semibold">
+                          {row.onlinePaid?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                         </td>
                       </tr>
                     ))}

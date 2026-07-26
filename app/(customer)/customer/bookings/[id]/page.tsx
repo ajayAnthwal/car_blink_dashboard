@@ -8,22 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote } from "lucide-react";
+import { PaymentCard } from "@/components/payment/PaymentCard";
 import { format } from "date-fns";
 
 export default function CustomerBookingDetailsPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
   const { socket } = useSocket();
-  
+
   const [booking, setBooking] = useState<any | null>(null);
   const [quotes, setQuotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [showCancel, setShowCancel] = useState(false);
-  
+
   const [message, setMessage] = useState({ type: "", text: "" });
 
   // Review states
@@ -48,7 +49,7 @@ export default function CustomerBookingDetailsPage() {
 
   useEffect(() => {
     if (!socket || !id) return;
-    
+
     const handleUpdate = (payload: any) => {
       if (payload?.bookingId === id || payload?._id === id) {
         fetchBookingDetails();
@@ -163,7 +164,7 @@ export default function CustomerBookingDetailsPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch(status?.toUpperCase()) {
+    switch (status?.toUpperCase()) {
       case 'PENDING':
         return <Badge className="bg-primary-navy/20 text-primary-navy hover:bg-primary-navy/30 border-none px-3 py-1">Pending</Badge>;
       case 'QUOTED':
@@ -203,9 +204,23 @@ export default function CustomerBookingDetailsPage() {
     );
   }
 
-  const vehicleName = typeof booking.vehicleId === 'object' 
+  const vehicleName = typeof booking.vehicleId === 'object'
     ? `${booking.vehicleId?.brand || 'Premium'} ${booking.vehicleId?.model || 'Vehicle'}`
     : "Vehicle Requested";
+
+  const isAdvancePaid = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS');
+  const isAdvancePending = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'PENDING');
+  const isFinalPaid = booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'SUCCESS');
+  const isFinalPending = booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'PENDING');
+  const isFullPaid = booking.payments?.some((p: any) => p.paymentType === 'FULL' && p.status === 'SUCCESS');
+  const hasPaidAdvance = isAdvancePaid || isFullPaid;
+  const hasPaidFinal = isFinalPaid || isFullPaid;
+
+  const acceptedQuoteAmount = quotes.find(q => q._id === booking.acceptedBidId || q._id === (booking.acceptedBidId as any)?._id)?.quotedAmount || (booking.acceptedBidId as any)?.quotedAmount || 0;
+  // If baseAmount is 0 (due to old test data without quotes), fallback to 1500 for testing purposes
+  const baseAmount = booking.jobDetails?.finalAmount || acceptedQuoteAmount || 1500;
+  const advanceAmount = Math.round(baseAmount * 0.1);
+  const finalAmount = Math.max(0, baseAmount - (hasPaidAdvance ? advanceAmount : 0));
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -213,7 +228,7 @@ export default function CustomerBookingDetailsPage() {
       <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary-navy via-primary-navy/90 to-secondary-blue/80 p-8 md:p-12 text-white shadow-xl">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-secondary-blue/20 rounded-full blur-3xl"></div>
-        
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-white/70 hover:text-white hover:bg-white/10 mb-6 -ml-2">
@@ -230,7 +245,7 @@ export default function CustomerBookingDetailsPage() {
               <Car className="w-5 h-5 mr-2 opacity-70" /> {vehicleName}
             </p>
           </div>
-          
+
           {(booking.status === 'PENDING' || booking.status === 'QUOTED') && !showCancel && (
             <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 hover:text-white rounded-xl backdrop-blur-sm" onClick={() => setShowCancel(true)}>
               Cancel Request
@@ -240,11 +255,10 @@ export default function CustomerBookingDetailsPage() {
       </div>
 
       {message.text && (
-        <div className={`p-4 rounded-xl text-sm font-medium border shadow-sm ${
-          message.type === "success" 
-            ? "bg-success/5 text-success-dark border-success/20" 
-            : "bg-danger/5 text-danger-dark border-danger/20"
-        }`}>
+        <div className={`p-4 rounded-xl text-sm font-medium border shadow-sm ${message.type === "success"
+          ? "bg-success/5 text-success-dark border-success/20"
+          : "bg-danger/5 text-danger-dark border-danger/20"
+          }`}>
           {message.text}
         </div>
       )}
@@ -277,7 +291,7 @@ export default function CustomerBookingDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Details */}
         <div className="lg:col-span-2 space-y-8">
-          
+
           {/* Main Details Card */}
           <Card className="shadow-sm border-neutral-muted/10 rounded-3xl overflow-hidden">
             <CardContent className="p-0">
@@ -288,12 +302,12 @@ export default function CustomerBookingDetailsPage() {
                   </div>
                   <h4 className="text-sm font-semibold text-neutral-muted uppercase tracking-widest mb-1">Schedule</h4>
                   <p className="text-lg font-bold text-primary-navy">
-                    {booking.preferredDate && !isNaN(new Date(booking.preferredDate).getTime()) 
-                      ? format(new Date(booking.preferredDate), 'EEEE, MMMM do, yyyy') 
+                    {booking.preferredDate && !isNaN(new Date(booking.preferredDate).getTime())
+                      ? format(new Date(booking.preferredDate), 'EEEE, MMMM do, yyyy')
                       : 'Not specified'}
                   </p>
                 </div>
-                
+
                 <div className="p-8">
                   <div className="w-12 h-12 bg-primary-orange/10 rounded-2xl flex items-center justify-center mb-6">
                     <MapPin className="w-6 h-6 text-primary-orange" />
@@ -304,7 +318,7 @@ export default function CustomerBookingDetailsPage() {
                   </p>
                 </div>
               </div>
-              
+
               {booking.description && (
                 <div className="p-8 border-t border-neutral-muted/10 bg-neutral-bg/50">
                   <h4 className="text-sm font-semibold text-neutral-muted uppercase tracking-widest mb-3">Service Notes</h4>
@@ -313,6 +327,32 @@ export default function CustomerBookingDetailsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Payment Section (Advance) */}
+          {(booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') && baseAmount > 0 && !hasPaidAdvance && (
+            <PaymentCard
+              bookingId={booking._id || booking.id}
+              amount={advanceAmount}
+              paymentType="ADVANCE"
+              title="Advance Payment"
+              description="Please pay the advance amount to confirm your booking and allow the partner to start work."
+              isPaid={false}
+              onSuccess={fetchBookingDetails}
+            />
+          )}
+
+          {/* Payment Section (Final) */}
+          {booking.status === 'COMPLETED' && booking.jobDetails?.invoiceUrl && (
+            <PaymentCard
+              bookingId={booking._id || booking.id}
+              amount={finalAmount}
+              paymentType="FINAL"
+              title="Final Payment"
+              description="Your vehicle is ready! Please clear the final due amount based on the provided invoice."
+              isPaid={hasPaidFinal}
+              onSuccess={fetchBookingDetails}
+            />
+          )}
 
           {/* Review Section */}
           {canReview && booking.status === 'COMPLETED' && (
@@ -330,9 +370,8 @@ export default function CustomerBookingDetailsPage() {
                 </div>
 
                 {reviewMessage.text && (
-                  <div className={`p-4 rounded-xl text-sm font-medium border mb-6 ${
-                    reviewMessage.type === "success" ? "bg-success/10 text-success border-success/20" : "bg-danger/10 text-danger border-danger/20"
-                  }`}>
+                  <div className={`p-4 rounded-xl text-sm font-medium border mb-6 ${reviewMessage.type === "success" ? "bg-success/10 text-success border-success/20" : "bg-danger/10 text-danger border-danger/20"
+                    }`}>
                     {reviewMessage.text}
                   </div>
                 )}
@@ -349,15 +388,15 @@ export default function CustomerBookingDetailsPage() {
                       </button>
                     ))}
                   </div>
-                  
+
                   <textarea
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
                     placeholder="Write a review about the service quality, timeline, and professionalism..."
                     className="w-full p-4 border border-neutral-muted/20 rounded-xl focus:ring-2 focus:ring-secondary-blue/30 focus:border-secondary-blue outline-none text-sm bg-white shadow-inner min-h-[120px]"
                   />
-                  
-                  <Button 
+
+                  <Button
                     className="w-full md:w-auto bg-primary-navy hover:bg-primary-navy/90 text-white rounded-xl px-8 py-6 text-md font-bold"
                     onClick={handleSubmitReview}
                     isLoading={isSubmittingReview}
@@ -394,7 +433,7 @@ export default function CustomerBookingDetailsPage() {
                     </div>
                   </div>
                 )}
-                
+
                 {booking.jobDetails.afterPhotos?.length > 0 && (
                   <div>
                     <h5 className="text-sm font-bold text-neutral-dark uppercase tracking-wider mb-4 flex items-center">
@@ -430,11 +469,10 @@ export default function CustomerBookingDetailsPage() {
                       <div>
                         <p className="font-bold text-primary-navy text-lg">{ext.partName}</p>
                         <div className="flex items-center mt-2">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                            ext.status === 'APPROVED' ? 'bg-success/10 text-success' : 
-                            ext.status === 'REJECTED' ? 'bg-danger/10 text-danger' : 
-                            'bg-warning/10 text-warning-dark'
-                          }`}>{ext.status || 'PENDING'}</span>
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${ext.status === 'APPROVED' ? 'bg-success/10 text-success' :
+                            ext.status === 'REJECTED' ? 'bg-danger/10 text-danger' :
+                              'bg-warning/10 text-warning-dark'
+                            }`}>{ext.status || 'PENDING'}</span>
                         </div>
                       </div>
                       <div className="text-right">
@@ -482,7 +520,7 @@ export default function CustomerBookingDetailsPage() {
                           <span>Est. Time: <span className="font-bold text-primary-navy">{quote.estimatedDuration}</span></span>
                         </div>
                       )}
-                      
+
                       {quote.notes && (
                         <div className="bg-white p-4 rounded-xl text-sm text-neutral-dark border border-neutral-muted/10 shadow-inner italic relative">
                           <MessageSquareQuote className="w-6 h-6 text-neutral-muted/20 absolute top-2 left-2" />
@@ -490,7 +528,7 @@ export default function CustomerBookingDetailsPage() {
                         </div>
                       )}
 
-                      <Button 
+                      <Button
                         className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold shadow-md transition-colors"
                         onClick={() => handleSelectQuote(quote._id)}
                         isLoading={isAccepting === quote._id}
@@ -534,7 +572,7 @@ export default function CustomerBookingDetailsPage() {
                   <p className="font-extrabold text-primary-navy text-xl">{booking.assignedPartnerId.businessName || "Service Partner"}</p>
                   <p className="text-sm text-neutral-muted font-medium mt-1">Verified Expert</p>
                 </div>
-                
+
                 <div className="space-y-3">
                   {booking.assignedPartnerId.phone && (
                     <div className="flex items-center text-sm font-medium text-neutral-dark bg-white p-3 rounded-xl border border-neutral-muted/10 shadow-sm">

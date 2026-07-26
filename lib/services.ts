@@ -291,6 +291,16 @@ export const verifyPayment = async (data: { paymentId: string; orderId: string; 
   return response.data;
 };
 
+export const markOfflinePayment = async (data: { bookingId: string; amount: number; paymentType: string }) => {
+  const response = await apiClient.post("/payment/offline", data);
+  return response.data;
+};
+
+export const verifyOfflinePayment = async (paymentId: string) => {
+  const response = await apiClient.post("/payment/offline/verify", { paymentId });
+  return response.data;
+};
+
 export const getPaymentHistory = async () => {
   const response = await apiClient.get("/payment/history");
   return response.data;
@@ -423,7 +433,8 @@ export const issueJobWarranty = async (id: string, data: { warrantyPeriodMonths:
 
 export const getPartnerEarnings = async (period?: "today" | "week" | "month") => {
   let url = "/partner/earnings";
-  if (period) url += `?period=${period}`;
+  if (period) url += `?period=${period}&_t=${Date.now()}`;
+  else url += `?_t=${Date.now()}`;
   const response = await apiClient.get(url);
   return response.data;
 };
@@ -610,8 +621,9 @@ export const getCommissionReport = async (fromDate: string, toDate: string, part
   return response.data;
 };
 
-export const getAdminFinanceSummary = async () => {
-  const response = await apiClient.get("/super-admin/finance-summary");
+export const getAdminFinanceSummary = async (fromDate: string, toDate: string) => {
+  const query = new URLSearchParams({ fromDate, toDate });
+  const response = await apiClient.get(`/super-admin/finance-summary?${query.toString()}`);
   return response.data;
 };
 
@@ -892,7 +904,7 @@ export const uploadJobPhotos = async (jobId: string, formData: FormData) => {
     if (typeof res === 'string') return res;
     return res.fileUrl || res.data?.fileUrl || res.data || res;
   });
-  
+
   const response = await apiClient.post(`/partner/jobs/${jobId}/photos`, {
     type,
     photos: photoUrls
@@ -965,5 +977,140 @@ export const getAuditLogs = async () => {
 
 export const createCustomRole = async (data: { roleName: string; permissions: string[] }) => {
   const response = await apiClient.post("/super-admin/custom-roles", data);
+  return response.data;
+};
+
+export const getSuperAdminBookings = async (query = "") => {
+  const response = await apiClient.get(`/super-admin/bookings?${query}`);
+  return response.data;
+};
+
+export const getSuperAdminBookingDetails = async (id: string) => {
+  const response = await apiClient.get(`/super-admin/bookings/${id}`);
+  return response.data;
+};
+
+export const cancelSuperAdminBooking = async (id: string, reason: string) => {
+  const response = await apiClient.put(`/super-admin/bookings/${id}/cancel`, { reason });
+  return response.data;
+};
+
+export const getSuperAdminPartners = async (query = "") => {
+  const response = await apiClient.get(`/super-admin/partners?${query}`);
+  return response.data;
+};
+
+export const getSuperAdminPartnerDetails = async (id: string) => {
+  const response = await apiClient.get(`/super-admin/partners/${id}`);
+  return response.data;
+};
+
+export const updateSuperAdminPartnerKyc = async (id: string, status: string, reason?: string) => {
+  const response = await apiClient.put(`/super-admin/partners/${id}/kyc`, { status, reason });
+  return response.data;
+};
+
+export const getSuperAdminCoupons = async () => {
+  const response = await apiClient.get(`/super-admin/coupons`);
+  return response.data;
+};
+
+export const createSuperAdminCoupon = async (data: any) => {
+  const response = await apiClient.post(`/super-admin/coupons`, data);
+  return response.data;
+};
+
+export const toggleSuperAdminCoupon = async (id: string) => {
+  const response = await apiClient.patch(`/super-admin/coupons/${id}/toggle`);
+  return response.data;
+};
+
+export const deleteSuperAdminCoupon = async (id: string) => {
+  const response = await apiClient.delete(`/super-admin/coupons/${id}`);
+  return response.data;
+};
+
+export const getSuperAdminTickets = async (query = "") => {
+  const response = await apiClient.get(`/super-admin/tickets?${query}`);
+  return response.data;
+};
+
+export const getSuperAdminTicketDetails = async (id: string) => {
+  const response = await apiClient.get(`/super-admin/tickets/${id}`);
+  return response.data;
+};
+
+export const updateSuperAdminTicketStatus = async (id: string, status: string) => {
+  const response = await apiClient.patch(`/super-admin/tickets/${id}/status`, { status });
+  return response.data;
+};
+
+export const addSuperAdminTicketReply = async (id: string, message: string) => {
+  const response = await apiClient.post(`/super-admin/tickets/${id}/reply`, { message });
+  return response.data;
+};
+
+export const getSuperAdminStaff = async () => {
+  const response = await apiClient.get(`/super-admin/staff`);
+  return response.data;
+};
+
+export const createSuperAdminStaff = async (data: any) => {
+  const response = await apiClient.post(`/super-admin/staff`, data);
+  return response.data;
+};
+
+export const getSuperAdminRoles = async () => {
+  const response = await apiClient.get(`/super-admin/staff/roles`);
+  return response.data;
+};
+
+export const getSuperAdminSettlements = async (query = "") => {
+  const response = await apiClient.get(`/super-admin/settlements?${query}`);
+  return response.data;
+};
+
+export const markSuperAdminSettlementPaid = async (id: string, data: any) => {
+  const response = await apiClient.patch(`/super-admin/settlements/${id}/mark-paid`, data);
+  return response.data;
+};
+
+export const getSuperAdminSettings = async () => {
+  const response = await apiClient.get(`/super-admin/settings`);
+  return response.data;
+};
+
+export const updateSuperAdminSettings = async (data: any) => {
+  const response = await apiClient.put(`/super-admin/settings`, data);
+  return response.data;
+};
+
+export const getSuperAdminNotifications = async () => {
+  const response = await apiClient.get(`/super-admin/notifications`);
+  return response.data;
+};
+
+export const sendSuperAdminNotification = async (data: any) => {
+  const response = await apiClient.post(`/super-admin/notifications/send`, data);
+  return response.data;
+};
+
+export const getSuperAdminZones = async (query = "") => {
+  const response = await apiClient.get(`/super-admin/zones?${query}`);
+  return response.data;
+};
+
+export const createSuperAdminZone = async (data: any) => {
+  const response = await apiClient.post(`/super-admin/zones`, data);
+  return response.data;
+};
+
+export const updateSuperAdminZone = async (id: string, data: any) => {
+  const response = await apiClient.patch(`/super-admin/zones/${id}`, data);
+  return response.data;
+};
+
+export const deleteSuperAdminZone = async (id: string) => {
+  const response = await apiClient.delete(`/super-admin/zones/${id}`);
   return response.data;
 };

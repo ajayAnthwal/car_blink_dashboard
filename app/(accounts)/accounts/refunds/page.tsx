@@ -122,7 +122,7 @@ export default function RefundsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
-                        {refund.status === 'PENDING' && (
+                        {refund.status === 'REQUESTED' && (
                           <>
                             <Button 
                               size="sm" 
