@@ -77,6 +77,24 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       }, 5000);
     });
 
+    // Listen to payment updates
+    newSocket.on("payment_status_update", (payload) => {
+      console.log("[SOCKET] Payment Status Update Received:", payload);
+      const title = "Payment Update";
+      const message = `Payment of INR ${payload.amount} is now ${payload.status} (${payload.type})`;
+      
+      const toastId = Date.now() + 1;
+      setToast({ title, message, id: toastId });
+      
+      setTimeout(() => {
+        setToast((current) => current?.id === toastId ? null : current);
+      }, 5000);
+      
+      // We can also trigger a revalidation event or dispatch a custom event here
+      // so other components can fetch fresh data
+      window.dispatchEvent(new CustomEvent("refetch_payments"));
+    });
+
     setSocket(newSocket);
 
     return () => {

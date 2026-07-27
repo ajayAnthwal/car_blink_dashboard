@@ -1114,3 +1114,12 @@ export const deleteSuperAdminZone = async (id: string) => {
   const response = await apiClient.delete(`/super-admin/zones/${id}`);
   return response.data;
 };
+
+// ==========================================
+// NEW PAYMENT/BOOKING APIs
+// ==========================================
+
+export const respondToExtension = async (bookingId: string, extId: string, status: 'APPROVED' | 'REJECTED') => {
+  const response = await apiClient.patch(`/customer/bookings/${bookingId}/extensions/${extId}`, { status });
+  return response.data;
+};
