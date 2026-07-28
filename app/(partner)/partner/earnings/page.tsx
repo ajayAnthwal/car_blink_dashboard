@@ -5,6 +5,7 @@ import { getPartnerEarnings, getPartnerSettlements } from "@/lib/services";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { IndianRupee, Loader2, Calendar, Filter, FileText, ArrowRightCircle } from "lucide-react";
+import { useSocket } from "@/lib/SocketContext";
 
 export default function EarningsPage() {
   const [earnings, setEarnings] = useState<any[]>([]);
@@ -14,11 +15,24 @@ export default function EarningsPage() {
   const [isLoadingSettlements, setIsLoadingSettlements] = useState(true);
   const [period, setPeriod] = useState<"today" | "week" | "month">("month");
   const [activeTab, setActiveTab] = useState<"transactions" | "settlements">("transactions");
+  const { socket } = useSocket();
 
   useEffect(() => {
     fetchEarnings();
     fetchSettlements();
   }, [period]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      fetchEarnings();
+      fetchSettlements();
+    };
+    socket.on("settlement_updated", handleUpdate);
+    return () => {
+      socket.off("settlement_updated", handleUpdate);
+    };
+  }, [socket, period]);
 
   const fetchSettlements = async () => {
     try {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getBookingById, getBookingQuotes, selectBookingQuote, cancelBooking, canReviewBooking, createReview } from "@/lib/services";
+import { getBookingById, getBookingQuotes, selectBookingQuote, cancelBooking, canReviewBooking, createReview, respondToJobExtension, initiatePayment } from "@/lib/services";
 import { useSocket } from "@/lib/SocketContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,7 @@ export default function CustomerBookingDetailsPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [showCancel, setShowCancel] = useState(false);
+  const [isExtensionProcessing, setIsExtensionProcessing] = useState(false);
 
   const [message, setMessage] = useState({ type: "", text: "" });
 
@@ -145,6 +146,36 @@ export default function CustomerBookingDetailsPage() {
     }
   };
 
+  const handleExtensionResponse = async (extensionId: string, status: 'APPROVED' | 'REJECTED') => {
+    setIsExtensionProcessing(true);
+    try {
+      await respondToJobExtension(id, extensionId, { status });
+      setMessage({ type: "success", text: `Extension ${status.toLowerCase()} successfully.` });
+      await fetchBookingDetails();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to respond to extension." });
+    } finally {
+      setIsExtensionProcessing(false);
+    }
+  };
+
+  const handleInitiatePayment = async (amount: number, type: string = "PARTIAL") => {
+    if (!booking) return;
+    setIsExtensionProcessing(true);
+    try {
+      const response = await initiatePayment({
+        bookingId: booking._id || booking.id,
+        amount: amount,
+        paymentType: type,
+      });
+      setMessage({ type: "success", text: "Payment initiated successfully! Redirecting to payment gateway..." });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to initiate payment." });
+    } finally {
+      setIsExtensionProcessing(false);
+    }
+  };
+
   const handleSubmitReview = async () => {
     if (reviewRating === 0) {
       setReviewMessage({ type: "error", text: "Please select a rating." });
@@ -217,10 +248,20 @@ export default function CustomerBookingDetailsPage() {
   const hasPaidFinal = isFinalPaid || isFullPaid;
 
   const acceptedQuoteAmount = quotes.find(q => q._id === booking.acceptedBidId || q._id === (booking.acceptedBidId as any)?._id)?.quotedAmount || (booking.acceptedBidId as any)?.quotedAmount || 0;
-  // If baseAmount is 0 (due to old test data without quotes), fallback to 1500 for testing purposes
   const baseAmount = booking.jobDetails?.finalAmount || acceptedQuoteAmount || 1500;
+  
   const advanceAmount = Math.round(baseAmount * 0.1);
-  const finalAmount = Math.max(0, baseAmount - (hasPaidAdvance ? advanceAmount : 0));
+  const totalPaidAmount = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
+  
+  const approvedExtensions = booking.jobDetails?.jobExtensions?.filter((e: any) => e.status === 'APPROVED') || [];
+  const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + ext.cost, 0);
+  
+  const calculatedTotalAmount = baseAmount + approvedExtensionsCost;
+  const remainingAmount = Math.max(0, calculatedTotalAmount - totalPaidAmount);
+
+  const remainingForAdvance = advanceAmount - totalPaidAmount;
+  const needsAdvance = (booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') && baseAmount > 0 && remainingForAdvance > 0;
+  const needsFinal = booking.status === 'COMPLETED' && remainingAmount > 0;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -328,31 +369,7 @@ export default function CustomerBookingDetailsPage() {
             </CardContent>
           </Card>
 
-          {/* Payment Section (Advance) */}
-          {(booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') && baseAmount > 0 && !hasPaidAdvance && (
-            <PaymentCard
-              bookingId={booking._id || booking.id}
-              amount={advanceAmount}
-              paymentType="ADVANCE"
-              title="Advance Payment"
-              description="Please pay the advance amount to confirm your booking and allow the partner to start work."
-              isPaid={false}
-              onSuccess={fetchBookingDetails}
-            />
-          )}
-
-          {/* Payment Section (Final) */}
-          {booking.status === 'COMPLETED' && booking.jobDetails?.invoiceUrl && (
-            <PaymentCard
-              bookingId={booking._id || booking.id}
-              amount={finalAmount}
-              paymentType="FINAL"
-              title="Final Payment"
-              description="Your vehicle is ready! Please clear the final due amount based on the provided invoice."
-              isPaid={hasPaidFinal}
-              onSuccess={fetchBookingDetails}
-            />
-          )}
+          {/* Billing section moved to right column */}
 
           {/* Review Section */}
           {canReview && booking.status === 'COMPLETED' && (
@@ -465,8 +482,8 @@ export default function CustomerBookingDetailsPage() {
               <CardContent className="p-8">
                 <div className="space-y-4">
                   {booking.jobDetails.jobExtensions.map((ext: any, idx: number) => (
-                    <div key={idx} className="bg-white p-5 rounded-2xl flex items-center justify-between border border-neutral-muted/20 shadow-sm hover:border-secondary-blue/30 transition-colors">
-                      <div>
+                    <div key={idx} className="bg-white p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between border border-neutral-muted/20 shadow-sm hover:border-secondary-blue/30 transition-colors">
+                      <div className="flex-1">
                         <p className="font-bold text-primary-navy text-lg">{ext.partName}</p>
                         <div className="flex items-center mt-2">
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${ext.status === 'APPROVED' ? 'bg-success/10 text-success' :
@@ -475,8 +492,18 @@ export default function CustomerBookingDetailsPage() {
                             }`}>{ext.status || 'PENDING'}</span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-extrabold text-primary-orange text-2xl">₹{ext.cost}</p>
+                      <div className="flex flex-col items-end mt-4 sm:mt-0">
+                        <p className="font-extrabold text-primary-orange text-2xl mb-2">₹{ext.cost}</p>
+                        {ext.status === 'PENDING' && (
+                          <div className="flex space-x-2">
+                            <Button size="sm" variant="outline" className="border-danger/30 text-danger hover:bg-danger/10 bg-white" onClick={() => handleExtensionResponse(ext._id, 'REJECTED')} disabled={isExtensionProcessing}>
+                              Reject
+                            </Button>
+                            <Button size="sm" className="bg-success hover:bg-success/90 text-white" onClick={() => handleExtensionResponse(ext._id, 'APPROVED')} isLoading={isExtensionProcessing}>
+                              Approve
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -590,6 +617,70 @@ export default function CustomerBookingDetailsPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Billing & Payments Section */}
+          <Card className="shadow-lg border-neutral-muted/10 overflow-hidden rounded-3xl relative">
+            <CardHeader className="bg-primary-navy/5 border-b border-neutral-muted/10 pb-4">
+              <CardTitle className="font-bold text-primary-navy flex items-center text-lg">
+                <IndianRupee className="w-5 h-5 mr-2 text-primary-orange" /> Billing & Payments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-3 mb-6 text-sm">
+                <div className="flex justify-between text-neutral-dark">
+                  <span>Base Service Quote</span>
+                  <span className="font-medium">₹{baseAmount}</span>
+                </div>
+                
+                {approvedExtensions.map((ext: any, idx: number) => (
+                  <div key={idx} className="flex justify-between text-neutral-dark">
+                    <span>{ext.partName} (Extra)</span>
+                    <span className="font-medium">₹{ext.cost}</span>
+                  </div>
+                ))}
+
+                <div className="pt-3 border-t border-neutral-muted/10 flex justify-between font-bold text-primary-navy text-base">
+                  <span>Total Amount</span>
+                  <span>₹{calculatedTotalAmount}</span>
+                </div>
+                <div className="flex justify-between text-success font-medium">
+                  <span>Amount Paid</span>
+                  <span>- ₹{totalPaidAmount}</span>
+                </div>
+                <div className="pt-3 border-t border-neutral-muted/10 flex justify-between font-extrabold text-primary-orange text-lg">
+                  <span>Remaining Balance</span>
+                  <span>₹{remainingAmount}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                {needsAdvance && (
+                  <Button className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingForAdvance, "ADVANCE")} isLoading={isExtensionProcessing}>
+                    Pay Advance (₹{remainingForAdvance})
+                  </Button>
+                )}
+
+                {remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED' && (
+                  <Button className="w-full bg-primary-orange hover:bg-primary-orange/90 text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingAmount, "PARTIAL")} isLoading={isExtensionProcessing}>
+                    Pay Additional Charges (₹{remainingAmount})
+                  </Button>
+                )}
+
+                {needsFinal && (
+                  <Button className="w-full bg-success hover:bg-success/90 text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingAmount, "FINAL")} isLoading={isExtensionProcessing}>
+                    Pay Final Bill (₹{remainingAmount})
+                  </Button>
+                )}
+
+                {remainingAmount === 0 && (
+                   <div className="bg-success/10 text-success text-center py-3 rounded-xl font-bold flex items-center justify-center">
+                     <CheckCircle2 className="w-5 h-5 mr-2" /> Fully Paid
+                   </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {booking.jobDetails?.invoiceUrl && (
             <Card className="shadow-md border-primary-orange/20 overflow-hidden rounded-3xl bg-gradient-to-b from-white to-primary-orange/5">

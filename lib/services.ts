@@ -777,10 +777,6 @@ export const getStaff = async () => {
   return response.data;
 };
 
-// export const addPartnerStaff = async (data: any) => {
-//   const response = await apiClient.post("/partner/staff", data);
-//   return response.data;
-// };
 
 export const updateStaffMember = async (id: string, data: any) => {
   const response = await apiClient.put(`/partner/staff/${id}`, data);

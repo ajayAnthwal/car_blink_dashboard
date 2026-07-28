@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension, deleteJobPhoto, markOfflinePayment, getStaff } from "@/lib/services";
+import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension, deleteJobPhoto, markOfflinePayment, getStaff, verifyOfflinePayment } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car, UserCheck, PlusCircle, HandCoins } from "lucide-react";
+import { useSocket } from "@/lib/SocketContext";
 
 export default function PartnerJobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -39,16 +40,36 @@ export default function PartnerJobsPage() {
   const [extReason, setExtReason] = useState("");
   const [isRequestingExt, setIsRequestingExt] = useState(false);
 
+  const { socket } = useSocket();
+
   useEffect(() => {
     fetchJobs();
     fetchStaffList();
   }, []);
 
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => fetchJobs();
+    socket.on("job_updated", handleUpdate);
+    return () => {
+      socket.off("job_updated", handleUpdate);
+    };
+  }, [socket]);
+
   const fetchStaffList = async () => {
     try {
       const res = await getStaff();
-      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
-      setStaffList(Array.isArray(dataArray) ? dataArray : []);
+      let dataArray = [];
+      if (Array.isArray(res)) {
+        dataArray = res;
+      } else if (res && res.data && Array.isArray(res.data)) {
+        dataArray = res.data;
+      } else if (res && res.docs && Array.isArray(res.docs)) {
+        dataArray = res.docs;
+      } else if (res && res.data && res.data.docs && Array.isArray(res.data.docs)) {
+        dataArray = res.data.docs;
+      }
+      setStaffList(dataArray);
     } catch (err) {
       console.error("Failed to load staff", err);
     }
