@@ -148,12 +148,12 @@ export const deleteCity = async (id: string) => {
   return response.data;
 };
 
-export const createService = async (data: { name: string; description?: string; icon?: string; category?: string }) => {
+export const createService = async (data: { name: string; slug?: string; description?: string; icon?: string; category?: string }) => {
   const response = await apiClient.post("/services", data);
   return response.data;
 };
 
-export const updateService = async (id: string, data: { name?: string; icon?: string; category?: string }) => {
+export const updateService = async (id: string, data: { name?: string; description?: string; icon?: string; category?: string }) => {
   const response = await apiClient.patch(`/services/${id}`, data);
   return response.data;
 };
@@ -436,6 +436,11 @@ export const getPartnerEarnings = async (period?: "today" | "week" | "month") =>
   if (period) url += `?period=${period}&_t=${Date.now()}`;
   else url += `?_t=${Date.now()}`;
   const response = await apiClient.get(url);
+  return response.data;
+};
+
+export const getPartnerSettlements = async () => {
+  const response = await apiClient.get("/partner/earnings/settlements");
   return response.data;
 };
 
@@ -772,8 +777,18 @@ export const getStaff = async () => {
   return response.data;
 };
 
-export const addStaffMember = async (data: any) => {
+export const addPartnerStaff = async (data: any) => {
   const response = await apiClient.post("/partner/staff", data);
+  return response.data;
+};
+
+export const updateStaffMember = async (id: string, data: any) => {
+  const response = await apiClient.put(`/partner/staff/${id}`, data);
+  return response.data;
+};
+
+export const deleteStaffMember = async (id: string) => {
+  const response = await apiClient.delete(`/partner/staff/${id}`);
   return response.data;
 };
 

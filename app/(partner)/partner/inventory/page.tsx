@@ -5,7 +5,7 @@ import { getInventory, addStockItem, updateStockItem, deleteStockItem } from "@/
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Package, Plus, Trash2, Edit2, Check } from "lucide-react";
+import { Package, Plus, Trash2, Edit2 } from "lucide-react";
 
 export default function InventoryPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -18,7 +18,6 @@ export default function InventoryPage() {
   const [price, setPrice] = useState("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editQty, setEditQty] = useState("");
 
   useEffect(() => {
     fetchInventory();
@@ -36,20 +35,28 @@ export default function InventoryPage() {
     }
   };
 
-  const handleAddItem = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await addStockItem({
+      const payload = {
         itemName,
         partNumber,
         quantity: parseInt(quantity),
         price: parseFloat(price)
-      });
+      };
+
+      if (editingId) {
+        await updateStockItem(editingId, payload);
+      } else {
+        await addStockItem(payload);
+      }
+
       setItemName("");
       setPartNumber("");
       setQuantity("");
       setPrice("");
+      setEditingId(null);
       fetchInventory();
     } catch (err) {
       console.error(err);
@@ -58,14 +65,12 @@ export default function InventoryPage() {
     }
   };
 
-  const handleUpdateQty = async (id: string) => {
-    try {
-      await updateStockItem(id, { quantity: parseInt(editQty) });
-      setEditingId(null);
-      fetchInventory();
-    } catch (err) {
-      console.error(err);
-    }
+  const handleEditClick = (item: any) => {
+    setEditingId(item._id);
+    setItemName(item.itemName);
+    setPartNumber(item.partNumber);
+    setQuantity(item.quantity.toString());
+    setPrice(item.price.toString());
   };
 
   const handleDelete = async (id: string) => {
@@ -91,11 +96,11 @@ export default function InventoryPage() {
           <Card className="bg-white/90 backdrop-blur-md shadow-subtle border-gray-100">
             <CardHeader className="border-b border-gray-50 pb-4">
               <CardTitle className="text-lg font-heading tracking-tight flex items-center">
-                <Plus className="w-5 h-5 mr-2 text-primary-orange" /> Add New Stock
+                <Plus className="w-5 h-5 mr-2 text-primary-orange" /> {editingId ? "Edit Stock" : "Add New Stock"}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <form onSubmit={handleAddItem} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <Input label="Item Name" placeholder="e.g. Engine Oil 5W-30" value={itemName} onChange={e => setItemName(e.target.value)} required />
                 <Input label="Part Number (SKU)" placeholder="e.g. OIL-5W30" value={partNumber} onChange={e => setPartNumber(e.target.value)} required />
                 <div className="grid grid-cols-2 gap-4">
@@ -103,8 +108,13 @@ export default function InventoryPage() {
                   <Input label="Price (₹)" type="number" min="0" value={price} onChange={e => setPrice(e.target.value)} required />
                 </div>
                 <Button type="submit" isLoading={isSubmitting} className="w-full bg-primary-orange hover:bg-orange-600 text-white mt-2">
-                  Add to Inventory
+                  {editingId ? "Update Inventory" : "Add to Inventory"}
                 </Button>
+                {editingId && (
+                  <Button type="button" variant="outline" onClick={() => { setEditingId(null); setItemName(""); setPartNumber(""); setQuantity(""); setPrice(""); }} className="w-full mt-2">
+                    Cancel
+                  </Button>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -146,28 +156,12 @@ export default function InventoryPage() {
                           </td>
                           <td className="px-6 py-4 font-medium text-gray-700">₹{item.price}</td>
                           <td className="px-6 py-4">
-                            {editingId === item._id ? (
-                              <div className="flex items-center space-x-2">
-                                <input 
-                                  type="number" 
-                                  className="w-16 p-1 border rounded text-center text-sm" 
-                                  value={editQty} 
-                                  onChange={e => setEditQty(e.target.value)} 
-                                />
-                                <button onClick={() => handleUpdateQty(item._id)} className="p-1 text-green-600 hover:bg-green-50 rounded">
-                                  <Check className="w-4 h-4" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center space-x-2">
-                                <span className={`font-bold ${item.quantity < 5 ? 'text-red-500' : 'text-gray-900'}`}>{item.quantity}</span>
-                                <button onClick={() => { setEditingId(item._id); setEditQty(item.quantity.toString()); }} className="text-gray-400 hover:text-primary-orange">
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            )}
+                            <span className={`font-bold ${item.quantity < 5 ? 'text-red-500' : 'text-gray-900'}`}>{item.quantity}</span>
                           </td>
                           <td className="px-6 py-4 text-right">
+                            <button onClick={() => handleEditClick(item)} className="text-gray-400 hover:text-primary-orange p-2 hover:bg-orange-50 rounded-lg transition-colors mr-2">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
                             <button onClick={() => handleDelete(item._id)} className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors">
                               <Trash2 className="w-4 h-4" />
                             </button>

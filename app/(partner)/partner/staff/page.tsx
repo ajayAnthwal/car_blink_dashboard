@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getStaff, addPartnerStaff, updateStaffStatus } from "@/lib/services";
+import { getStaff, addPartnerStaff, updateStaffStatus, updateStaffMember, deleteStaffMember } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Users, UserPlus, Phone, Briefcase } from "lucide-react";
+import { Users, UserPlus, Phone, Briefcase, Trash2, Edit2 } from "lucide-react";
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<any[]>([]);
@@ -16,6 +16,7 @@ export default function StaffPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("Mechanic");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStaff();
@@ -33,19 +34,34 @@ export default function StaffPage() {
     }
   };
 
-  const handleAddStaff = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await addPartnerStaff({ name, phone, role });
+      if (editingId) {
+        await updateStaffMember(editingId, { name, phone, role });
+      } else {
+        await addPartnerStaff({ name, phone, role });
+      }
       setName("");
       setPhone("");
       setRole("Mechanic");
+      setEditingId(null);
       fetchStaff();
     } catch (err) {
       console.error(err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this staff member?")) return;
+    try {
+      await deleteStaffMember(id);
+      fetchStaff();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -80,17 +96,22 @@ export default function StaffPage() {
           <Card className="bg-white/90 backdrop-blur-md shadow-subtle border-gray-100">
             <CardHeader className="border-b border-gray-50 pb-4">
               <CardTitle className="text-lg font-heading tracking-tight flex items-center">
-                <UserPlus className="w-5 h-5 mr-2 text-primary-orange" /> Add Staff
+                <UserPlus className="w-5 h-5 mr-2 text-primary-orange" /> {editingId ? "Edit Staff" : "Add Staff"}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <form onSubmit={handleAddStaff} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <Input label="Full Name" placeholder="e.g. Raju Mechanic" value={name} onChange={e => setName(e.target.value)} required />
                 <Input label="Phone Number" placeholder="e.g. 9876543210" value={phone} onChange={e => setPhone(e.target.value)} required />
                 <Select label="Role" value={role} onChange={e => setRole(e.target.value)} options={roleOptions} required />
                 <Button type="submit" isLoading={isSubmitting} className="w-full bg-primary-orange hover:bg-orange-600 text-white mt-2">
-                  Add Member
+                  {editingId ? "Update Member" : "Add Member"}
                 </Button>
+                {editingId && (
+                  <Button type="button" variant="outline" onClick={() => { setEditingId(null); setName(""); setPhone(""); setRole("Mechanic"); }} className="w-full mt-2">
+                    Cancel
+                  </Button>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -130,7 +151,15 @@ export default function StaffPage() {
                           <Phone className="w-4 h-4 mr-2 text-gray-400" /> {member.phone}
                         </div>
                       </div>
-                      <div className="mt-4 pt-4 border-t border-gray-50 flex justify-end">
+                      <div className="mt-4 pt-4 border-t border-gray-50 flex justify-between items-center">
+                        <div className="flex gap-3">
+                          <button onClick={() => { setEditingId(member._id); setName(member.name); setPhone(member.phone); setRole(member.role); }} className="text-gray-400 hover:text-primary-orange transition-colors" title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(member._id)} className="text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                         <Button 
                           variant="outline" 
                           size="sm" 

@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension, deleteJobPhoto, markOfflinePayment } from "@/lib/services";
+import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension, deleteJobPhoto, markOfflinePayment, getStaff } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/Select";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car, UserCheck, PlusCircle, HandCoins } from "lucide-react";
 
 export default function PartnerJobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -39,7 +41,18 @@ export default function PartnerJobsPage() {
 
   useEffect(() => {
     fetchJobs();
+    fetchStaffList();
   }, []);
+
+  const fetchStaffList = async () => {
+    try {
+      const res = await getStaff();
+      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+      setStaffList(Array.isArray(dataArray) ? dataArray : []);
+    } catch (err) {
+      console.error("Failed to load staff", err);
+    }
+  };
 
   const fetchJobs = async () => {
     try {
@@ -349,10 +362,16 @@ export default function PartnerJobsPage() {
                             <h4 className="font-semibold text-primary-navy flex items-center">
                               <UserCheck className="w-4 h-4 mr-2 text-primary-navy" /> Assign Mechanic
                             </h4>
-                            <Input
-                              placeholder="Enter Staff ID..."
+                            <Select
                               value={mechanicId}
                               onChange={(e) => setMechanicId(e.target.value)}
+                              options={[
+                                { value: "", label: "Select a Mechanic..." },
+                                ...staffList.map(staff => ({
+                                  value: staff._id,
+                                  label: `${staff.name} (${staff.role})`
+                                }))
+                              ]}
                             />
                             <Button
                               variant="outline"

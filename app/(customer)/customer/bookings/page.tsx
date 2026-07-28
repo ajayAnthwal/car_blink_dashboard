@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getGarageVehicles, getServices, getCities, createBooking, getBookings, getBookingById, cancelBooking, getBookingQuotes, selectBookingQuote, getCustomerLiveTracking, respondToJobExtension } from "@/lib/services";
+import { getGarageVehicles, getServices, getCities, createBooking, getBookings, getBookingById, cancelBooking, getBookingQuotes, selectBookingQuote, getCustomerLiveTracking, respondToJobExtension, initiatePayment } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
@@ -229,6 +229,24 @@ export default function BookingsPage() {
       setSelectedBooking(null);
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to respond to extension." });
+    } finally {
+      setIsExtensionProcessing(false);
+    }
+  };
+
+  const handlePayExtension = async (ext: any) => {
+    if (!selectedBooking) return;
+    setIsExtensionProcessing(true);
+    try {
+      const response = await initiatePayment({
+        bookingId: selectedBooking._id,
+        amount: ext.cost,
+        paymentType: "PARTIAL", // We treat this as a partial payment towards the total bill
+      });
+      setMessage({ type: "success", text: "Payment initiated successfully! Redirecting to payment gateway..." });
+      console.log("Payment initiation response:", response.data);
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to initiate payment." });
     } finally {
       setIsExtensionProcessing(false);
     }
@@ -494,6 +512,13 @@ export default function BookingsPage() {
                             </Button>
                             <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleExtensionResponse(ext._id, 'APPROVED')} isLoading={isExtensionProcessing}>
                               Approve
+                            </Button>
+                          </div>
+                        )}
+                        {ext.status === 'APPROVED' && (
+                          <div className="flex space-x-2 mt-3 justify-end">
+                            <Button size="sm" className="bg-primary-orange hover:bg-primary-orange/90 text-white" onClick={() => handlePayExtension(ext)} isLoading={isExtensionProcessing}>
+                              Pay ₹{ext.cost} Now
                             </Button>
                           </div>
                         )}

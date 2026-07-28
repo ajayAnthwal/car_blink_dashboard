@@ -133,8 +133,8 @@ export const roleConfig: Record<Role, RoleConfigData> = {
   EXECUTIVE: {
     roleName: "Operations Executive",
     portalTitle: "Executive Console",
-    themeColor: "text-primary-navy",
-    accentBgColor: "bg-primary-navy",
+    themeColor: "text-blue-400",
+    accentBgColor: "bg-blue-400",
     navSections: [
       {
         label: "Overview",
@@ -158,8 +158,8 @@ export const roleConfig: Record<Role, RoleConfigData> = {
   ACCOUNTS: {
     roleName: "Accounts",
     portalTitle: "Financial Dashboard",
-    themeColor: "text-primary-navy",
-    accentBgColor: "bg-primary-navy",
+    themeColor: "text-blue-400",
+    accentBgColor: "bg-blue-400",
     navSections: [
       {
         label: "Overview",

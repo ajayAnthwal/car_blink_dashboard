@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getServices, getCities, createService, deleteService, createCity, deleteCity } from "@/lib/services";
+import { getServices, getCities, createService, updateService, deleteService, createCity, deleteCity } from "@/lib/services";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, MapPin, Wrench, Trash2, Plus, AlertCircle } from "lucide-react";
+import { Loader2, MapPin, Wrench, Trash2, Plus, AlertCircle, Edit } from "lucide-react";
 
 export default function MasterDataPage() {
   const [activeTab, setActiveTab] = useState<"services" | "cities">("services");
@@ -17,6 +17,7 @@ export default function MasterDataPage() {
   
   // Forms
   const [newService, setNewService] = useState({ name: "", description: "" });
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [newCity, setNewCity] = useState({ name: "", state: "", country: "India" });
   
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -48,12 +49,22 @@ export default function MasterDataPage() {
     e.preventDefault();
     if (!newService.name) return;
     try {
-      await createService(newService);
+      const slug = newService.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+      const payload = { ...newService, slug, icon: "wrench" };
+      
+      if (editingServiceId) {
+        await updateService(editingServiceId, payload);
+        setMessage({ type: "success", text: "Service updated successfully" });
+      } else {
+        await createService(payload);
+        setMessage({ type: "success", text: "Service added successfully" });
+      }
+      
       setNewService({ name: "", description: "" });
-      setMessage({ type: "success", text: "Service added successfully" });
+      setEditingServiceId(null);
       fetchData();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Failed to add service" });
+      setMessage({ type: "error", text: err.message || `Failed to ${editingServiceId ? 'update' : 'add'} service` });
     }
   };
 
@@ -142,7 +153,9 @@ export default function MasterDataPage() {
             <CardHeader className="border-b border-gray-50 bg-gray-50/50">
               <CardTitle className="text-lg text-primary-navy font-bold flex items-center gap-2">
                 <Plus className="w-5 h-5 text-primary-orange" /> 
-                Add New {activeTab === "services" ? "Service" : "City"}
+                {activeTab === "services" 
+                  ? (editingServiceId ? "Edit Service" : "Add New Service") 
+                  : "Add New City"}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -168,8 +181,13 @@ export default function MasterDataPage() {
                     />
                   </div>
                   <Button type="submit" className="w-full bg-primary-navy hover:bg-primary-navy-light text-white rounded-xl py-6 font-bold shadow-sm">
-                    Create Service
+                    {editingServiceId ? "Update Service" : "Create Service"}
                   </Button>
+                  {editingServiceId && (
+                    <Button type="button" variant="outline" onClick={() => { setEditingServiceId(null); setNewService({ name: "", description: "" }); }} className="w-full rounded-xl py-6 font-bold shadow-sm mt-2">
+                      Cancel
+                    </Button>
+                  )}
                 </form>
               ) : (
                 <form onSubmit={handleAddCity} className="space-y-4">
@@ -241,7 +259,18 @@ export default function MasterDataPage() {
                         <tr key={s._id} className="hover:bg-blue-50/30 transition-colors">
                           <td className="px-6 py-4 font-bold text-gray-900">{s.name}</td>
                           <td className="px-6 py-4 text-gray-500">{s.description || '-'}</td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-4 text-right flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                              onClick={() => {
+                                setEditingServiceId(s._id);
+                                setNewService({ name: s.name, description: s.description || "" });
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
