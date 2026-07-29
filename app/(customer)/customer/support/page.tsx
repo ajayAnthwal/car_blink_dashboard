@@ -21,11 +21,11 @@ interface SupportTicket {
   description: string;
   priority: string;
   status: string;
-  replies: Array<{
+  messages: Array<{
     _id: string;
     message: string;
     createdAt: string;
-    sender: string;
+    senderRole: string;
   }>;
 }
 
@@ -103,7 +103,9 @@ export default function SupportPage() {
     setIsLoadingDetails(true);
     try {
       const res = await getSupportTicketById(ticket._id);
-      setSelectedTicket((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
+      // The API interceptor returns the ticket object directly, but may alias its array fields.
+      // So 'res' is the ticket object itself.
+      setSelectedTicket(res._id ? res : (res?.data?._id ? res.data : res));
       setExpandedId(ticket._id);
       setReplyMessage("");
     } catch (err) {
@@ -119,9 +121,10 @@ export default function SupportPage() {
     setIsReplying(true);
     try {
       const res = await replySupportTicket(selectedTicket._id, { message: replyMessage });
-      setSelectedTicket((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
+      const updatedTicket = res._id ? res : (res?.data?._id ? res.data : res);
+      setSelectedTicket(updatedTicket);
       setReplyMessage("");
-      setTickets(prev => prev.map(t => t._id === selectedTicket._id ? (res?.docs || res) : t));
+      setTickets(prev => prev.map(t => t._id === selectedTicket._id ? updatedTicket : t));
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to send reply." });
     } finally {
@@ -288,26 +291,26 @@ export default function SupportPage() {
 
                           <div className="space-y-3">
                             <h5 className="font-medium text-primary-navy">Conversation</h5>
-                            {selectedTicket.replies && selectedTicket.replies.length > 0 ? (
+                            {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
                               <div className="space-y-3 max-h-60 overflow-y-auto">
-                                {selectedTicket.replies.map((reply) => (
+                                {selectedTicket.messages.map((reply: any) => (
                                   <div
                                     key={reply._id}
                                     className={`p-3 rounded-lg text-sm ${
-                                      reply.sender === "CUSTOMER"
+                                      reply.senderRole === "CUSTOMER"
                                         ? "bg-primary-navy/5 ml-8"
                                         : "bg-neutral-bg mr-8"
                                     }`}
                                   >
                                     <p className="font-medium text-xs text-neutral-muted mb-1">
-                                      {reply.sender === "CUSTOMER" ? "You" : "Support Team"}
+                                      {reply.senderRole === "CUSTOMER" ? "You" : "Support Team"}
                                     </p>
                                     <p>{reply.message}</p>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-sm text-neutral-muted">No replies yet.</p>
+                              <p className="text-sm text-neutral-muted">No messages yet.</p>
                             )}
                           </div>
 

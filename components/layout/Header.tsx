@@ -224,7 +224,7 @@ export function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none">
               <Avatar className="h-9 w-9 md:h-10 md:w-10 border border-gray-200 cursor-pointer hover:ring-2 hover:ring-gray-100 transition-all duration-200 shadow-subtle">
-                <AvatarImage src="" alt={getGreeting()} />
+                <AvatarImage src={(user as any)?.profileImage || ""} alt={getGreeting()} />
                 <AvatarFallback className={`${config.accentBgColor} text-white font-bold`}>
                   {getGreeting().charAt(0)}
                 </AvatarFallback>

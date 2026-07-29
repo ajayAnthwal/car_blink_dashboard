@@ -427,6 +427,11 @@ export const issueJobWarranty = async (id: string, data: { warrantyPeriodMonths:
   return response.data;
 };
 
+export const getPartnerWarranties = async () => {
+  const response = await apiClient.get("/partner/warranties");
+  return response.data;
+};
+
 // ==========================================
 // PARTNER EARNINGS APIs
 // ==========================================

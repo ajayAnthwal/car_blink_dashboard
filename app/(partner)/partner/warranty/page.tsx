@@ -11,6 +11,7 @@ import { ShieldCheck, Loader2, Wrench, CheckCircle } from "lucide-react";
 
 export default function PartnerWarrantyPage() {
   const [completedJobs, setCompletedJobs] = useState<any[]>([]);
+  const [issuedWarranties, setIssuedWarranties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -26,10 +27,15 @@ export default function PartnerWarrantyPage() {
   const fetchCompletedJobs = async () => {
     try {
       setIsLoading(true);
-      // Fetch only completed jobs
-      const res = await getPartnerJobs("COMPLETED");
+      const [res, warrantiesRes] = await Promise.all([
+        getPartnerJobs("COMPLETED"),
+        import("@/lib/services").then(m => m.getPartnerWarranties())
+      ]);
       const dataArray = res?.data?.docs || res?.data || res?.docs || [];
       setCompletedJobs(Array.isArray(dataArray) ? dataArray : []);
+      
+      const warrantiesDataArray = warrantiesRes?.data?.docs || warrantiesRes?.data || warrantiesRes?.docs || [];
+      setIssuedWarranties(Array.isArray(warrantiesDataArray) ? warrantiesDataArray : []);
     } catch (err) {
       console.error("Failed to load completed jobs", err);
     } finally {
@@ -155,24 +161,38 @@ export default function PartnerWarrantyPage() {
         </Card>
       )}
 
-      {/* List of recent completed jobs for reference */}
+      {/* List of Issued Warranties */}
       <div className="pt-6">
-        <h3 className="text-xl font-bold text-primary-navy mb-4">Completed Jobs Reference</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {!isLoading && completedJobs.length === 0 ? (
-             <div className="md:col-span-2 p-6 text-center border border-dashed rounded-lg border-neutral-muted/30">
-               <p className="text-neutral-muted text-sm">No completed jobs found.</p>
+        <h3 className="text-xl font-bold text-primary-navy mb-4">Issued Warranties</h3>
+        <div className="grid grid-cols-1 gap-4">
+          {!isLoading && issuedWarranties.length === 0 ? (
+             <div className="p-6 text-center border border-dashed rounded-lg border-neutral-muted/30">
+               <p className="text-neutral-muted text-sm">No warranties issued yet.</p>
              </div>
           ) : (
-            completedJobs.slice(0, 4).map((job) => (
-              <div key={job._id} className="bg-neutral-white p-4 rounded-xl border border-neutral-muted/20 flex items-start space-x-3">
-                <div className="bg-success/10 p-2 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-success" />
+            issuedWarranties.map((warranty) => (
+              <div key={warranty._id} className="bg-neutral-white p-4 rounded-xl border border-neutral-muted/20 flex items-start space-x-3 justify-between">
+                <div className="flex items-start space-x-3">
+                  <div className="bg-success/10 p-2 rounded-lg">
+                    <ShieldCheck className="w-5 h-5 text-success" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-primary-navy text-sm">
+                      {warranty.bookingId?.serviceId?.name || "Service Warranty"}
+                    </h4>
+                    <p className="text-xs text-neutral-muted mt-0.5">
+                      {warranty.bookingId?.vehicleId?.brand} {warranty.bookingId?.vehicleId?.model} - Customer: {warranty.customerId?.firstName} {warranty.customerId?.lastName}
+                    </p>
+                    <p className="text-xs text-neutral-muted mt-0.5">
+                      Valid till: {new Date(warranty.expiryDate || new Date()).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-primary-navy text-sm">{job.bookingId?.serviceId?.name}</h4>
-                  <p className="text-xs text-neutral-muted mt-0.5">{job.bookingId?.vehicleId?.brand} {job.bookingId?.vehicleId?.model}</p>
-                </div>
+                {warranty.warrantyDocumentUrl && (
+                  <a href={warranty.warrantyDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-orange hover:underline font-medium">
+                    View Document
+                  </a>
+                )}
               </div>
             ))
           )}
