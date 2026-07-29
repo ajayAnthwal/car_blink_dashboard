@@ -31,7 +31,8 @@ export default function PaymentsPage() {
   
   const [bookingId, setBookingId] = useState("");
   const [amount, setAmount] = useState("");
-  const [paymentType, setPaymentType] = useState("ADVANCE");
+  const [paymentType, setPaymentType] = useState("PARTIAL");
+  const [couponCode, setCouponCode] = useState("");
   
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [isLoadingPayments, setIsLoadingPayments] = useState(true);
@@ -64,11 +65,15 @@ export default function PaymentsPage() {
     setMessage({ type: "", text: "" });
 
     try {
-      const response = await initiatePayment({
+      const payload: any = {
         bookingId,
-        amount: parseFloat(amount),
+        amount: Number(amount),
         paymentType,
-      });
+      };
+      if (couponCode.trim()) {
+        payload.couponCode = couponCode.trim();
+      }
+      const response = await initiatePayment(payload);
       setMessage({ type: "success", text: "Payment initiated successfully! Redirecting to payment gateway..." });
       
       // In a real integration, you would open Razorpay here with response.data
@@ -78,6 +83,7 @@ export default function PaymentsPage() {
       setBookingId("");
       setAmount("");
       setPaymentType("ADVANCE");
+      setCouponCode("");
       fetchInitialData();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to initiate payment." });
@@ -161,6 +167,13 @@ export default function PaymentsPage() {
                   { value: "PARTIAL", label: "Partial" },
                 ]}
                 required
+              />
+              <Input
+                label="Promo / Coupon Code (Optional)"
+                type="text"
+                placeholder="Enter code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
               />
             </div>
             <div className="flex justify-end">

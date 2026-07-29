@@ -281,7 +281,7 @@ export const replySupportTicket = async (id: string, data: { message: string }) 
 // CUSTOMER PAYMENT APIs
 // ==========================================
 
-export const initiatePayment = async (data: { bookingId: string; amount: number; paymentType: string }) => {
+export const initiatePayment = async (data: { bookingId: string; amount: number; paymentType: string; couponCode?: string }) => {
   const response = await apiClient.post("/payment/initiate", data);
   return response.data;
 };

@@ -25,6 +25,7 @@ export default function CustomerBookingDetailsPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [showCancel, setShowCancel] = useState(false);
   const [isExtensionProcessing, setIsExtensionProcessing] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
 
   const [message, setMessage] = useState({ type: "", text: "" });
 
@@ -163,11 +164,15 @@ export default function CustomerBookingDetailsPage() {
     if (!booking) return;
     setIsExtensionProcessing(true);
     try {
-      const response = await initiatePayment({
+      const payload: any = {
         bookingId: booking._id || booking.id,
         amount: amount,
         paymentType: type,
-      });
+      };
+      if (couponCode.trim()) {
+        payload.couponCode = couponCode.trim();
+      }
+      const response = await initiatePayment(payload);
       setMessage({ type: "success", text: "Payment initiated successfully! Redirecting to payment gateway..." });
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to initiate payment." });
@@ -249,13 +254,13 @@ export default function CustomerBookingDetailsPage() {
 
   const acceptedQuoteAmount = quotes.find(q => q._id === booking.acceptedBidId || q._id === (booking.acceptedBidId as any)?._id)?.quotedAmount || (booking.acceptedBidId as any)?.quotedAmount || 0;
   const baseAmount = booking.jobDetails?.finalAmount || acceptedQuoteAmount || 1500;
-  
+
   const advanceAmount = Math.round(baseAmount * 0.1);
   const totalPaidAmount = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
-  
+
   const approvedExtensions = booking.jobDetails?.jobExtensions?.filter((e: any) => e.status === 'APPROVED') || [];
   const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + ext.cost, 0);
-  
+
   const calculatedTotalAmount = baseAmount + approvedExtensionsCost;
   const remainingAmount = Math.max(0, calculatedTotalAmount - totalPaidAmount);
 
@@ -631,7 +636,7 @@ export default function CustomerBookingDetailsPage() {
                   <span>Base Service Quote</span>
                   <span className="font-medium">₹{baseAmount}</span>
                 </div>
-                
+
                 {approvedExtensions.map((ext: any, idx: number) => (
                   <div key={idx} className="flex justify-between text-neutral-dark">
                     <span>{ext.partName} (Extra)</span>
@@ -654,7 +659,21 @@ export default function CustomerBookingDetailsPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-3">
+              <div className="space-y-4">
+                {(needsAdvance || (remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED') || needsFinal) && (
+                  <div className="mb-4">
+                    <label className="text-sm font-medium text-neutral-dark mb-1.5 block">Promo / Coupon Code</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="Enter coupon code here"
+                        className="flex-1 bg-white border-neutral-muted/20"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {needsAdvance && (
                   <Button className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingForAdvance, "ADVANCE")} isLoading={isExtensionProcessing}>
                     Pay Advance (₹{remainingForAdvance})
@@ -674,9 +693,9 @@ export default function CustomerBookingDetailsPage() {
                 )}
 
                 {remainingAmount === 0 && (
-                   <div className="bg-success/10 text-success text-center py-3 rounded-xl font-bold flex items-center justify-center">
-                     <CheckCircle2 className="w-5 h-5 mr-2" /> Fully Paid
-                   </div>
+                  <div className="bg-success/10 text-success text-center py-3 rounded-xl font-bold flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 mr-2" /> Fully Paid
+                  </div>
                 )}
               </div>
             </CardContent>
