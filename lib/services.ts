@@ -564,6 +564,11 @@ export const getAllRefunds = async (page = 1, limit = 10, otherFilters = "") => 
   return response.data;
 };
 
+export const getEligiblePaymentsForRefund = async () => {
+  const response = await apiClient.get("/accounts/refunds/eligible-payments");
+  return response.data;
+};
+
 export const initiateRefund = async (data: { paymentId: string; amount: number; reason: string }) => {
   const response = await apiClient.post("/accounts/refunds", data);
   return response.data;

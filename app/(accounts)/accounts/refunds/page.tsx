@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getAllRefunds, approveRefund, processRefund, rejectRefund } from "@/lib/services";
+import { getAllRefunds, approveRefund, processRefund, rejectRefund, getEligiblePaymentsForRefund, initiateRefund } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Undo2, Check, X, Loader2, ArrowRightCircle } from "lucide-react";
@@ -14,6 +14,14 @@ export default function RefundsPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectFor, setShowRejectFor] = useState<string | null>(null);
+
+  // Initiate Refund state
+  const [showInitiateModal, setShowInitiateModal] = useState(false);
+  const [eligiblePayments, setEligiblePayments] = useState<any[]>([]);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [refundAmount, setRefundAmount] = useState<number | "">("");
+  const [initiateReason, setInitiateReason] = useState("");
+  const [isInitiating, setIsInitiating] = useState(false);
 
   const fetchRefunds = async () => {
     setIsLoading(true);
@@ -31,6 +39,41 @@ export default function RefundsPage() {
   useEffect(() => {
     fetchRefunds();
   }, []);
+
+  const openInitiateModal = async () => {
+    setShowInitiateModal(true);
+    setEligiblePayments([]);
+    try {
+      const res = await getEligiblePaymentsForRefund();
+      setEligiblePayments(Array.isArray(res) ? res : (res?.data || []));
+    } catch (err) {
+      console.error("Failed to load eligible payments", err);
+    }
+  };
+
+  const handleInitiateRefundSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPayment || !refundAmount || !initiateReason) return;
+
+    setIsInitiating(true);
+    try {
+      await initiateRefund({
+        paymentId: selectedPayment._id,
+        amount: Number(refundAmount),
+        reason: initiateReason
+      });
+      setMessage({ type: "success", text: "Refund initiated successfully." });
+      setShowInitiateModal(false);
+      setSelectedPayment(null);
+      setRefundAmount("");
+      setInitiateReason("");
+      fetchRefunds();
+    } catch (err: any) {
+      alert(err?.message || "Failed to initiate refund.");
+    } finally {
+      setIsInitiating(false);
+    }
+  };
 
   const handleAction = async (id: string, action: "approve" | "process" | "reject") => {
     setActionId(id);
@@ -60,14 +103,16 @@ export default function RefundsPage() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-primary-navy">Refund Management</h2>
+        <Button onClick={openInitiateModal} className="bg-primary-orange hover:bg-orange-600 text-white font-bold">
+          Initiate Refund
+        </Button>
       </div>
 
       {message.text && (
-        <div className={`p-3 rounded-lg text-sm border ${
-          message.type === "success" 
-            ? "bg-success/10 text-success border-success/20" 
-            : "bg-danger/10 text-danger border-danger/20"
-        }`}>
+        <div className={`p-3 rounded-lg text-sm border ${message.type === "success"
+          ? "bg-success/10 text-success border-success/20"
+          : "bg-danger/10 text-danger border-danger/20"
+          }`}>
           {message.text}
         </div>
       )}
@@ -112,30 +157,29 @@ export default function RefundsPage() {
                         {refund.reason}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          refund.status === 'PROCESSED' ? 'bg-green-100 text-green-700' :
+                        <span className={`px-2 py-1 text-xs rounded-full ${refund.status === 'PROCESSED' ? 'bg-green-100 text-green-700' :
                           refund.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                          refund.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                          'bg-warning/20 text-warning'
-                        }`}>
+                            refund.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                              'bg-warning/20 text-warning'
+                          }`}>
                           {refund.status || 'PENDING'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
                         {refund.status === 'REQUESTED' && (
                           <>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               className="border-success text-success hover:bg-success/5"
                               onClick={() => handleAction(refund._id, "approve")}
                               isLoading={actionId === refund._id}
                             >
                               <Check className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               className="border-danger text-danger hover:bg-danger/5"
                               onClick={() => setShowRejectFor(refund._id)}
                             >
@@ -144,8 +188,8 @@ export default function RefundsPage() {
                           </>
                         )}
                         {refund.status === 'APPROVED' && (
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             className="bg-primary-navy hover:bg-primary-navy-light"
                             onClick={() => handleAction(refund._id, "process")}
                             isLoading={actionId === refund._id}
@@ -182,7 +226,7 @@ export default function RefundsPage() {
                 <Button variant="outline" onClick={() => { setShowRejectFor(null); setRejectReason(""); }}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   className="bg-danger hover:bg-danger/90 text-white"
                   onClick={() => handleAction(showRejectFor, "reject")}
                   isLoading={actionId === showRejectFor}
@@ -191,6 +235,83 @@ export default function RefundsPage() {
                   Reject Refund
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Initiate Refund Modal */}
+      {showInitiateModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg shadow-xl">
+            <CardHeader>
+              <CardTitle>Initiate Refund</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleInitiateRefundSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Select Payment</label>
+                  <select
+                    className="w-full p-2 border border-gray-200 rounded-lg text-sm"
+                    required
+                    onChange={(e) => {
+                      const pay = eligiblePayments.find(p => p._id === e.target.value);
+                      setSelectedPayment(pay);
+                      if (pay) setRefundAmount(pay.amount);
+                    }}
+                    value={selectedPayment?._id || ""}
+                  >
+                    <option value="" disabled>Select a successful payment...</option>
+                    {eligiblePayments.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.bookingId?.bookingStatus || 'Payment'} - ₹{p.amount} ({p.customerId?.fullName || 'Unknown'}) - ID: {p._id.slice(-6)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedPayment && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                      Refund Amount (Max: ₹{selectedPayment.amount})
+                    </label>
+                    <Input
+                      type="number"
+                      max={selectedPayment.amount}
+                      min={1}
+                      value={refundAmount}
+                      onChange={(e) => setRefundAmount(Number(e.target.value))}
+                      required
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Reason</label>
+                  <textarea
+                    className="w-full p-2 border border-gray-200 rounded-lg text-sm resize-none"
+                    rows={3}
+                    placeholder="Enter reason for refund"
+                    value={initiateReason}
+                    onChange={(e) => setInitiateReason(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setShowInitiateModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-primary-navy hover:bg-blue-900 text-white"
+                    isLoading={isInitiating}
+                    disabled={!selectedPayment || !refundAmount || !initiateReason}
+                  >
+                    Submit Refund
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </div>
