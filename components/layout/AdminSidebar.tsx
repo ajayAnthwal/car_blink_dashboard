@@ -26,6 +26,7 @@ const navItems = [
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Staff", href: "/admin/staff", icon: UserCheck },
   { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
+  { name: "Website Leads", href: "/admin/marketing/leads", icon: Store },
   { name: "Notifications", href: "/admin/marketing/notifications", icon: Bell },
   { name: "Finance", href: "/admin/finance/settlements", icon: IndianRupee },
   { name: "Master Data", href: "/admin/master-data", icon: Map },

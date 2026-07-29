@@ -639,6 +639,11 @@ export const getInvoicesReport = async (fromDate: string, toDate: string, cityId
 // SUPER-ADMIN APIs
 // ==========================================
 
+export const getAllWebsiteLeads = async (page = 1, limit = 50, status = "") => {
+  const response = await apiClient.get(`/leads?page=${page}&limit=${limit}${status ? `&status=${status}` : ""}`);
+  return response.data;
+};
+
 export const getCommissionReport = async (fromDate: string, toDate: string, partnerId?: string) => {
   const query = new URLSearchParams({ fromDate, toDate });
   if (partnerId) query.append("partnerId", partnerId);
