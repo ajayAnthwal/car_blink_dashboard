@@ -151,7 +151,7 @@ export default function RefundsPage() {
                       <td className="px-4 py-3 font-medium text-primary-navy">
                         #{String(refund._id || "").slice(-6).toUpperCase()}
                         <div className="text-xs text-neutral-muted mt-1">
-                          Booking: {typeof refund.bookingId === "object" ? String(refund.bookingId._id || "").slice(-6).toUpperCase() : String(refund.bookingId || "").slice(-6).toUpperCase()}
+                          Booking: {typeof refund.bookingId === "object" && refund.bookingId !== null ? String(refund.bookingId._id || "").slice(-6).toUpperCase() : String(refund.bookingId || "").slice(-6).toUpperCase()}
                         </div>
                       </td>
                       <td className="px-4 py-3 font-bold text-primary-navy">₹{refund.amount}</td>
