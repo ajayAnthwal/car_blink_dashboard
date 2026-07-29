@@ -211,7 +211,7 @@ export function Header() {
                 <button onClick={handleMarkAllRead} className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center transition-colors duration-200">
                   <CheckCircle className="w-3.5 h-3.5 mr-1" /> Mark all read
                 </button>
-                <Link href={`/${currentRole.toLowerCase()}/notifications`} className={`text-xs font-semibold ${config.themeColor} hover:opacity-80 transition-opacity duration-200`}>
+                <Link href={currentRole === 'SUPER_ADMIN' ? '/admin/notifications' : `/${currentRole.toLowerCase()}/notifications`} className={`text-xs font-semibold ${config.themeColor} hover:opacity-80 transition-opacity duration-200`}>
                   View all
                 </Link>
               </div>
@@ -237,7 +237,7 @@ export function Header() {
               </div>
               <div className="p-2">
                 <DropdownMenuItem className="rounded-lg cursor-pointer p-0">
-                  <Link href={`/${currentRole.toLowerCase()}/profile`} className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors duration-200">
+                  <Link href={currentRole === 'SUPER_ADMIN' ? '/admin/profile' : `/${currentRole.toLowerCase()}/profile`} className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors duration-200">
                     <UserIcon className="w-4 h-4 mr-2 text-gray-400" />
                     My Profile
                   </Link>
