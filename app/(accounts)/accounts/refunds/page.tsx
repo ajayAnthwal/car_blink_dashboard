@@ -149,22 +149,24 @@ export default function RefundsPage() {
                   {refunds.map((refund) => (
                     <tr key={refund._id} className="hover:bg-neutral-bg/50 transition-colors">
                       <td className="px-4 py-3 font-medium text-primary-navy">
-                        #{String(refund._id || "").slice(-6).toUpperCase()}
+                        #{String(refund?._id || "").slice(-6).toUpperCase()}
                         <div className="text-xs text-neutral-muted mt-1">
-                          Booking: {typeof refund.bookingId === "object" && refund.bookingId !== null ? String(refund.bookingId._id || "").slice(-6).toUpperCase() : String(refund.bookingId || "").slice(-6).toUpperCase()}
+                          Booking: {refund?.bookingId && typeof refund.bookingId === "object" 
+                            ? String(refund.bookingId._id || "").slice(-6).toUpperCase() 
+                            : String(refund?.bookingId || "").slice(-6).toUpperCase()}
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-bold text-primary-navy">₹{refund.amount}</td>
-                      <td className="px-4 py-3 text-neutral-dark max-w-[200px] truncate" title={refund.reason}>
-                        {refund.reason}
+                      <td className="px-4 py-3 font-bold text-primary-navy">₹{refund?.amount || 0}</td>
+                      <td className="px-4 py-3 text-neutral-dark max-w-[200px] truncate" title={String(refund?.reason || "")}>
+                        {String(refund?.reason || "")}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-xs rounded-full ${refund.status === 'PROCESSED' ? 'bg-green-100 text-green-700' :
-                          refund.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                            refund.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                        <span className={`px-2 py-1 text-xs rounded-full ${refund?.status === 'PROCESSED' ? 'bg-green-100 text-green-700' :
+                          refund?.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                            refund?.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                               'bg-warning/20 text-warning'
                           }`}>
-                          {refund.status || 'PENDING'}
+                          {String(refund?.status || 'PENDING')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
@@ -265,8 +267,8 @@ export default function RefundsPage() {
                   >
                     <option value="" disabled>Select a successful payment...</option>
                     {eligiblePayments.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.bookingId?.bookingStatus || 'Payment'} - ₹{p.amount} ({p.customerId?.fullName || 'Unknown'}) - ID: {p._id.slice(-6)}
+                      <option key={String(p?._id || Math.random())} value={String(p?._id || "")}>
+                        {String(p?.bookingId?.bookingStatus || 'Payment')} - ₹{Number(p?.amount || 0)} ({String(p?.customerId?.fullName || 'Unknown')}) - ID: {String(p?._id || "").slice(-6)}
                       </option>
                     ))}
                   </select>
