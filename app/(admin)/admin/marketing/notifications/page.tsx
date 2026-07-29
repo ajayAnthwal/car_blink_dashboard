@@ -18,7 +18,7 @@ export default function AdminNotificationsPage() {
     setIsLoading(true);
     try {
       const res = await getSuperAdminNotifications();
-      setHistory(res.data || []);
+      setHistory(Array.isArray(res) ? res : (res.data || []));
     } catch (error) {
       console.error("Failed to load notifications", error);
     } finally {
