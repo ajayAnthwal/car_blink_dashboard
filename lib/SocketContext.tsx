@@ -70,6 +70,15 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       
       const toastId = Date.now();
       setToast({ title, message, id: toastId });
+
+      // Play sound
+      try {
+        const audio = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(200).join("A"));
+        audio.src = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"; 
+        audio.play().catch(e => console.log("Audio play prevented:", e));
+      } catch (err) {
+        console.log("Audio error:", err);
+      }
       
       // Auto-hide toast after 5 seconds
       setTimeout(() => {

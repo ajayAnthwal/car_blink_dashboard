@@ -7,6 +7,7 @@ import { useSocket } from "@/lib/SocketContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote } from "lucide-react";
 import { PaymentCard } from "@/components/payment/PaymentCard";
 import { format } from "date-fns";
@@ -292,9 +293,9 @@ export default function CustomerBookingDetailsPage() {
             </p>
           </div>
 
-          {(booking.status === 'PENDING' || booking.status === 'QUOTED') && !showCancel && (
+          {(booking.status !== 'COMPLETED' && booking.status !== 'CANCELLED') && !showCancel && (
             <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 hover:text-white rounded-xl backdrop-blur-sm" onClick={() => setShowCancel(true)}>
-              Cancel Request
+              Cancel & Request Refund
             </Button>
           )}
         </div>
@@ -314,7 +315,7 @@ export default function CustomerBookingDetailsPage() {
           <div className="h-1 bg-danger w-full"></div>
           <CardContent className="p-8">
             <h3 className="text-xl font-bold text-primary-navy mb-2">Cancel Booking Request</h3>
-            <p className="text-sm text-neutral-muted mb-6">Are you sure you want to cancel? This action cannot be undone and partners will no longer be able to quote.</p>
+            <p className="text-sm text-neutral-muted mb-6">Are you sure you want to cancel? If you have made any payments, a refund request will be automatically initiated.</p>
             <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
