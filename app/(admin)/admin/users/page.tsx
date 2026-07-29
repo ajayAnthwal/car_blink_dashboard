@@ -46,6 +46,20 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleChangeRole = async (id: string, newRole: string) => {
+    setActionId(id);
+    setMessage({ type: "", text: "" });
+    try {
+      await updateAdminUserStatus(id, { role: newRole });
+      setMessage({ type: "success", text: `User role updated successfully.` });
+      fetchUsers();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || `Failed to update user role.` });
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     u.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -147,14 +161,30 @@ export default function AdminUsersPage() {
                         <div className="text-xs text-gray-500 mt-1">{user.phone}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 text-[11px] font-bold tracking-wide uppercase rounded-full ${
-                          user.role === 'PARTNER' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
-                          user.role === 'CUSTOMER' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                          user.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                          'bg-gray-100 text-gray-700 border border-gray-200'
-                        }`}>
-                          {user.role}
-                        </span>
+                        {user.role === 'SUPER_ADMIN' ? (
+                          <span className="px-3 py-1 text-[11px] font-bold tracking-wide uppercase rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                            {user.role}
+                          </span>
+                        ) : (
+                          <select
+                            className={`px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full border cursor-pointer outline-none focus:ring-2 focus:ring-primary-navy/50 transition-all ${
+                              user.role === 'PARTNER' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                              user.role === 'CUSTOMER' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                              user.role === 'EXECUTIVE' ? 'bg-green-100 text-green-700 border-green-200' :
+                              user.role === 'ACCOUNTS' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                              'bg-gray-100 text-gray-700 border-gray-200'
+                            }`}
+                            value={user.role}
+                            onChange={(e) => handleChangeRole(user._id, e.target.value)}
+                            disabled={actionId === user._id}
+                          >
+                            <option value="CUSTOMER">Customer</option>
+                            <option value="PARTNER">Partner</option>
+                            <option value="EXECUTIVE">Executive</option>
+                            <option value="ACCOUNTS">Accounts</option>
+                            <option value="ADMIN">Admin</option>
+                          </select>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 text-[11px] font-bold tracking-wide uppercase rounded-full inline-flex items-center gap-1.5 ${

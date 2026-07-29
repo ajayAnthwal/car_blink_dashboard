@@ -23,7 +23,7 @@ export default function AdminPartnerDetailsPage() {
     setIsLoading(true);
     try {
       const res = await getSuperAdminPartnerDetails(id as string);
-      setPartner(res.data || res);
+      setPartner(res.businessName ? res : (res.data || res));
     } catch (error) {
       console.error("Failed to load partner details", error);
     } finally {

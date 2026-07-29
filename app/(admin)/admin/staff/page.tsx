@@ -24,8 +24,12 @@ export default function AdminStaffPage() {
         getSuperAdminStaff(),
         getSuperAdminRoles()
       ]);
-      setStaffList(staffRes.data?.docs || []);
-      setRoles(rolesRes.data || []);
+      
+      const staffArray = staffRes?.docs || staffRes?.data?.docs || staffRes?.data || [];
+      setStaffList(Array.isArray(staffArray) ? staffArray : (staffArray.docs || []));
+      
+      const rolesArray = rolesRes?.data || rolesRes || [];
+      setRoles(Array.isArray(rolesArray) ? rolesArray : (rolesArray.docs || []));
     } catch (error) {
       console.error("Failed to load staff/roles", error);
     } finally {

@@ -9,7 +9,7 @@ export default function AdminMarketingPage() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  
+
   // New Coupon State
   const [code, setCode] = useState("");
   const [discountType, setDiscountType] = useState("PERCENTAGE");
@@ -20,7 +20,8 @@ export default function AdminMarketingPage() {
     setIsLoading(true);
     try {
       const res = await getSuperAdminCoupons();
-      setCoupons(res.data || []);
+      const couponsArray = res?.data || res || [];
+      setCoupons(Array.isArray(couponsArray) ? couponsArray : (couponsArray.data || []));
     } catch (error) {
       console.error("Failed to load coupons", error);
     } finally {
@@ -96,7 +97,7 @@ export default function AdminMarketingPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left Column: Create Coupon Form */}
         <div className="lg:col-span-1">
           <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200 sticky top-24">
@@ -109,8 +110,8 @@ export default function AdminMarketingPage() {
               <form onSubmit={handleCreateCoupon} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Coupon Code</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. DIWALI50"
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-orange text-sm uppercase"
                     value={code}
@@ -119,7 +120,7 @@ export default function AdminMarketingPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Discount Type</label>
-                  <select 
+                  <select
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-orange text-sm"
                     value={discountType}
                     onChange={(e) => setDiscountType(e.target.value)}
@@ -130,8 +131,8 @@ export default function AdminMarketingPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Discount Value</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     placeholder={discountType === 'PERCENTAGE' ? "e.g. 20 (for 20%)" : "e.g. 100 (for ₹100)"}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-orange text-sm"
                     value={discountValue}
@@ -140,16 +141,16 @@ export default function AdminMarketingPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Max Uses (Total)</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     placeholder="100"
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-orange text-sm"
                     value={maxUses}
                     onChange={(e) => setMaxUses(e.target.value)}
                   />
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isCreating}
                   className="w-full mt-2 bg-primary-orange hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-colors shadow-md shadow-orange-200 disabled:opacity-50"
                 >
@@ -210,24 +211,22 @@ export default function AdminMarketingPage() {
                               <span className="text-gray-500 text-xs">{coupon.maxUses}</span>
                             </td>
                             <td className="px-6 py-4 text-center">
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                coupon.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
-                              }`}>
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${coupon.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                                }`}>
                                 {coupon.isActive ? 'ACTIVE' : 'DISABLED'}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-3">
-                                <button 
+                                <button
                                   onClick={() => handleToggle(coupon._id)}
-                                  className={`p-2 rounded-lg transition-colors ${
-                                    coupon.isActive ? 'text-orange-500 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'
-                                  }`}
+                                  className={`p-2 rounded-lg transition-colors ${coupon.isActive ? 'text-orange-500 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'
+                                    }`}
                                   title={coupon.isActive ? 'Disable Coupon' : 'Enable Coupon'}
                                 >
                                   <Power className="w-5 h-5" />
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => handleDelete(coupon._id)}
                                   className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                   title="Delete Coupon"
