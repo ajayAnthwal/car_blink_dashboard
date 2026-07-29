@@ -149,8 +149,10 @@ export default function RefundsPage() {
                   {refunds.map((refund) => (
                     <tr key={refund._id} className="hover:bg-neutral-bg/50 transition-colors">
                       <td className="px-4 py-3 font-medium text-primary-navy">
-                        #{refund._id?.slice(-6).toUpperCase()}
-                        <div className="text-xs text-neutral-muted mt-1">Booking: {refund.bookingId}</div>
+                        #{String(refund._id || "").slice(-6).toUpperCase()}
+                        <div className="text-xs text-neutral-muted mt-1">
+                          Booking: {typeof refund.bookingId === "object" ? String(refund.bookingId._id || "").slice(-6).toUpperCase() : String(refund.bookingId || "").slice(-6).toUpperCase()}
+                        </div>
                       </td>
                       <td className="px-4 py-3 font-bold text-primary-navy">₹{refund.amount}</td>
                       <td className="px-4 py-3 text-neutral-dark max-w-[200px] truncate" title={refund.reason}>
