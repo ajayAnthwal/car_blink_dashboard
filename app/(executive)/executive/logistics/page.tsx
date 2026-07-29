@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { assignDriverToBooking, pushDriverLocation } from "@/lib/services";
+import React, { useState, useEffect } from "react";
+import { assignDriverToBooking, pushDriverLocation, getExecutiveLeads } from "@/lib/services";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,26 @@ export default function LogisticsPage() {
   const [isPushingLocation, setIsPushingLocation] = useState(false);
   const [pushMessage, setPushMessage] = useState({ type: "", text: "" });
 
+  const [availableBookings, setAvailableBookings] = useState<any[]>([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setIsLoadingBookings(true);
+      // Fetch bookings that might need logistics (PENDING, QUOTED, ACCEPTED, IN_PROGRESS)
+      const res = await getExecutiveLeads(1, 100, "status=PENDING,QUOTED,ACCEPTED,IN_PROGRESS");
+      setAvailableBookings(res?.leads || []);
+    } catch (err) {
+      console.error("Failed to load bookings", err);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingId || !driverName || !driverPhone) return;
@@ -32,7 +52,7 @@ export default function LogisticsPage() {
     setMessage({ type: "", text: "" });
 
     try {
-      await assignDriverToBooking({
+      const result = await assignDriverToBooking({
         bookingId,
         executiveId: user?._id || "60d5ec49f1b2c8b1f8e4e1a1", // fallback id if user object doesn't have _id
         driverName,
@@ -40,6 +60,13 @@ export default function LogisticsPage() {
       });
 
       setMessage({ type: "success", text: "Driver assigned successfully!" });
+      
+      // The API returns the created document directly if unwrapped, or inside result.data
+      const logisticsId = result?.data?._id || result?._id;
+      if (logisticsId) {
+        setSimLogisticsId(logisticsId);
+      }
+
       setBookingId("");
       setDriverName("");
       setDriverPhone("");
@@ -96,13 +123,23 @@ export default function LogisticsPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Booking ID"
-              placeholder="Enter Booking Object ID"
-              value={bookingId}
-              onChange={(e) => setBookingId(e.target.value)}
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-neutral-dark mb-1.5">Select Booking</label>
+              <select
+                value={bookingId}
+                onChange={(e) => setBookingId(e.target.value)}
+                required
+                className="flex w-full rounded-lg border border-neutral-muted/40 bg-neutral-white px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:border-primary-orange focus:ring-primary-orange/20"
+                disabled={isLoadingBookings}
+              >
+                <option value="">{isLoadingBookings ? "Loading bookings..." : "-- Select a Booking --"}</option>
+                {availableBookings.map((b) => (
+                  <option key={b._id} value={b._id}>
+                    {b.serviceId?.name || "Service"} ({b.vehicleId?.make} {b.vehicleId?.model}) - {b.status} - {b.customerId?.fullName}
+                  </option>
+                ))}
+              </select>
+            </div>
             
             <div className="grid grid-cols-2 gap-4">
               <Input

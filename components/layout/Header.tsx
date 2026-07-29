@@ -26,7 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 export function Header() {
   const { logout, user } = useAuth();
   const pathname = usePathname();
-  
+
   const currentRole = user?.role || "CUSTOMER";
   const config = roleConfig[currentRole];
 
@@ -87,61 +87,59 @@ export function Header() {
             <Menu className="w-6 h-6" />
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-72 bg-primary-navy border-none text-white">
-             {/* Render Sidebar content inside the sheet for mobile */}
-             <div className="h-full flex flex-col">
-               <div className="h-20 flex items-center px-4 shrink-0 border-b border-white/5 space-x-2">
-                 <div className={`${config.accentBgColor} rounded p-1.5 text-white flex items-center justify-center shrink-0`}>
-                   <span className="font-bold text-lg leading-none">CB</span>
-                 </div>
-                 <span className="text-white font-bold text-xl tracking-wide">CarBlink</span>
-               </div>
-               <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 custom-scrollbar">
-                 {config.navSections.map((section, idx) => (
-                   <div key={idx} className="space-y-1">
-                     {section.label && (
-                       <p className="px-3 text-[10px] text-neutral-400 font-bold tracking-widest uppercase mb-2">
-                         {section.label}
-                       </p>
-                     )}
-                     
-                     {section.items.map((item) => {
-                       const isExactActive = pathname === item.href;
-                       const isDashboard = item.href.endsWith("/dashboard");
-                       const isActive = isExactActive || (!isDashboard && pathname.startsWith(item.href));
-                       const Icon = item.icon;
+            {/* Render Sidebar content inside the sheet for mobile */}
+            <div className="h-full flex flex-col">
+              <div className="h-20 flex items-center px-4 shrink-0 border-b border-white/5 space-x-2">
+                <div className={`${config.accentBgColor} rounded p-1.5 text-white flex items-center justify-center shrink-0`}>
+                  <span className="font-bold text-lg leading-none">CB</span>
+                </div>
+                <span className="text-white font-bold text-xl tracking-wide">CarBlink</span>
+              </div>
+              <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 custom-scrollbar">
+                {config.navSections.map((section, idx) => (
+                  <div key={idx} className="space-y-1">
+                    {section.label && (
+                      <p className="px-3 text-[10px] text-neutral-400 font-bold tracking-widest uppercase mb-2">
+                        {section.label}
+                      </p>
+                    )}
 
-                       return (
-                         <SheetClose render={
-                         <Link
-                           href={item.href}
-                           className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${
-                             isActive
-                               ? `${config.accentBgColor}/10 ${config.themeColor} font-medium`
-                               : "text-neutral-400 hover:bg-white/5 hover:text-white"
-                           }`}
-                         >
-                           {isActive && (
-                             <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 ${config.accentBgColor} rounded-r-full`} />
-                           )}
-                           <Icon
-                             className={`w-5 h-5 shrink-0 mr-3 transition-colors duration-200 ${
-                               isActive ? config.themeColor : "text-neutral-400 group-hover:text-white"
-                             }`}
-                           />
-                           <span className="text-sm flex-1">{item.name}</span>
-                           {item.badge && (
-                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm text-white ${item.badgeColor} shrink-0`}>
-                               {item.badge}
-                             </span>
-                           )}
-                         </Link>
-                       } key={item.name} />
-                       );
-                     })}
-                   </div>
-                 ))}
-               </nav>
-             </div>
+                    {section.items.map((item) => {
+                      const isExactActive = pathname === item.href;
+                      const isDashboard = item.href.endsWith("/dashboard");
+                      const isActive = isExactActive || (!isDashboard && pathname.startsWith(item.href));
+                      const Icon = item.icon;
+
+                      return (
+                        <SheetClose render={
+                          <Link
+                            href={item.href}
+                            className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${isActive
+                              ? `${config.accentBgColor}/10 ${config.themeColor} font-medium`
+                              : "text-neutral-400 hover:bg-white/5 hover:text-white"
+                              }`}
+                          >
+                            {isActive && (
+                              <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 ${config.accentBgColor} rounded-r-full`} />
+                            )}
+                            <Icon
+                              className={`w-5 h-5 shrink-0 mr-3 transition-colors duration-200 ${isActive ? config.themeColor : "text-neutral-400 group-hover:text-white"
+                                }`}
+                            />
+                            <span className="text-sm flex-1">{item.name}</span>
+                            {item.badge && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm text-white ${item.badgeColor} shrink-0`}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </Link>
+                        } key={item.name} />
+                      );
+                    })}
+                  </div>
+                ))}
+              </nav>
+            </div>
           </SheetContent>
         </Sheet>
 
@@ -224,9 +222,9 @@ export function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none">
               <Avatar className="h-9 w-9 md:h-10 md:w-10 border border-gray-200 cursor-pointer hover:ring-2 hover:ring-gray-100 transition-all duration-200 shadow-subtle">
-                <AvatarImage src={(user as any)?.profileImage || ""} alt={getGreeting()} />
-                <AvatarFallback className={`${config.accentBgColor} text-white font-bold`}>
-                  {getGreeting().charAt(0)}
+                <AvatarImage src={(user as any)?.profileImage || ""} alt={user?.fullName || "User"} />
+                <AvatarFallback className={`${config.accentBgColor} text-white font-bold flex items-center justify-center`}>
+                  {user?.fullName ? user.fullName.charAt(0).toUpperCase() : <UserIcon className="w-5 h-5" />}
                 </AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
@@ -245,8 +243,8 @@ export function Header() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-gray-100 my-1" />
-                <DropdownMenuItem 
-                  onClick={logout} 
+                <DropdownMenuItem
+                  onClick={logout}
                   className="rounded-lg cursor-pointer text-danger focus:bg-red-50 focus:text-danger hover:text-danger w-full px-2 py-2 text-sm transition-colors duration-200"
                 >
                   <LogOut className="w-4 h-4 mr-2" />

@@ -545,6 +545,16 @@ export const getPartnerStatus = async (page = 1, limit = 10) => {
   return response.data;
 };
 
+export const verifyExecutiveCustomer = async (id: string) => {
+  const response = await apiClient.patch(`/executive/customer-status/${id}/verify`);
+  return response.data;
+};
+
+export const verifyExecutivePartner = async (id: string, data?: { status: 'APPROVED' | 'REJECTED'; reason?: string }) => {
+  const response = await apiClient.patch(`/executive/partner-status/${id}/verify`, data || {});
+  return response.data;
+};
+
 // ==========================================
 // ACCOUNTS REFUNDS APIs
 // ==========================================

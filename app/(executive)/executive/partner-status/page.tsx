@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getPartnerStatus } from "@/lib/services";
+import { getPartnerStatus, verifyExecutivePartner } from "@/lib/services";
 import { Card, CardContent } from "@/components/ui/card";
-import { Briefcase, Loader2, Phone, Mail, Clock, ShieldCheck, MapPin } from "lucide-react";
+import { Briefcase, Loader2, Phone, Mail, Clock, ShieldCheck, MapPin, FileText } from "lucide-react";
 
 export default function PartnerStatusPage() {
   const [partners, setPartners] = useState<any[]>([]);
@@ -22,6 +22,15 @@ export default function PartnerStatusPage() {
       console.error("Failed to load partner status", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVerify = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      await verifyExecutivePartner(id, { status });
+      fetchPartners();
+    } catch (err) {
+      console.error("Failed to verify partner", err);
     }
   };
 
@@ -88,16 +97,46 @@ export default function PartnerStatusPage() {
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-neutral-muted/10 flex justify-between items-center">
-                  <div className="flex items-center space-x-2">
-                    <ShieldCheck className={`w-5 h-5 ${partner.kycVerified ? "text-success" : "text-neutral-muted/30"}`} />
+                  <div className="flex items-center space-x-2 relative group cursor-default">
+                    <ShieldCheck className={`w-5 h-5 ${partner.isVerified || partner.verificationStatus === 'APPROVED' ? "text-success" : partner.verificationStatus === 'UNDER_REVIEW' ? "text-primary-orange" : "text-neutral-muted/30"}`} />
                     <span className="text-xs font-medium text-neutral-dark">
-                      KYC {partner.kycVerified ? "Verified" : "Pending"}
+                      KYC {partner.verificationStatus === 'APPROVED' ? "Verified" : partner.verificationStatus === 'UNDER_REVIEW' ? "Under Review" : "Pending"}
                     </span>
                   </div>
                   <div className="text-xs text-neutral-muted bg-neutral-bg px-2 py-1 rounded border border-neutral-muted/20">
-                    Jobs Completed: <span className="font-bold text-primary-navy">{partner.completedJobs || 0}</span>
+                    Jobs Completed: <span className="font-bold text-primary-navy">{partner.totalJobsCompleted || 0}</span>
                   </div>
                 </div>
+
+                {partner.kycDocuments && partner.kycDocuments.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-neutral-muted/10">
+                    <p className="text-xs font-semibold text-neutral-dark mb-2">Uploaded KYC Documents:</p>
+                    <div className="flex flex-col space-y-2 mb-3">
+                      {partner.kycDocuments.map((doc: any) => (
+                        <a key={doc._id} href={doc.documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-secondary-blue hover:underline flex items-center">
+                          <FileText className="w-3 h-3 mr-1" /> {doc.documentType.replace('_', ' ')} - <span className="text-neutral-muted ml-1">({doc.status})</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(!partner.isVerified && partner.verificationStatus !== 'APPROVED') && (
+                  <div className="flex space-x-2 mt-4 pt-4 border-t border-neutral-muted/10">
+                    <button 
+                      onClick={() => handleVerify(partner._id, 'APPROVED')}
+                      className="flex-1 bg-success/10 text-success hover:bg-success hover:text-white font-bold text-xs py-2 rounded transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button 
+                      onClick={() => handleVerify(partner._id, 'REJECTED')}
+                      className="flex-1 bg-danger/10 text-danger hover:bg-danger hover:text-white font-bold text-xs py-2 rounded transition-colors"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

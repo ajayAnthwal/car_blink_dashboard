@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getCustomerStatus } from "@/lib/services";
+import { getCustomerStatus, verifyExecutiveCustomer } from "@/lib/services";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Loader2, Phone, Mail, Clock, CheckCircle } from "lucide-react";
 
@@ -22,6 +22,15 @@ export default function CustomerStatusPage() {
       console.error("Failed to load customer status", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVerify = async (id: string) => {
+    try {
+      await verifyExecutiveCustomer(id);
+      fetchCustomers();
+    } catch (err) {
+      console.error("Failed to verify customer", err);
     }
   };
 
@@ -86,12 +95,20 @@ export default function CustomerStatusPage() {
                     <span className="block text-primary-navy font-bold">{customer.totalBookings || 0}</span>
                     <span className="text-neutral-muted">Bookings</span>
                   </div>
-                  <div className="bg-neutral-bg p-2 rounded">
+                  <div className="bg-neutral-bg p-2 rounded relative group cursor-default">
                     <span className="block text-primary-navy font-bold flex items-center justify-center">
                       {customer.isVerified ? <CheckCircle className="w-3 h-3 text-success mr-1" /> : ""}
                       {customer.isVerified ? "Yes" : "No"}
                     </span>
                     <span className="text-neutral-muted">Verified</span>
+                    {!customer.isVerified && (
+                      <button 
+                        onClick={() => handleVerify(customer._id)}
+                        className="absolute inset-0 bg-primary-orange/90 text-white font-bold text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      >
+                        Verify Now
+                      </button>
+                    )}
                   </div>
                 </div>
               </CardContent>

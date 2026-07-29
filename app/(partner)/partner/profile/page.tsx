@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { getPartnerProfile, updatePartnerProfile, createPartnerProfile, getCities, getServices } from "@/lib/services";
+import React, { useState, useEffect, useRef } from "react";
+import { getPartnerProfile, updatePartnerProfile, createPartnerProfile, getCities, getServices, uploadFile, uploadKycDocument } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { User, Store, MapPin, Briefcase, FileText, Loader2 } from "lucide-react";
+import { User, Store, MapPin, Briefcase, FileText, Loader2, ShieldCheck, Upload } from "lucide-react";
 
 export default function PartnerProfilePage() {
   const [isNewProfile, setIsNewProfile] = useState(false);
@@ -26,6 +26,13 @@ export default function PartnerProfilePage() {
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
   });
+
+  const [kycDocType, setKycDocType] = useState("ID_PROOF");
+  const [kycFile, setKycFile] = useState<File | null>(null);
+  const [isUploadingKyc, setIsUploadingKyc] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [verificationStatus, setVerificationStatus] = useState("PENDING");
 
   useEffect(() => {
     fetchInitialData();
@@ -61,6 +68,7 @@ export default function PartnerProfilePage() {
             latitude: profileData.location?.coordinates?.[1] || profileData.latitude || undefined,
             longitude: profileData.location?.coordinates?.[0] || profileData.longitude || undefined,
           });
+          setVerificationStatus(profileData.verificationStatus || "PENDING");
           setIsNewProfile(false);
         } else {
           setIsNewProfile(true);
@@ -135,7 +143,6 @@ export default function PartnerProfilePage() {
         setMessage({ type: "success", text: "Profile created successfully!" });
         setIsNewProfile(false);
       } else {
-        // Update only allows businessName, businessAddress, gstNumber according to docs
         await updatePartnerProfile({
           businessName: formData.businessName,
           businessAddress: formData.businessAddress,
@@ -149,6 +156,36 @@ export default function PartnerProfilePage() {
       setMessage({ type: "error", text: err?.message || "Failed to save profile." });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleKycUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!kycFile) return;
+
+    setIsUploadingKyc(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const uploadRes = await uploadFile(kycFile, "kyc");
+      if (!uploadRes?.fileUrl && !uploadRes?.data?.fileUrl) {
+        throw new Error("Failed to upload file. No URL returned.");
+      }
+      
+      const fileUrl = uploadRes?.data?.fileUrl || uploadRes?.fileUrl;
+      await uploadKycDocument({
+        documentType: kycDocType,
+        documentUrl: fileUrl
+      });
+      
+      setMessage({ type: "success", text: "KYC document uploaded successfully! Status is now Under Review." });
+      setVerificationStatus("UNDER_REVIEW");
+      setKycFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to upload KYC document." });
+    } finally {
+      setIsUploadingKyc(false);
     }
   };
 
@@ -285,6 +322,70 @@ export default function PartnerProfilePage() {
           </form>
         </CardContent>
       </Card>
+
+      {!isNewProfile && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <ShieldCheck className="w-5 h-5 text-primary-orange" />
+              <span>KYC Verification</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6 p-4 rounded-lg bg-neutral-bg border border-neutral-muted/20 flex items-start">
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-neutral-dark mb-1">Current Status: 
+                  <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                    verificationStatus === 'APPROVED' ? 'bg-success/10 text-success' :
+                    verificationStatus === 'REJECTED' ? 'bg-danger/10 text-danger' :
+                    verificationStatus === 'UNDER_REVIEW' ? 'bg-primary-orange/10 text-primary-orange' :
+                    'bg-neutral-muted/10 text-neutral-dark'
+                  }`}>
+                    {verificationStatus.replace('_', ' ')}
+                  </span>
+                </h4>
+                <p className="text-xs text-neutral-muted">Upload your ID Proof (Aadhar/PAN) and Shop License to get verified.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleKycUpload} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Select
+                  label="Document Type"
+                  name="kycDocType"
+                  value={kycDocType}
+                  onChange={(e) => setKycDocType(e.target.value)}
+                  options={[
+                    { value: "ID_PROOF", label: "ID Proof (Aadhar/PAN)" },
+                    { value: "SHOP_LICENSE", label: "Shop License" },
+                    { value: "GST_CERTIFICATE", label: "GST Certificate" },
+                    { value: "ADDRESS_PROOF", label: "Address Proof" }
+                  ]}
+                  required
+                />
+                
+                <div>
+                  <label className="block text-sm font-medium text-neutral-dark mb-1.5">Select File (Image/PDF)</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    ref={fileInputRef}
+                    onChange={(e) => setKycFile(e.target.files?.[0] || null)}
+                    className="flex w-full rounded-lg border border-neutral-muted/40 bg-neutral-white px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:border-primary-orange focus:ring-primary-orange/20"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end pt-2">
+                <Button type="submit" isLoading={isUploadingKyc} disabled={!kycFile || isUploadingKyc}>
+                  <Upload className="w-4 h-4 mr-2" /> Upload Document
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
