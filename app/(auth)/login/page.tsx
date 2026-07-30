@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { loginUser } from "@/lib/services";
+import { loginUser, getCurrentUserProfile } from "@/lib/services";
+import { setApiAccessToken } from "@/lib/axios";
 import { ROLE_ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,28 @@ export default function LoginPage() {
 
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const ssoToken = searchParams.get('token');
+    if (ssoToken) {
+      setIsLoading(true);
+      setApiAccessToken(ssoToken);
+      
+      getCurrentUserProfile()
+        .then((user) => {
+          // Use ssoToken as refresh token temporarily or just pass it twice
+          login(user, ssoToken, ssoToken);
+          const route = ROLE_ROUTES[user.role] || "/";
+          router.push(route);
+        })
+        .catch(() => {
+          setApiAccessToken(null);
+          setIsLoading(false);
+          setError("Session expired or invalid. Please login again.");
+        });
+    }
+  }, [searchParams, login, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
