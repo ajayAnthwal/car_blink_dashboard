@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getBookingById, getBookingQuotes, selectBookingQuote, cancelBooking, canReviewBooking, createReview, respondToJobExtension, initiatePayment } from "@/lib/services";
+import { getBookingById, getBookingQuotes, selectBookingQuote, cancelBooking, canReviewBooking, createReview, respondToJobExtension, initiatePayment, applyCouponToBooking } from "@/lib/services";
 import { useSocket } from "@/lib/SocketContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote, Tag } from "lucide-react";
 import { PaymentCard } from "@/components/payment/PaymentCard";
 import { format } from "date-fns";
 
@@ -27,6 +27,7 @@ export default function CustomerBookingDetailsPage() {
   const [showCancel, setShowCancel] = useState(false);
   const [isExtensionProcessing, setIsExtensionProcessing] = useState(false);
   const [couponCode, setCouponCode] = useState("");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
   const [message, setMessage] = useState({ type: "", text: "" });
 
@@ -161,6 +162,22 @@ export default function CustomerBookingDetailsPage() {
     }
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsApplyingCoupon(true);
+    setMessage({ type: "", text: "" });
+    try {
+      await applyCouponToBooking(id, { couponCode: couponCode.trim() });
+      setMessage({ type: "success", text: "Coupon applied successfully!" });
+      setCouponCode("");
+      await fetchBookingDetails();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to apply coupon." });
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
   const handleInitiatePayment = async (amount: number, type: string = "PARTIAL") => {
     if (!booking) return;
     setIsExtensionProcessing(true);
@@ -170,9 +187,7 @@ export default function CustomerBookingDetailsPage() {
         amount: amount,
         paymentType: type,
       };
-      if (couponCode.trim()) {
-        payload.couponCode = couponCode.trim();
-      }
+      // Note: We no longer send couponCode here because it is applied to the booking directly.
       const response = await initiatePayment(payload);
       setMessage({ type: "success", text: "Payment initiated successfully! Redirecting to payment gateway..." });
     } catch (err: any) {
@@ -256,15 +271,18 @@ export default function CustomerBookingDetailsPage() {
   const acceptedQuoteAmount = quotes.find(q => q._id === booking.acceptedBidId || q._id === (booking.acceptedBidId as any)?._id)?.quotedAmount || (booking.acceptedBidId as any)?.quotedAmount || 0;
   const baseAmount = booking.jobDetails?.finalAmount || acceptedQuoteAmount || 1500;
 
-  const advanceAmount = Math.round(baseAmount * 0.1);
   const totalPaidAmount = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
 
   const approvedExtensions = booking.jobDetails?.jobExtensions?.filter((e: any) => e.status === 'APPROVED') || [];
   const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + ext.cost, 0);
 
   const calculatedTotalAmount = baseAmount + approvedExtensionsCost;
-  const remainingAmount = Math.max(0, calculatedTotalAmount - totalPaidAmount);
+  const couponDiscountAmount = booking.couponDiscountAmount || 0;
+  const revisedTotalAmount = Math.max(0, calculatedTotalAmount - couponDiscountAmount);
+  
+  const remainingAmount = Math.max(0, revisedTotalAmount - totalPaidAmount);
 
+  const advanceAmount = Math.round(revisedTotalAmount * 0.1);
   const remainingForAdvance = advanceAmount - totalPaidAmount;
   const needsAdvance = (booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') && baseAmount > 0 && remainingForAdvance > 0;
   const needsFinal = booking.status === 'COMPLETED' && remainingAmount > 0;
@@ -649,6 +667,21 @@ export default function CustomerBookingDetailsPage() {
                   <span>Total Amount</span>
                   <span>₹{calculatedTotalAmount}</span>
                 </div>
+                
+                {couponDiscountAmount > 0 && (
+                  <div className="flex justify-between text-success font-medium">
+                    <span className="flex items-center"><Tag className="w-4 h-4 mr-1" /> Discount ({booking.appliedCoupon})</span>
+                    <span>- ₹{couponDiscountAmount}</span>
+                  </div>
+                )}
+                
+                {couponDiscountAmount > 0 && (
+                  <div className="flex justify-between font-bold text-primary-navy text-base">
+                    <span>Revised Total</span>
+                    <span>₹{revisedTotalAmount}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-success font-medium">
                   <span>Amount Paid</span>
                   <span>- ₹{totalPaidAmount}</span>
@@ -661,18 +694,34 @@ export default function CustomerBookingDetailsPage() {
 
               {/* Action Buttons */}
               <div className="space-y-4">
-                {(needsAdvance || (remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED') || needsFinal) && (
-                  <div className="mb-4">
-                    <label className="text-sm font-medium text-neutral-dark mb-1.5 block">Promo / Coupon Code</label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        placeholder="Enter coupon code here"
-                        className="flex-1 bg-white border-neutral-muted/20"
-                      />
+                {booking.appliedCoupon ? (
+                  <div className="mb-4 bg-success/10 p-3 rounded-lg border border-success/20 flex items-center justify-between">
+                    <div className="flex items-center text-success-dark font-medium">
+                      <Tag className="w-4 h-4 mr-2" /> Coupon Applied: {booking.appliedCoupon}
                     </div>
                   </div>
+                ) : (
+                  (needsAdvance || (remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED') || needsFinal) && (
+                    <div className="mb-4">
+                      <label className="text-sm font-medium text-neutral-dark mb-1.5 block">Promo / Coupon Code</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          placeholder="Enter coupon code here"
+                          className="flex-1 bg-white border-neutral-muted/20"
+                        />
+                        <Button 
+                          onClick={handleApplyCoupon} 
+                          disabled={!couponCode.trim() || isApplyingCoupon}
+                          isLoading={isApplyingCoupon}
+                          className="bg-primary-navy hover:bg-primary-navy/90 text-white"
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {needsAdvance && (

@@ -239,6 +239,11 @@ export const selectBookingQuote = async (id: string, data: { bidId: string }) =>
   return response.data;
 };
 
+export const applyCouponToBooking = async (id: string, data: { couponCode: string }) => {
+  const response = await apiClient.post(`/customer/bookings/${id}/coupon`, data);
+  return response.data;
+};
+
 // ==========================================
 // CUSTOMER WARRANTY APIs
 // ==========================================
