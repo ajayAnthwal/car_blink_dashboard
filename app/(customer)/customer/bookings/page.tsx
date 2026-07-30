@@ -91,12 +91,28 @@ export default function BookingsPage() {
     socket.on("new_quote", fetchInitialData);
     socket.on("booking_status_update", fetchInitialData);
     socket.on("booking_confirmed", fetchInitialData);
+    
+    // Live tracking update listener
+    socket.on("location_update", (data: any) => {
+      setTrackingData((prev: any) => {
+        // Only update if we are currently tracking this specific driver/logistics trip
+        if (prev && prev._id === data._id) {
+          return {
+            ...prev,
+            currentLocation: data.currentLocation,
+            status: data.status
+          };
+        }
+        return prev;
+      });
+    });
 
     return () => {
       socket.off("quote_accepted", fetchInitialData);
       socket.off("new_quote", fetchInitialData);
       socket.off("booking_status_update", fetchInitialData);
       socket.off("booking_confirmed", fetchInitialData);
+      socket.off("location_update");
     };
   }, [socket]);
 
@@ -394,7 +410,7 @@ export default function BookingsPage() {
                       )}
                     </div>
                     <div className="flex flex-col sm:flex-row items-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mt-4 sm:mt-0">
-                      {booking.status !== "PENDING" && booking.status !== "CANCELLED" && (
+                      {(booking.status === "ASSIGNED" || booking.status === "IN_PROGRESS") && (
                         <Button
                           variant="outline"
                           size="sm"
