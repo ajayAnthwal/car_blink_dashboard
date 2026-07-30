@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CalendarCheck, X, Check, ChevronDown, ChevronUp, Loader2, MapPin, AlertCircle } from "lucide-react";
 import { State, City as CountryCity } from "country-state-city";
 import { useSocket } from "@/lib/SocketContext";
+import { useRouter } from "next/navigation";
 
 interface Vehicle {
   _id: string;
@@ -52,6 +53,7 @@ interface Quote {
 
 export default function BookingsPage() {
   const { socket } = useSocket();
+  const router = useRouter();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -163,18 +165,8 @@ export default function BookingsPage() {
     }
   };
 
-  const handleViewDetails = async (booking: Booking) => {
-    setSelectedBooking(booking);
-    setQuotes(booking.quotes || []);
-    setIsLoadingQuotes(true);
-    try {
-      const res = await getBookingQuotes(booking._id);
-      setQuotes((Array.isArray(res) ? res : (res?.docs || res?.data || [])));
-    } catch (err) {
-      console.error("Failed to load quotes", err);
-    } finally {
-      setIsLoadingQuotes(false);
-    }
+  const handleViewDetails = (booking: Booking) => {
+    router.push(`/customer/bookings/${booking._id}`);
   };
 
   const handleCancelBooking = async () => {
@@ -392,7 +384,12 @@ export default function BookingsPage() {
                       </p>
                       {booking.selectedQuote && (
                         <p className="text-xs text-success mt-1 font-medium">
-                          Quote Selected: ₹{booking.selectedQuote.amount}
+                          Total Amount: ₹{
+                            (booking.selectedQuote.amount || 0) + 
+                            (((booking as any).jobDetails?.jobExtensions || booking.jobExtensions || [])
+                              .filter((e: any) => e.status === 'APPROVED')
+                              .reduce((sum: number, ext: any) => sum + ext.cost, 0))
+                          }
                         </p>
                       )}
                     </div>
