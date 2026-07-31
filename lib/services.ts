@@ -214,8 +214,8 @@ export const createBooking = async (data: { vehicleId: string; serviceId: string
   return response.data;
 };
 
-export const getBookings = async () => {
-  const response = await apiClient.get("/customer/bookings");
+export const getBookings = async (params?: { page?: number; limit?: number; search?: string }) => {
+  const response = await apiClient.get("/customer/bookings", { params });
   return response.data;
 };
 

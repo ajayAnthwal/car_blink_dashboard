@@ -70,6 +70,12 @@ export default function BookingsPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [selectedQuoteId, setSelectedQuoteId] = useState("");
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalBookings, setTotalBookings] = useState(0);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
@@ -82,15 +88,19 @@ export default function BookingsPage() {
   const [isExtensionProcessing, setIsExtensionProcessing] = useState(false);
 
   useEffect(() => {
-    fetchInitialData();
+    fetchMetadata();
   }, []);
 
   useEffect(() => {
+    fetchBookingsData();
+  }, [currentPage, search]);
+
+  useEffect(() => {
     if (!socket) return;
-    socket.on("quote_accepted", fetchInitialData);
-    socket.on("new_quote", fetchInitialData);
-    socket.on("booking_status_update", fetchInitialData);
-    socket.on("booking_confirmed", fetchInitialData);
+    socket.on("quote_accepted", fetchBookingsData);
+    socket.on("new_quote", fetchBookingsData);
+    socket.on("booking_status_update", fetchBookingsData);
+    socket.on("booking_confirmed", fetchBookingsData);
     
     // Live tracking update listener
     socket.on("location_update", (data: any) => {
@@ -108,31 +118,48 @@ export default function BookingsPage() {
     });
 
     return () => {
-      socket.off("quote_accepted", fetchInitialData);
-      socket.off("new_quote", fetchInitialData);
-      socket.off("booking_status_update", fetchInitialData);
-      socket.off("booking_confirmed", fetchInitialData);
+      socket.off("quote_accepted", fetchBookingsData);
+      socket.off("new_quote", fetchBookingsData);
+      socket.off("booking_status_update", fetchBookingsData);
+      socket.off("booking_confirmed", fetchBookingsData);
       socket.off("location_update");
     };
   }, [socket]);
 
-  const fetchInitialData = async () => {
+  const fetchMetadata = async () => {
     try {
-      const [vehiclesRes, servicesRes, citiesRes, bookingsRes] = await Promise.all([
+      const [vehiclesRes, servicesRes, citiesRes] = await Promise.all([
         getGarageVehicles(),
         getServices(),
         getCities(),
-        getBookings(),
       ]);
       setVehicles(Array.isArray(vehiclesRes) ? vehiclesRes : (vehiclesRes?.docs || vehiclesRes?.data || []));
       setServices(Array.isArray(servicesRes) ? servicesRes : (servicesRes?.docs || servicesRes?.data || []));
       setCities(Array.isArray(citiesRes) ? citiesRes : (citiesRes?.docs || citiesRes?.data || []));
-      setBookings(Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || []));
     } catch (err) {
-      console.error("Failed to load initial data", err);
+      console.error("Failed to load metadata", err);
+    }
+  };
+
+  const fetchBookingsData = async () => {
+    try {
+      setIsLoadingData(true);
+      const res = await getBookings({ page: currentPage, limit: 10, search });
+      const data = res?.data || res;
+      setBookings(data?.bookings || []);
+      setTotalPages(Math.ceil((data?.total || 0) / 10));
+      setTotalBookings(data?.total || 0);
+    } catch (err) {
+      console.error("Failed to load bookings", err);
     } finally {
       setIsLoadingData(false);
     }
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    setSearch(searchInput);
   };
 
   const handleCreateBooking = async (e: React.FormEvent) => {
@@ -157,7 +184,7 @@ export default function BookingsPage() {
         setCityId("");
         setDescription("");
         setPreferredDate("");
-        fetchInitialData();
+        fetchBookingsData();
       } catch (err: any) {
         setMessage({ type: "error", text: err?.message || "Failed to create booking." });
       } finally {
@@ -193,7 +220,7 @@ export default function BookingsPage() {
       setMessage({ type: "success", text: "Booking cancelled successfully!" });
       setSelectedBooking(null);
       setCancelReason("");
-      fetchInitialData();
+      fetchBookingsData();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to cancel booking." });
     } finally {
@@ -209,7 +236,7 @@ export default function BookingsPage() {
       setMessage({ type: "success", text: "Quote selected successfully!" });
       setSelectedBooking(null);
       setSelectedQuoteId("");
-      fetchInitialData();
+      fetchBookingsData();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to select quote." });
     } finally {
@@ -233,7 +260,7 @@ export default function BookingsPage() {
     try {
       await respondToJobExtension(selectedBooking._id, extId, { status });
       setMessage({ type: "success", text: `Extension ${status.toLowerCase()} successfully.` });
-      fetchInitialData();
+      fetchBookingsData();
       setSelectedBooking(null);
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to respond to extension." });
@@ -365,7 +392,21 @@ export default function BookingsPage() {
       </Card>
 
       <div>
-        <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight mb-5">Your Bookings ({bookings.length})</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-4">
+          <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight">Your Bookings ({totalBookings})</h3>
+          <form onSubmit={handleSearchSubmit} className="flex gap-2 max-w-sm w-full">
+            <Input 
+              placeholder="Search by ID or Status..." 
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="bg-white border-neutral-muted/20"
+            />
+            <Button type="submit" variant="outline" className="bg-white border-neutral-muted/20 text-primary-navy">
+              Search
+            </Button>
+          </form>
+        </div>
+        
         {isLoadingData ? (
           <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center">
             <Loader2 className="w-8 h-8 text-primary-orange animate-spin mx-auto mb-3" />
@@ -376,61 +417,116 @@ export default function BookingsPage() {
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
               <CalendarCheck className="w-10 h-10 text-gray-300" />
             </div>
-            <p className="text-gray-500 font-medium">No bookings yet. Create your first booking above.</p>
+            <p className="text-gray-500 font-medium">No bookings found.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {bookings.map((booking) => (
-              <Card key={booking._id} className="bg-white/90 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="font-heading font-bold text-gray-900 text-lg">
-                          {booking.vehicleId?.brand} {booking.vehicleId?.model}
-                        </h4>
-                        <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.status)}`}>
+          <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-sm border border-white/40 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-neutral-bg/50 border-b border-neutral-muted/10 text-sm text-neutral-dark font-medium">
+                    <th className="p-4 whitespace-nowrap">ID / Date</th>
+                    <th className="p-4 whitespace-nowrap">Vehicle</th>
+                    <th className="p-4 whitespace-nowrap">Service</th>
+                    <th className="p-4 whitespace-nowrap">Location</th>
+                    <th className="p-4 whitespace-nowrap">Total Amount</th>
+                    <th className="p-4 whitespace-nowrap">Status</th>
+                    <th className="p-4 whitespace-nowrap text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-muted/10">
+                  {bookings.map((booking) => (
+                    <tr key={booking._id} className="hover:bg-neutral-bg/30 transition-colors">
+                      <td className="p-4">
+                        <div className="text-xs font-mono text-neutral-muted mb-1">{booking._id.slice(-6)}</div>
+                        <div className="text-sm font-medium text-primary-navy whitespace-nowrap">
+                          {new Date(booking.preferredDate).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm font-bold text-gray-900">
+                        {booking.vehicleId?.brand} {booking.vehicleId?.model}
+                      </td>
+                      <td className="p-4 text-sm text-neutral-dark">
+                        {booking.serviceId?.name}
+                      </td>
+                      <td className="p-4 text-sm text-neutral-muted">
+                        {booking.cityId?.name}, {booking.cityId?.state}
+                      </td>
+                      <td className="p-4">
+                        {booking.acceptedBidId ? (
+                          <span className="text-sm font-bold text-success">
+                            ₹{
+                              ((booking.acceptedBidId as any)?.quotedAmount || 0) + 
+                              (((booking as any).jobDetails?.jobExtensions || booking.jobExtensions || [])
+                                .filter((e: any) => e.status === 'APPROVED')
+                                .reduce((sum: number, ext: any) => sum + ext.cost, 0))
+                            }
+                          </span>
+                        ) : (
+                          <span className="text-sm text-neutral-muted">-</span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <span className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap ${getStatusColor(booking.status)}`}>
                           {booking.status}
                         </span>
-                      </div>
-                      <p className="text-sm text-neutral-muted">{booking.serviceId?.name}</p>
-                      <p className="text-sm text-neutral-muted">{booking.cityId?.name}, {booking.cityId?.state}</p>
-                      <p className="text-xs text-neutral-muted mt-1">
-                        {new Date(booking.preferredDate).toLocaleString()}
-                      </p>
-                      {booking.acceptedBidId && (
-                        <p className="text-xs text-success mt-1 font-medium">
-                          Total Amount: ₹{
-                            ((booking.acceptedBidId as any)?.quotedAmount || 0) + 
-                            (((booking as any).jobDetails?.jobExtensions || booking.jobExtensions || [])
-                              .filter((e: any) => e.status === 'APPROVED')
-                              .reduce((sum: number, ext: any) => sum + ext.cost, 0))
-                          }
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mt-4 sm:mt-0">
-                      {(booking.status === "ASSIGNED" || booking.status === "IN_PROGRESS") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleTrackBooking(booking._id)}
-                          className="text-primary-navy border-primary-navy hover:bg-primary-navy/5"
-                        >
-                          <MapPin className="w-4 h-4 mr-1" /> Track Live
-                        </Button>
-                      )}
-                      <button
-                        onClick={() => handleViewDetails(booking)}
-                        className="text-sm font-medium text-primary-orange hover:text-primary-orange-dark px-3 py-1.5 rounded-lg hover:bg-neutral-bg transition-colors"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          {(booking.status === "ASSIGNED" || booking.status === "IN_PROGRESS") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleTrackBooking(booking._id)}
+                              className="text-primary-navy border-primary-navy hover:bg-primary-navy/5 h-8 px-2"
+                              title="Track Live"
+                            >
+                              <MapPin className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => handleViewDetails(booking)}
+                            className="bg-primary-orange hover:bg-primary-orange-dark text-white h-8"
+                          >
+                            Details
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 border-t border-neutral-muted/10 bg-neutral-bg/30">
+                <p className="text-sm text-neutral-muted">
+                  Showing page <span className="font-bold text-primary-navy">{currentPage}</span> of <span className="font-bold text-primary-navy">{totalPages}</span>
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className="border-neutral-muted/20"
+                  >
+                    Previous
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    className="border-neutral-muted/20"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -554,10 +650,11 @@ export default function BookingsPage() {
                     {quotes.map((quote) => (
                       <div
                         key={quote._id}
-                        className={`p-4 rounded-xl border ${selectedBooking.selectedQuote?._id === quote._id
-                          ? "border-success bg-success/5"
-                          : "border-neutral-muted/20 bg-neutral-bg"
-                          }`}
+                        className={`p-4 rounded-xl border ${
+                          (selectedBooking.acceptedBidId === quote._id || (selectedBooking.acceptedBidId as any)?._id === quote._id || quote.status === 'ACCEPTED')
+                            ? "border-success bg-success/5"
+                            : "border-neutral-muted/20 bg-neutral-bg"
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -566,12 +663,12 @@ export default function BookingsPage() {
                           </div>
                           <div className="text-right">
                             <p className="text-lg font-bold text-primary-navy">₹{quote.quotedAmount}</p>
-                            {(selectedBooking.acceptedBidId === quote._id || quote.status === "ACCEPTED" || selectedBooking.selectedQuote?._id === quote._id) && (
+                            {(selectedBooking.acceptedBidId === quote._id || (selectedBooking.acceptedBidId as any)?._id === quote._id || quote.status === "ACCEPTED") && (
                               <span className="text-xs text-success font-medium">Selected</span>
                             )}
                           </div>
                         </div>
-                        {selectedBooking.status !== "CANCELLED" && selectedBooking.status !== "COMPLETED" && selectedBooking.status !== "ACCEPTED" && !selectedBooking.selectedQuote && !selectedBooking.acceptedBidId && !quotes.some(q => q.status === "ACCEPTED") && (
+                        {selectedBooking.status !== "CANCELLED" && selectedBooking.status !== "COMPLETED" && selectedBooking.status !== "ACCEPTED" && !selectedBooking.acceptedBidId && !quotes.some(q => q.status === "ACCEPTED") && (
                           <div className="mt-3 flex justify-end">
                             <Button
                               size="sm"
