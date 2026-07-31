@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { User, Store, MapPin, Briefcase, FileText, Loader2, ShieldCheck, Upload } from "lucide-react";
+import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
 
 export default function PartnerProfilePage() {
   const [isNewProfile, setIsNewProfile] = useState(false);
@@ -52,12 +53,12 @@ export default function PartnerProfilePage() {
 
       try {
         const profileRes = await getPartnerProfile();
-        
+
         let profileData = profileRes;
         if (profileRes?.data && typeof profileRes.data === 'object' && !Array.isArray(profileRes.data) && profileRes.data.businessName) {
           profileData = profileRes.data;
         }
-        
+
         if (profileData && profileData.businessName) {
           setFormData({
             businessName: profileData.businessName || "",
@@ -95,7 +96,7 @@ export default function PartnerProfilePage() {
       const isSelected = prev.servicesOffered.includes(serviceId);
       return {
         ...prev,
-        servicesOffered: isSelected 
+        servicesOffered: isSelected
           ? prev.servicesOffered.filter(id => id !== serviceId)
           : [...prev.servicesOffered, serviceId]
       };
@@ -173,13 +174,13 @@ export default function PartnerProfilePage() {
       if (!uploadRes?.fileUrl && !uploadRes?.data?.fileUrl) {
         throw new Error("Failed to upload file. No URL returned.");
       }
-      
+
       const fileUrl = uploadRes?.data?.fileUrl || uploadRes?.fileUrl;
       await uploadKycDocument({
         documentType: kycDocType,
         documentUrl: fileUrl
       });
-      
+
       setMessage({ type: "success", text: "KYC document uploaded successfully! Status is now Under Review." });
       setVerificationStatus("UNDER_REVIEW");
       setKycFile(null);
@@ -204,11 +205,10 @@ export default function PartnerProfilePage() {
       <h2 className="text-2xl font-bold text-primary-navy">My Profile</h2>
 
       {message.text && (
-        <div className={`p-3 rounded-lg text-sm border ${
-          message.type === "success" 
-            ? "bg-success/10 text-success border-success/20" 
-            : "bg-danger/10 text-danger border-danger/20"
-        }`}>
+        <div className={`p-3 rounded-lg text-sm border ${message.type === "success"
+          ? "bg-success/10 text-success border-success/20"
+          : "bg-danger/10 text-danger border-danger/20"
+          }`}>
           {message.text}
         </div>
       )}
@@ -230,7 +230,7 @@ export default function PartnerProfilePage() {
                 onChange={handleInputChange}
                 required
               />
-              
+
               <Input
                 label="GST Number (Optional)"
                 name="gstNumber"
@@ -280,19 +280,18 @@ export default function PartnerProfilePage() {
                 <Briefcase className="w-4 h-4 mr-2 text-neutral-muted" />
                 Services Offered
               </label>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {services.map(service => {
                   const isSelected = formData.servicesOffered.includes(service._id);
                   return (
-                    <div 
+                    <div
                       key={service._id}
                       onClick={() => handleServiceToggle(service._id)}
-                      className={`p-3 rounded-lg border text-sm transition-colors cursor-pointer flex items-center justify-between ${
-                        isSelected 
-                          ? "bg-primary-orange/5 border-primary-orange text-primary-navy font-medium"
-                          : "bg-neutral-white border-neutral-muted/20 text-neutral-muted hover:border-primary-orange/50"
-                      }`}
+                      className={`p-3 rounded-lg border text-sm transition-colors cursor-pointer flex items-center justify-between ${isSelected
+                        ? "bg-primary-orange/5 border-primary-orange text-primary-navy font-medium"
+                        : "bg-neutral-white border-neutral-muted/20 text-neutral-muted hover:border-primary-orange/50"
+                        }`}
                     >
                       <span>{service.name}</span>
                       {isSelected && (
@@ -325,13 +324,12 @@ export default function PartnerProfilePage() {
           <CardContent>
             <div className="mb-6 p-4 rounded-lg bg-neutral-bg border border-neutral-muted/20 flex items-start">
               <div className="flex-1">
-                <h4 className="text-sm font-semibold text-neutral-dark mb-1">Current Status: 
-                  <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                    verificationStatus === 'APPROVED' ? 'bg-success/10 text-success' :
+                <h4 className="text-sm font-semibold text-neutral-dark mb-1">Current Status:
+                  <span className={`ml-2 px-2 py-1 rounded text-xs ${verificationStatus === 'APPROVED' ? 'bg-success/10 text-success' :
                     verificationStatus === 'REJECTED' ? 'bg-danger/10 text-danger' :
-                    verificationStatus === 'UNDER_REVIEW' ? 'bg-primary-orange/10 text-primary-orange' :
-                    'bg-neutral-muted/10 text-neutral-dark'
-                  }`}>
+                      verificationStatus === 'UNDER_REVIEW' ? 'bg-primary-orange/10 text-primary-orange' :
+                        'bg-neutral-muted/10 text-neutral-dark'
+                    }`}>
                     {verificationStatus.replace('_', ' ')}
                   </span>
                 </h4>
@@ -354,7 +352,7 @@ export default function PartnerProfilePage() {
                   ]}
                   required
                 />
-                
+
                 <div>
                   <label className="block text-sm font-medium text-neutral-dark mb-1.5">Select File (Image/PDF)</label>
                   <input
@@ -367,7 +365,7 @@ export default function PartnerProfilePage() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end pt-2">
                 <Button type="submit" isLoading={isUploadingKyc} disabled={!kycFile || isUploadingKyc}>
                   <Upload className="w-4 h-4 mr-2" /> Upload Document
@@ -377,6 +375,8 @@ export default function PartnerProfilePage() {
           </CardContent>
         </Card>
       )}
+
+      <ChangePasswordForm />
     </div>
   );
 }

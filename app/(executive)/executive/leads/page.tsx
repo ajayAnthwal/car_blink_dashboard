@@ -166,8 +166,8 @@ export default function ExecutiveLeadsPage() {
                       <span className="flex items-center"><Calendar className="w-3 h-3 mr-1"/> {new Date(lead.preferredDate).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-success/10 text-success border-success/20' : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'}`}>
-                    {lead.assignment?.assignedPartnerIds?.length > 0 ? 'Assigned' : 'Unassigned'}
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-warning/10 text-warning-dark border-warning/20' : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'}`}>
+                    {lead.assignment?.assignedPartnerIds?.length > 0 ? (lead.bids?.length > 0 ? 'Quotes Received' : 'Bidding Requested') : 'Unassigned'}
                   </span>
                 </div>
                 
@@ -183,9 +183,9 @@ export default function ExecutiveLeadsPage() {
                 </div>
 
                 {lead.assignment?.assignedPartnerIds?.length > 0 && (
-                  <div className="mb-4 p-2 bg-success/5 rounded text-xs text-success-dark flex items-center border border-success/10">
+                  <div className="mb-4 p-2 bg-warning/5 rounded text-xs text-warning-dark flex items-center border border-warning/10">
                     <UserPlus className="w-3 h-3 mr-1" />
-                    Assigned to: {lead.assignment.assignedPartnerIds.map((p: any) => p.businessName || 'Partner').join(', ')}
+                    Requested Bids From: {lead.assignment.assignedPartnerIds.map((p: any) => p.businessName || 'Partner').join(', ')}
                   </div>
                 )}
 
@@ -203,8 +203,8 @@ export default function ExecutiveLeadsPage() {
                             <div className="text-neutral-muted mt-0.5">₹{bid.quotedAmount} {bid.estimatedDuration ? `• ${bid.estimatedDuration}` : ''}</div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className="px-2 py-0.5 bg-neutral-muted/10 rounded-full text-neutral-dark font-medium">
-                              {bid.status}
+                            <span className="px-2 py-0.5 bg-neutral-muted/10 rounded-full text-neutral-dark font-medium text-[10px]">
+                              {bid.status === 'PENDING' ? 'AWAITING REVIEW' : bid.status}
                             </span>
                           </div>
                         </div>
