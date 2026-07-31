@@ -24,7 +24,7 @@ export default function EscalationsPage() {
   const fetchEscalations = async () => {
     try {
       setIsLoading(true);
-      const res = await getEscalations(1, 50, "status=OPEN");
+      const res = await getEscalations(1, 50, "status=OPEN,IN_PROGRESS");
       setEscalations(Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.escalations) ? res.escalations : (Array.isArray(res?.data?.escalations) ? res.data.escalations : (Array.isArray(res) ? res : []))));
     } catch (err) {
       console.error("Failed to load escalations", err);
