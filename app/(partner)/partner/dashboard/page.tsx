@@ -83,7 +83,7 @@ export default function PartnerDashboardPage() {
         // 1. Compute Stats
         const activeJobsCount = allJobs.filter(j => ['NOT_STARTED', 'IN_PROGRESS'].includes(j.status)).length;
         const completedJobsCount = allJobs.filter(j => j.status === 'COMPLETED').length;
-        const totalEarned = earningsData?.totalEarnings || 0;
+        const totalEarned = earningsData?.lifetimeEarnings || earningsData?.totalEarnings || 0;
         const avgRating = profileData?.rating || 0;
         const tReviews = profileData?.totalReviews || 0;
 
