@@ -398,10 +398,10 @@ export default function BookingsPage() {
                       <p className="text-xs text-neutral-muted mt-1">
                         {new Date(booking.preferredDate).toLocaleString()}
                       </p>
-                      {booking.selectedQuote && (
+                      {booking.acceptedBidId && (
                         <p className="text-xs text-success mt-1 font-medium">
                           Total Amount: ₹{
-                            (booking.selectedQuote.amount || 0) + 
+                            ((booking.acceptedBidId as any)?.quotedAmount || 0) + 
                             (((booking as any).jobDetails?.jobExtensions || booking.jobExtensions || [])
                               .filter((e: any) => e.status === 'APPROVED')
                               .reduce((sum: number, ext: any) => sum + ext.cost, 0))

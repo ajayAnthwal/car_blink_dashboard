@@ -643,113 +643,115 @@ export default function CustomerBookingDetailsPage() {
           )}
 
           {/* Billing & Payments Section */}
-          <Card className="shadow-lg border-neutral-muted/10 overflow-hidden rounded-3xl relative">
-            <CardHeader className="bg-primary-navy/5 border-b border-neutral-muted/10 pb-4">
-              <CardTitle className="font-bold text-primary-navy flex items-center text-lg">
-                <IndianRupee className="w-5 h-5 mr-2 text-primary-orange" /> Billing & Payments
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-3 mb-6 text-sm">
-                <div className="flex justify-between text-neutral-dark">
-                  <span>Base Service Quote</span>
-                  <span className="font-medium">₹{baseAmount}</span>
-                </div>
-
-                {approvedExtensions.map((ext: any, idx: number) => (
-                  <div key={idx} className="flex justify-between text-neutral-dark">
-                    <span>{ext.partName} (Extra)</span>
-                    <span className="font-medium">₹{ext.cost}</span>
+          {(booking.status !== 'PENDING' && booking.status !== 'QUOTED') && (
+            <Card className="shadow-lg border-neutral-muted/10 overflow-hidden rounded-3xl relative">
+              <CardHeader className="bg-primary-navy/5 border-b border-neutral-muted/10 pb-4">
+                <CardTitle className="font-bold text-primary-navy flex items-center text-lg">
+                  <IndianRupee className="w-5 h-5 mr-2 text-primary-orange" /> Billing & Payments
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-3 mb-6 text-sm">
+                  <div className="flex justify-between text-neutral-dark">
+                    <span>Base Service Quote</span>
+                    <span className="font-medium">₹{baseAmount}</span>
                   </div>
-                ))}
 
-                <div className="pt-3 border-t border-neutral-muted/10 flex justify-between font-bold text-primary-navy text-base">
-                  <span>Total Amount</span>
-                  <span>₹{calculatedTotalAmount}</span>
-                </div>
-                
-                {couponDiscountAmount > 0 && (
-                  <div className="flex justify-between text-success font-medium">
-                    <span className="flex items-center"><Tag className="w-4 h-4 mr-1" /> Discount ({booking.appliedCoupon})</span>
-                    <span>- ₹{couponDiscountAmount}</span>
-                  </div>
-                )}
-                
-                {couponDiscountAmount > 0 && (
-                  <div className="flex justify-between font-bold text-primary-navy text-base">
-                    <span>Revised Total</span>
-                    <span>₹{revisedTotalAmount}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between text-success font-medium">
-                  <span>Amount Paid</span>
-                  <span>- ₹{totalPaidAmount}</span>
-                </div>
-                <div className="pt-3 border-t border-neutral-muted/10 flex justify-between font-extrabold text-primary-orange text-lg">
-                  <span>Remaining Balance</span>
-                  <span>₹{remainingAmount}</span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="space-y-4">
-                {booking.appliedCoupon ? (
-                  <div className="mb-4 bg-success/10 p-3 rounded-lg border border-success/20 flex items-center justify-between">
-                    <div className="flex items-center text-success-dark font-medium">
-                      <Tag className="w-4 h-4 mr-2" /> Coupon Applied: {booking.appliedCoupon}
+                  {approvedExtensions.map((ext: any, idx: number) => (
+                    <div key={idx} className="flex justify-between text-neutral-dark">
+                      <span>{ext.partName} (Extra)</span>
+                      <span className="font-medium">₹{ext.cost}</span>
                     </div>
+                  ))}
+
+                  <div className="pt-3 border-t border-neutral-muted/10 flex justify-between font-bold text-primary-navy text-base">
+                    <span>Total Amount</span>
+                    <span>₹{calculatedTotalAmount}</span>
                   </div>
-                ) : (
-                  (needsAdvance || (remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED') || needsFinal) && (
-                    <div className="mb-4">
-                      <label className="text-sm font-medium text-neutral-dark mb-1.5 block">Promo / Coupon Code</label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value)}
-                          placeholder="Enter coupon code here"
-                          className="flex-1 bg-white border-neutral-muted/20"
-                        />
-                        <Button 
-                          onClick={handleApplyCoupon} 
-                          disabled={!couponCode.trim() || isApplyingCoupon}
-                          isLoading={isApplyingCoupon}
-                          className="bg-primary-navy hover:bg-primary-navy/90 text-white"
-                        >
-                          Apply
-                        </Button>
+                  
+                  {couponDiscountAmount > 0 && (
+                    <div className="flex justify-between text-success font-medium">
+                      <span className="flex items-center"><Tag className="w-4 h-4 mr-1" /> Discount ({booking.appliedCoupon})</span>
+                      <span>- ₹{couponDiscountAmount}</span>
+                    </div>
+                  )}
+                  
+                  {couponDiscountAmount > 0 && (
+                    <div className="flex justify-between font-bold text-primary-navy text-base">
+                      <span>Revised Total</span>
+                      <span>₹{revisedTotalAmount}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-success font-medium">
+                    <span>Amount Paid</span>
+                    <span>- ₹{totalPaidAmount}</span>
+                  </div>
+                  <div className="pt-3 border-t border-neutral-muted/10 flex justify-between font-extrabold text-primary-orange text-lg">
+                    <span>Remaining Balance</span>
+                    <span>₹{remainingAmount}</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-4">
+                  {booking.appliedCoupon ? (
+                    <div className="mb-4 bg-success/10 p-3 rounded-lg border border-success/20 flex items-center justify-between">
+                      <div className="flex items-center text-success-dark font-medium">
+                        <Tag className="w-4 h-4 mr-2" /> Coupon Applied: {booking.appliedCoupon}
                       </div>
                     </div>
-                  )
-                )}
+                  ) : (
+                    (needsAdvance || (remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED') || needsFinal) && (
+                      <div className="mb-4">
+                        <label className="text-sm font-medium text-neutral-dark mb-1.5 block">Promo / Coupon Code</label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value)}
+                            placeholder="Enter coupon code here"
+                            className="flex-1 bg-white border-neutral-muted/20"
+                          />
+                          <Button 
+                            onClick={handleApplyCoupon} 
+                            disabled={!couponCode.trim() || isApplyingCoupon}
+                            isLoading={isApplyingCoupon}
+                            className="bg-primary-navy hover:bg-primary-navy/90 text-white"
+                          >
+                            Apply
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  )}
 
-                {needsAdvance && (
-                  <Button className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingForAdvance, "ADVANCE")} isLoading={isExtensionProcessing}>
-                    Pay Advance (₹{remainingForAdvance})
-                  </Button>
-                )}
+                  {needsAdvance && (
+                    <Button className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingForAdvance, "ADVANCE")} isLoading={isExtensionProcessing}>
+                      Pay Advance (₹{remainingForAdvance})
+                    </Button>
+                  )}
 
-                {remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED' && (
-                  <Button className="w-full bg-primary-orange hover:bg-primary-orange/90 text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingAmount, "PARTIAL")} isLoading={isExtensionProcessing}>
-                    Pay Additional Charges (₹{remainingAmount})
-                  </Button>
-                )}
+                  {remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED' && (
+                    <Button className="w-full bg-primary-orange hover:bg-primary-orange/90 text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingAmount, "PARTIAL")} isLoading={isExtensionProcessing}>
+                      Pay Additional Charges (₹{remainingAmount})
+                    </Button>
+                  )}
 
-                {needsFinal && (
-                  <Button className="w-full bg-success hover:bg-success/90 text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingAmount, "FINAL")} isLoading={isExtensionProcessing}>
-                    Pay Final Bill (₹{remainingAmount})
-                  </Button>
-                )}
+                  {needsFinal && (
+                    <Button className="w-full bg-success hover:bg-success/90 text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingAmount, "FINAL")} isLoading={isExtensionProcessing}>
+                      Pay Final Bill (₹{remainingAmount})
+                    </Button>
+                  )}
 
-                {remainingAmount === 0 && (
-                  <div className="bg-success/10 text-success text-center py-3 rounded-xl font-bold flex items-center justify-center">
-                    <CheckCircle2 className="w-5 h-5 mr-2" /> Fully Paid
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  {remainingAmount === 0 && (
+                    <div className="bg-success/10 text-success text-center py-3 rounded-xl font-bold flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 mr-2" /> Fully Paid
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {booking.jobDetails?.invoiceUrl && (
             <Card className="shadow-md border-primary-orange/20 overflow-hidden rounded-3xl bg-gradient-to-b from-white to-primary-orange/5">
