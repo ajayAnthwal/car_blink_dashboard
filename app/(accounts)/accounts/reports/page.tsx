@@ -144,7 +144,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
-      </div>
 
       {reportType && reportData && (
         <Card className="mt-8 border-t-4 border-t-primary-navy shadow-lg overflow-hidden">
