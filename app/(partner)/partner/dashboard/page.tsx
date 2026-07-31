@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  Briefcase, 
-  FileText, 
-  Calendar, 
+import {
+  Briefcase,
+  FileText,
+  Calendar,
   IndianRupee,
   ChevronDown,
   Star,
@@ -14,13 +14,13 @@ import {
   CheckCircle2,
   AlertTriangle
 } from "lucide-react";
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -69,12 +69,17 @@ export default function PartnerDashboardPage() {
         ]);
 
         // Some responses might already be the data payload, some might be wrapped.
-        // Let's safely extract the data.
+        // We check for actual properties instead of `.data` because the axios interceptor's "MAGIC FIX" 
+        // sometimes incorrectly assigns `.data` to any array it finds inside the object.
         const allJobs: Job[] = jobsRes?.docs || jobsRes?.data || (Array.isArray(jobsRes) ? jobsRes : []);
         const allBids: Bid[] = bidsRes?.docs || bidsRes?.data || (Array.isArray(bidsRes) ? bidsRes : []);
-        const earningsData: EarningsSummary = earningsRes?.data !== undefined ? earningsRes.data : earningsRes;
-        const profileData: PartnerProfile = profileRes?.data !== undefined ? profileRes.data : profileRes;
+
+        const earningsData: EarningsSummary = earningsRes?.lifetimeEarnings !== undefined ? earningsRes : earningsRes?.data;
+        const profileData: PartnerProfile = profileRes?.rating !== undefined || profileRes?._id ? profileRes : profileRes?.data;
         const allLeads: Lead[] = leadsRes?.docs || leadsRes?.data || (Array.isArray(leadsRes) ? leadsRes : []);
+
+        console.log("DEBUG DASHBOARD - earningsRes:", earningsRes, "earningsData:", earningsData);
+        console.log("DEBUG DASHBOARD - profileRes:", profileRes, "profileData:", profileData);
 
         setJobs(allJobs);
         setBids(allBids);
@@ -322,26 +327,26 @@ export default function PartnerDashboardPage() {
                 <LineChart data={lineChartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                   <XAxis dataKey={lineChartData[0]?.month ? "month" : "name"} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 12, fill: '#6B7280' }} 
-                    tickFormatter={(val) => `₹${val/1000}k`}
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                    tickFormatter={(val) => `₹${val / 1000}k`}
                   />
-                  <RechartsTooltip 
+                  <RechartsTooltip
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}
                     formatter={(value: any) => [
                       Number(value || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }),
                       'Earnings'
                     ]}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey={lineChartData[0]?.amount !== undefined ? "amount" : "earnings"} 
-                    stroke="#16A34A" 
-                    strokeWidth={4} 
-                    dot={{ r: 4, strokeWidth: 2, fill: "#fff", stroke: "#16A34A" }} 
-                    activeDot={{ r: 6, fill: "#16A34A", stroke: "#fff" }} 
+                  <Line
+                    type="monotone"
+                    dataKey={lineChartData[0]?.amount !== undefined ? "amount" : "earnings"}
+                    stroke="#16A34A"
+                    strokeWidth={4}
+                    dot={{ r: 4, strokeWidth: 2, fill: "#fff", stroke: "#16A34A" }}
+                    activeDot={{ r: 6, fill: "#16A34A", stroke: "#fff" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -367,7 +372,7 @@ export default function PartnerDashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#374151', fontWeight: 500 }} width={80} />
-                  <RechartsTooltip 
+                  <RechartsTooltip
                     cursor={{ fill: '#f9fafb' }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}
                   />
