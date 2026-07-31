@@ -354,7 +354,7 @@ export const getPartnerProfile = async () => {
   return response.data;
 };
 
-export const updatePartnerProfile = async (data: Partial<{ businessName: string; businessAddress: string; gstNumber: string; latitude?: number; longitude?: number }>) => {
+export const updatePartnerProfile = async (data: Partial<{ businessName: string; businessAddress: string; gstNumber: string; latitude?: number; longitude?: number; cityId?: string; servicesOffered?: string[] }>) => {
   const response = await apiClient.patch("/partner/profile", data);
   return response.data;
 };

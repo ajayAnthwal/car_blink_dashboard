@@ -68,11 +68,13 @@ export default function PartnerDashboardPage() {
           getLeads().catch(() => ({ docs: [], data: [] }))
         ]);
 
-        const allJobs: Job[] = jobsRes?.docs || jobsRes?.data || [];
-        const allBids: Bid[] = bidsRes?.docs || bidsRes?.data || [];
-        const earningsData: EarningsSummary = earningsRes?.data;
-        const profileData: PartnerProfile = profileRes?.data;
-        const allLeads: Lead[] = leadsRes?.docs || leadsRes?.data || [];
+        // Some responses might already be the data payload, some might be wrapped.
+        // Let's safely extract the data.
+        const allJobs: Job[] = jobsRes?.docs || jobsRes?.data || (Array.isArray(jobsRes) ? jobsRes : []);
+        const allBids: Bid[] = bidsRes?.docs || bidsRes?.data || (Array.isArray(bidsRes) ? bidsRes : []);
+        const earningsData: EarningsSummary = earningsRes?.data !== undefined ? earningsRes.data : earningsRes;
+        const profileData: PartnerProfile = profileRes?.data !== undefined ? profileRes.data : profileRes;
+        const allLeads: Lead[] = leadsRes?.docs || leadsRes?.data || (Array.isArray(leadsRes) ? leadsRes : []);
 
         setJobs(allJobs);
         setBids(allBids);

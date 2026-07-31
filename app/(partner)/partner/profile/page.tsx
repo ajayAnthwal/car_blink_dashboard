@@ -148,7 +148,9 @@ export default function PartnerProfilePage() {
           businessAddress: formData.businessAddress,
           gstNumber: formData.gstNumber,
           latitude: formData.latitude,
-          longitude: formData.longitude
+          longitude: formData.longitude,
+          cityId: formData.cityId,
+          servicesOffered: formData.servicesOffered
         });
         setMessage({ type: "success", text: "Profile updated successfully!" });
       }
@@ -263,23 +265,14 @@ export default function PartnerProfilePage() {
                 </div>
               </div>
 
-              {isNewProfile ? (
-                <Select
-                  label="City"
-                  name="cityId"
-                  value={formData.cityId}
-                  onChange={handleInputChange}
-                  options={cities.map(c => ({ value: c._id, label: c.name }))}
-                  required
-                />
-              ) : (
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-neutral-dark mb-1.5">City</label>
-                  <div className="p-3 bg-neutral-bg border border-neutral-muted/20 rounded-lg text-sm text-neutral-muted">
-                    {cities.find(c => c._id === formData.cityId)?.name || "City cannot be changed after creation"}
-                  </div>
-                </div>
-              )}
+              <Select
+                label="City"
+                name="cityId"
+                value={formData.cityId}
+                onChange={handleInputChange}
+                options={cities.map(c => ({ value: c._id, label: c.name }))}
+                required
+              />
             </div>
 
             <div>
@@ -294,12 +287,12 @@ export default function PartnerProfilePage() {
                   return (
                     <div 
                       key={service._id}
-                      onClick={() => isNewProfile && handleServiceToggle(service._id)}
+                      onClick={() => handleServiceToggle(service._id)}
                       className={`p-3 rounded-lg border text-sm transition-colors cursor-pointer flex items-center justify-between ${
                         isSelected 
                           ? "bg-primary-orange/5 border-primary-orange text-primary-navy font-medium"
                           : "bg-neutral-white border-neutral-muted/20 text-neutral-muted hover:border-primary-orange/50"
-                      } ${!isNewProfile && "opacity-70 cursor-not-allowed"}`}
+                      }`}
                     >
                       <span>{service.name}</span>
                       {isSelected && (
@@ -309,9 +302,7 @@ export default function PartnerProfilePage() {
                   );
                 })}
               </div>
-              {!isNewProfile && (
-                <p className="text-xs text-neutral-muted mt-2">Services offered cannot be changed after profile creation. Contact support to modify.</p>
-              )}
+
             </div>
 
             <div className="flex justify-end pt-4 border-t border-neutral-muted/20">
