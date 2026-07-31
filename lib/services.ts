@@ -517,7 +517,9 @@ export const createEscalation = async (data: { bookingId?: string; ticketId?: st
 };
 
 export const getEscalations = async (page = 1, limit = 10, otherFilters = "") => {
-  const response = await apiClient.get(`/executive/escalations?page=${page}&limit=${limit}${otherFilters ? `&${otherFilters}` : ""}`);
+  const t = Date.now();
+  const sep = otherFilters ? "&" : "";
+  const response = await apiClient.get(`/executive/escalations?page=${page}&limit=${limit}${otherFilters ? `&${otherFilters}` : ""}&_t=${t}`);
   return response.data;
 };
 

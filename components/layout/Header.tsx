@@ -236,7 +236,7 @@ export function Header() {
                 </p>
               </div>
               <div className="p-2">
-                <DropdownMenuItem className="rounded-lg cursor-pointer p-0">
+                <DropdownMenuItem asChild className="rounded-lg cursor-pointer p-0">
                   <Link href={currentRole === 'SUPER_ADMIN' ? '/admin/profile' : `/${currentRole.toLowerCase()}/profile`} className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors duration-200">
                     <UserIcon className="w-4 h-4 mr-2 text-gray-400" />
                     My Profile

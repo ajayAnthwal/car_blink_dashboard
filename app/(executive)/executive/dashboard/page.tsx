@@ -215,7 +215,7 @@ export default function ExecutiveDashboardPage() {
       )}
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-gray-500">Leads Today</CardTitle>
@@ -252,7 +252,7 @@ export default function ExecutiveDashboardPage() {
 
         <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Pending Follow-ups</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Follow-ups</CardTitle>
             <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
               <Clock className="w-5 h-5 text-warning" />
             </div>
@@ -263,23 +263,6 @@ export default function ExecutiveDashboardPage() {
           <CardFooter className="pt-1 pb-4">
             <Link href="/executive/follow-ups/pending" className="flex items-center text-xs font-semibold text-warning hover:text-orange-600 group transition-colors">
               Take action <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardFooter>
-        </Card>
-        
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Unassigned Leads</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-              <Briefcase className="w-5 h-5 text-success" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.leadsAwaitingAssignment}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/executive/leads" className="flex items-center text-xs font-semibold text-success hover:text-green-700 group transition-colors">
-              Assign now <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
             </Link>
           </CardFooter>
         </Card>

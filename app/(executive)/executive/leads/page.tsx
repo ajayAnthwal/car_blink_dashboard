@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/Select";
 import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus } from "lucide-react";
 import { useSocket } from "@/lib/SocketContext";
+import Link from "next/link";
 
 export default function ExecutiveLeadsPage() {
   const { socket } = useSocket();
@@ -230,14 +231,21 @@ export default function ExecutiveLeadsPage() {
                   <span>Booking ID: {lead._id.substring(0,8)}</span>
                 </div>
 
-                <Button 
-                  className={`w-full flex items-center justify-center ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-neutral-muted/20 text-neutral-dark hover:bg-neutral-muted/30' : 'bg-secondary-blue hover:bg-secondary-blue/90'}`}
-                  onClick={() => setSelectedLead(lead)}
-                  variant={lead.assignment?.assignedPartnerIds?.length > 0 ? "outline" : "default"}
-                >
-                  <UserPlus className="w-4 h-4 mr-2" /> 
-                  {lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More Partners" : "Assign to Partner"}
-                </Button>
+                <div className="flex items-center space-x-3">
+                  <Button 
+                    className={`flex-1 flex items-center justify-center ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-neutral-muted/20 text-neutral-dark hover:bg-neutral-muted/30' : 'bg-secondary-blue hover:bg-secondary-blue/90'}`}
+                    onClick={() => setSelectedLead(lead)}
+                    variant={lead.assignment?.assignedPartnerIds?.length > 0 ? "outline" : "default"}
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" /> 
+                    {lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More" : "Assign to Partner"}
+                  </Button>
+                  <Button variant="outline" asChild className="flex-1 flex items-center justify-center border-gray-200 hover:bg-gray-50">
+                    <Link href={`/executive/leads/${lead._id || lead.id}`}>
+                      View Details
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
