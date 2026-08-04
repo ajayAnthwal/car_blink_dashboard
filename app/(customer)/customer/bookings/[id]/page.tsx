@@ -28,6 +28,7 @@ export default function CustomerBookingDetailsPage() {
   const [isExtensionProcessing, setIsExtensionProcessing] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [useRewardPoints, setUseRewardPoints] = useState(false);
 
   const [message, setMessage] = useState({ type: "", text: "" });
 
@@ -186,6 +187,7 @@ export default function CustomerBookingDetailsPage() {
         bookingId: booking._id || booking.id,
         amount: amount,
         paymentType: type,
+        useRewardPoints: useRewardPoints,
       };
       // Note: We no longer send couponCode here because it is applied to the booking directly.
       const response = await initiatePayment(payload);
@@ -723,6 +725,21 @@ export default function CustomerBookingDetailsPage() {
                         </div>
                       </div>
                     )
+                  )}
+
+                  {(needsAdvance || remainingAmount > 0) && booking.status !== 'COMPLETED' && (
+                    <div className="flex items-center space-x-2 py-2 border-b border-gray-100">
+                      <input 
+                        type="checkbox" 
+                        id="useRewardPoints" 
+                        className="w-4 h-4 text-primary-navy"
+                        checked={useRewardPoints}
+                        onChange={(e) => setUseRewardPoints(e.target.checked)}
+                      />
+                      <label htmlFor="useRewardPoints" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Use my Reward Points for discount
+                      </label>
+                    </div>
                   )}
 
                   {needsAdvance && (

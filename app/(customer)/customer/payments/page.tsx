@@ -33,6 +33,7 @@ export default function PaymentsPage() {
   const [amount, setAmount] = useState("");
   const [paymentType, setPaymentType] = useState("PARTIAL");
   const [couponCode, setCouponCode] = useState("");
+  const [useRewardPoints, setUseRewardPoints] = useState(false);
   
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [isLoadingPayments, setIsLoadingPayments] = useState(true);
@@ -69,6 +70,7 @@ export default function PaymentsPage() {
         bookingId,
         amount: Number(amount),
         paymentType,
+        useRewardPoints
       };
       if (couponCode.trim()) {
         payload.couponCode = couponCode.trim();
@@ -84,6 +86,7 @@ export default function PaymentsPage() {
       setAmount("");
       setPaymentType("ADVANCE");
       setCouponCode("");
+      setUseRewardPoints(false);
       fetchInitialData();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to initiate payment." });
@@ -176,6 +179,20 @@ export default function PaymentsPage() {
                 onChange={(e) => setCouponCode(e.target.value)}
               />
             </div>
+            
+            <div className="flex items-center space-x-2 py-2">
+              <input 
+                type="checkbox" 
+                id="useRewardPointsGlobal" 
+                className="w-4 h-4 text-primary-navy"
+                checked={useRewardPoints}
+                onChange={(e) => setUseRewardPoints(e.target.checked)}
+              />
+              <label htmlFor="useRewardPointsGlobal" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Use my Reward Points for discount
+              </label>
+            </div>
+
             <div className="flex justify-end">
               <Button type="submit" isLoading={isInitiating} disabled={bookings.length === 0}>
                 Pay Now

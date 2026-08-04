@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getAdminUsers, updateAdminUserStatus } from "@/lib/services";
+import { getAdminUsers, updateAdminUserStatus, updateAdminUserStats } from "@/lib/services";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Users, Loader2, Search, PowerOff, Power, UserCheck, UserX, ShieldAlert } from "lucide-react";
+import { Users, Loader2, Search, PowerOff, Power, UserCheck, UserX, ShieldAlert, Edit2 } from "lucide-react";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -14,6 +15,11 @@ export default function AdminUsersPage() {
   
   const [roleFilter, setRoleFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [editingStatsUser, setEditingStatsUser] = useState<any>(null);
+  const [editSavings, setEditSavings] = useState("");
+  const [editRewards, setEditRewards] = useState("");
+  const [isUpdatingStats, setIsUpdatingStats] = useState(false);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -57,6 +63,25 @@ export default function AdminUsersPage() {
       setMessage({ type: "error", text: err?.message || `Failed to update user role.` });
     } finally {
       setActionId(null);
+    }
+  };
+
+  const handleUpdateStats = async () => {
+    if (!editingStatsUser) return;
+    setIsUpdatingStats(true);
+    setMessage({ type: "", text: "" });
+    try {
+      await updateAdminUserStats(editingStatsUser._id, {
+        totalSavings: Number(editSavings) || 0,
+        rewardPoints: Number(editRewards) || 0,
+      });
+      setMessage({ type: "success", text: `User stats updated successfully.` });
+      setEditingStatsUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || `Failed to update user stats.` });
+    } finally {
+      setIsUpdatingStats(false);
     }
   };
 
@@ -141,6 +166,7 @@ export default function AdminUsersPage() {
                     <th className="px-6 py-4 font-bold tracking-wider">User</th>
                     <th className="px-6 py-4 font-bold tracking-wider">Contact Details</th>
                     <th className="px-6 py-4 font-bold tracking-wider">Role</th>
+                    <th className="px-6 py-4 font-bold tracking-wider">Rewards/Savings</th>
                     <th className="px-6 py-4 font-bold tracking-wider">Status</th>
                     <th className="px-6 py-4 font-bold tracking-wider text-right">Actions</th>
                   </tr>
@@ -187,6 +213,10 @@ export default function AdminUsersPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
+                        <div className="text-xs text-gray-500 font-medium">Points: <span className="font-bold text-yellow-600">{user.rewardPoints || 0}</span></div>
+                        <div className="text-xs text-gray-500 font-medium mt-1">Savings: <span className="font-bold text-teal-600">₹{user.totalSavings || 0}</span></div>
+                      </td>
+                      <td className="px-6 py-4">
                         <span className={`px-3 py-1 text-[11px] font-bold tracking-wide uppercase rounded-full inline-flex items-center gap-1.5 ${
                           user.isActive ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
                         }`}>
@@ -196,21 +226,36 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         {user.role !== 'SUPER_ADMIN' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className={`rounded-xl shadow-sm transition-all ${
-                              user.isActive 
-                                ? "border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300" 
-                                : "border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
-                            }`}
-                            onClick={() => handleToggleStatus(user._id, user.isActive)}
-                            isLoading={actionId === user._id}
-                            title={user.isActive ? "Suspend User" : "Activate User"}
-                          >
-                            {user.isActive ? <PowerOff className="w-4 h-4 mr-1.5" /> : <Power className="w-4 h-4 mr-1.5" />}
-                            {user.isActive ? "Suspend" : "Activate"}
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl shadow-sm border-gray-200 hover:bg-gray-50 hover:text-primary-navy transition-all"
+                              onClick={() => {
+                                setEditingStatsUser(user);
+                                setEditSavings(user.totalSavings?.toString() || "0");
+                                setEditRewards(user.rewardPoints?.toString() || "0");
+                              }}
+                              title="Edit Points & Savings"
+                            >
+                              <Edit2 className="w-4 h-4 text-gray-500" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className={`rounded-xl shadow-sm transition-all ${
+                                user.isActive 
+                                  ? "border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300" 
+                                  : "border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
+                              }`}
+                              onClick={() => handleToggleStatus(user._id, user.isActive)}
+                              isLoading={actionId === user._id}
+                              title={user.isActive ? "Suspend User" : "Activate User"}
+                            >
+                              {user.isActive ? <PowerOff className="w-4 h-4 mr-1.5" /> : <Power className="w-4 h-4 mr-1.5" />}
+                              {user.isActive ? "Suspend" : "Activate"}
+                            </Button>
+                          </div>
                         )}
                         {user.role === 'SUPER_ADMIN' && (
                           <span className="text-xs font-medium text-gray-400 flex items-center justify-end gap-1">
@@ -226,6 +271,64 @@ export default function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Stats Modal */}
+      {editingStatsUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h3 className="text-lg font-bold text-gray-900 font-heading">
+                Edit Rewards & Savings
+              </h3>
+              <button 
+                onClick={() => setEditingStatsUser(null)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <UserX className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Customer Name</p>
+                <p className="font-semibold text-gray-900">{editingStatsUser.fullName}</p>
+              </div>
+              <Input
+                label="Reward Points"
+                type="number"
+                min="0"
+                value={editRewards}
+                onChange={(e) => setEditRewards(e.target.value)}
+                placeholder="0"
+              />
+              <Input
+                label="Total Savings (₹)"
+                type="number"
+                min="0"
+                value={editSavings}
+                onChange={(e) => setEditSavings(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setEditingStatsUser(null)}
+                className="rounded-xl border-gray-200"
+                disabled={isUpdatingStats}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="bg-primary-navy hover:bg-secondary-blue text-white rounded-xl shadow-sm"
+                onClick={handleUpdateStats}
+                isLoading={isUpdatingStats}
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

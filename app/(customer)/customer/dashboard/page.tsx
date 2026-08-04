@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { getBookings, getPaymentHistory, getWarranties } from "@/lib/services";
+import { getBookings, getPaymentHistory, getWarranties, getCustomerStats } from "@/lib/services";
 import { Booking, Payment, Warranty } from "@/lib/types";
 import { getStatusColorTheme, StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -17,7 +17,9 @@ import {
   AlertCircle,
   IndianRupee,
   ShieldCheck,
-  BellRing
+  BellRing,
+  Gift,
+  PiggyBank
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +35,10 @@ export default function CustomerDashboardPage() {
     activeBookings: 0,
     completedServices: 0,
     totalSpent: 0,
-    activeWarranties: 0
+    totalSpent: 0,
+    activeWarranties: 0,
+    totalSavings: 0,
+    rewardPoints: 0
   });
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   const [barChartData, setBarChartData] = useState<any[]>([]);
@@ -44,10 +49,11 @@ export default function CustomerDashboardPage() {
       try {
         setLoading(true);
         // Using Promise.all to fetch all required data concurrently
-        const [bookingsRes, paymentsRes, warrantiesRes] = await Promise.all([
+        const [bookingsRes, paymentsRes, warrantiesRes, statsRes] = await Promise.all([
           getBookings().catch(() => ({ data: [] })),
           getPaymentHistory().catch(() => ({ data: [] })),
-          getWarranties().catch(() => ({ data: [] }))
+          getWarranties().catch(() => ({ data: [] })),
+          getCustomerStats().catch(() => ({ data: { totalSavings: 0, rewardPoints: 0 } }))
         ]);
 
         const allBookings: Booking[] = (Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || []));
@@ -70,7 +76,9 @@ export default function CustomerDashboardPage() {
           activeBookings: activeBookingsCount,
           completedServices: completedServicesCount,
           totalSpent: totalSpentAmount,
-          activeWarranties: activeWarrantiesCount
+          activeWarranties: activeWarrantiesCount,
+          totalSavings: statsRes?.data?.totalSavings || 0,
+          rewardPoints: statsRes?.data?.rewardPoints || 0
         });
 
         // 2. Prepare Pie Chart Data (Bookings by Status)
@@ -209,7 +217,7 @@ export default function CustomerDashboardPage() {
       )}
 
       {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
         <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-gray-500">Active Bookings</CardTitle>
@@ -276,6 +284,44 @@ export default function CustomerDashboardPage() {
           <CardFooter className="pt-1 pb-4">
             <Link href="/customer/warranty" className="flex items-center text-xs font-semibold text-gray-500 hover:text-gray-900 group transition-colors">
               View warranties <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </CardFooter>
+        </Card>
+
+        {/* Savings Card */}
+        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-gray-500">Total Savings</CardTitle>
+            <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
+              <PiggyBank className="w-5 h-5 text-teal-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900 font-heading">
+              {stats.totalSavings.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
+            </div>
+          </CardContent>
+          <CardFooter className="pt-1 pb-4">
+            <span className="text-xs font-semibold text-gray-500">
+              Lifetime savings
+            </span>
+          </CardFooter>
+        </Card>
+
+        {/* Rewards Card */}
+        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-gray-500">Reward Points</CardTitle>
+            <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
+              <Gift className="w-5 h-5 text-yellow-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.rewardPoints}</div>
+          </CardContent>
+          <CardFooter className="pt-1 pb-4">
+            <Link href="/customer/referrals" className="flex items-center text-xs font-semibold text-gray-500 hover:text-gray-900 group transition-colors">
+              Earn more <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
             </Link>
           </CardFooter>
         </Card>

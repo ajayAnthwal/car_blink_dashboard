@@ -201,6 +201,11 @@ export const deleteGarageVehicle = async (id: string) => {
 // CUSTOMER BOOKING APIs
 // ==========================================
 
+export const getCustomerStats = async () => {
+  const response = await apiClient.get("/customer/stats");
+  return response.data;
+};
+
 export const createBooking = async (data: { vehicleId: string; serviceId: string; cityId: string; description: string; preferredDate: string; latitude?: number; longitude?: number }) => {
   // If cityId is just a string name from the package, provide a valid dummy hex ID to bypass backend format validation
   let validCityId = data.cityId;
@@ -681,6 +686,11 @@ export const getAllAdminVehicles = async (page = 1, limit = 50) => {
 
 export const updateAdminUserStatus = async (id: string, data: { isActive: boolean }) => {
   const response = await apiClient.patch(`/super-admin/users/${id}/status`, data);
+  return response.data;
+};
+
+export const updateAdminUserStats = async (id: string, data: { totalSavings?: number; rewardPoints?: number }) => {
+  const response = await apiClient.patch(`/super-admin/users/${id}/rewards-savings`, data);
   return response.data;
 };
 

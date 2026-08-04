@@ -227,8 +227,14 @@ export default function ExecutiveLeadsPage() {
                 )}
 
                 <div className="flex items-center justify-between text-xs text-neutral-muted mb-4 border-t border-neutral-muted/10 pt-3">
-                  <span>Customer ID: {lead.customerId?._id?.substring(0,8) || "Unknown"}</span>
-                  <span>Booking ID: {lead._id.substring(0,8)}</span>
+                  <div className="flex flex-col space-y-1">
+                    <span>Customer ID: {lead.customerId?._id?.substring(0,8) || "Unknown"}</span>
+                    {lead.customerId?.rewardPoints !== undefined && <span className="text-yellow-600 font-bold">Points: {lead.customerId?.rewardPoints}</span>}
+                  </div>
+                  <div className="flex flex-col space-y-1 text-right">
+                    <span>Booking ID: {lead._id.substring(0,8)}</span>
+                    {lead.customerId?.totalSavings !== undefined && <span className="text-teal-600 font-bold">Savings: ₹{lead.customerId?.totalSavings}</span>}
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-3">
