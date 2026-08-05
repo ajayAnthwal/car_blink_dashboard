@@ -645,7 +645,7 @@ export default function CustomerBookingDetailsPage() {
           )}
 
           {/* Billing & Payments Section */}
-          {(booking.status !== 'PENDING' && booking.status !== 'QUOTED') && (
+          {(booking.status !== 'PENDING' && booking.status !== 'QUOTED' && booking.status !== 'CANCELLED') && (
             <Card className="shadow-lg border-neutral-muted/10 overflow-hidden rounded-3xl relative">
               <CardHeader className="bg-primary-navy/5 border-b border-neutral-muted/10 pb-4">
                 <CardTitle className="font-bold text-primary-navy flex items-center text-lg">

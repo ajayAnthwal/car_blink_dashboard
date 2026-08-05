@@ -145,6 +145,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
       {
         label: "Operations",
         items: [
+          { name: "Website Leads", href: "/executive/website-leads", icon: Target },
           { name: "Leads / Assignments", href: "/executive/leads", icon: Target },
           { name: "Follow-Ups", href: "/executive/follow-ups", icon: PhoneCall },
           { name: "Escalations", href: "/executive/escalations", icon: AlertTriangle },
