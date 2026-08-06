@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getSuperAdminTicketDetails, updateSuperAdminTicketStatus, addSuperAdminTicketReply } from "@/lib/services";
+import { getExecutiveTicketDetails, updateExecutiveTicketStatus, addExecutiveTicketReply } from "@/lib/services";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Send, CheckCircle, Clock } from "lucide-react";
 import Link from "next/link";
@@ -28,7 +28,7 @@ export default function AdminTicketDetailsPage() {
   const loadTicket = async () => {
     setIsLoading(true);
     try {
-      const res = await getSuperAdminTicketDetails(id as string);
+      const res = await getExecutiveTicketDetails(id as string);
       setTicket(res);
     } catch (error) {
       console.error("Failed to load ticket details", error);
@@ -42,7 +42,7 @@ export default function AdminTicketDetailsPage() {
     if (!confirmAction) return;
 
     try {
-      await updateSuperAdminTicketStatus(id as string, status);
+      await updateExecutiveTicketStatus(id as string, status);
       alert(`Ticket marked as ${status}.`);
       loadTicket();
     } catch (error: any) {
@@ -56,7 +56,7 @@ export default function AdminTicketDetailsPage() {
 
     setIsSending(true);
     try {
-      await addSuperAdminTicketReply(id as string, replyMessage);
+      await addExecutiveTicketReply(id as string, replyMessage);
       setReplyMessage("");
       loadTicket();
     } catch (error: any) {
@@ -144,7 +144,7 @@ export default function AdminTicketDetailsPage() {
               {ticket.bookingId && (
                 <div className="pt-4 border-t border-gray-100">
                   <p className="text-xs text-gray-500 font-bold mb-1">Related Booking</p>
-                  <Link href={`/admin/bookings/${ticket.bookingId._id}`}>
+                  <Link href={`/executive/bookings/${ticket.bookingId._id}`}>
                     <span className="text-blue-600 hover:underline text-sm font-medium">View Booking ↗</span>
                   </Link>
                 </div>

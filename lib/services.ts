@@ -1103,6 +1103,30 @@ export const addSuperAdminTicketReply = async (id: string, message: string) => {
   return response.data;
 };
 
+// ==========================================
+// EXECUTIVE TICKET APIs
+// ==========================================
+
+export const getExecutiveTickets = async (query = "") => {
+  const response = await apiClient.get(`/executive/tickets?${query}`);
+  return response.data;
+};
+
+export const getExecutiveTicketDetails = async (id: string) => {
+  const response = await apiClient.get(`/executive/tickets/${id}`);
+  return response.data;
+};
+
+export const updateExecutiveTicketStatus = async (id: string, status: string) => {
+  const response = await apiClient.patch(`/executive/tickets/${id}/status`, { status });
+  return response.data;
+};
+
+export const addExecutiveTicketReply = async (id: string, message: string) => {
+  const response = await apiClient.post(`/executive/tickets/${id}/reply`, { message });
+  return response.data;
+};
+
 export const getSuperAdminStaff = async () => {
   const response = await apiClient.get(`/super-admin/staff`);
   return response.data;
