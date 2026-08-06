@@ -19,6 +19,8 @@ export default function ExecutiveLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [partnerIds, setPartnerIds] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [radiusKm, setRadiusKm] = useState<string>("all");
+  const [isFetchingPartners, setIsFetchingPartners] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -93,12 +95,41 @@ export default function ExecutiveLeadsPage() {
       setSelectedLead(null);
       setPartnerIds([]);
       setNotes("");
+      setRadiusKm("all");
       fetchLeads();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to assign lead." });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRadiusChange = async (radius: string, lead: any) => {
+    setRadiusKm(radius);
+    setIsFetchingPartners(true);
+    try {
+      let query = "status=ACTIVE";
+      if (radius !== "all" && lead?.location?.coordinates) {
+        const lng = lead.location.coordinates[0];
+        const lat = lead.location.coordinates[1];
+        query += `&lat=${lat}&lng=${lng}&radius=${radius}`;
+      }
+      const partnersRes = await getPartnerStatus(1, 100, query);
+      setPartners(Array.isArray(partnersRes?.docs) ? partnersRes.docs : (Array.isArray(partnersRes?.partners) ? partnersRes.partners : (Array.isArray(partnersRes?.data?.partners) ? partnersRes.data.partners : (Array.isArray(partnersRes) ? partnersRes : []))));
+    } catch (err) {
+      console.error("Failed to fetch nearby partners:", err);
+    } finally {
+      setIsFetchingPartners(false);
+    }
+  };
+
+  const openAssignModal = (lead: any) => {
+    setSelectedLead(lead);
+    setPartnerIds([]);
+    setNotes("");
+    setRadiusKm("all");
+    // Default fetch all partners (or we can keep existing partners state)
+    handleRadiusChange("all", lead);
   };
 
   const handleForwardQuote = async (e: React.FormEvent) => {
@@ -240,7 +271,7 @@ export default function ExecutiveLeadsPage() {
                 <div className="flex items-center space-x-3">
                   <Button 
                     className={`flex-1 flex items-center justify-center ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-neutral-muted/20 text-neutral-dark hover:bg-neutral-muted/30' : 'bg-secondary-blue hover:bg-secondary-blue/90'}`}
-                    onClick={() => setSelectedLead(lead)}
+                    onClick={() => openAssignModal(lead)}
                     variant={lead.assignment?.assignedPartnerIds?.length > 0 ? "outline" : "default"}
                   >
                     <UserPlus className="w-4 h-4 mr-2" /> 
@@ -278,9 +309,38 @@ export default function ExecutiveLeadsPage() {
               </div>
 
               <form onSubmit={handleAssignLead} className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-neutral-dark">Select Partners</label>
+                    <select 
+                      value={radiusKm} 
+                      onChange={(e) => handleRadiusChange(e.target.value, selectedLead)}
+                      className="text-xs border border-neutral-muted/20 rounded px-2 py-1 bg-neutral-white"
+                      disabled={!selectedLead?.location?.coordinates}
+                    >
+                      <option value="all">All Partners</option>
+                      <option value="5">Within 5 km</option>
+                      <option value="10">Within 10 km</option>
+                      <option value="15">Within 15 km</option>
+                      <option value="50">Within 50 km</option>
+                    </select>
+                  </div>
+                  
+                  {!selectedLead?.location?.coordinates && (
+                    <p className="text-xs text-warning-dark bg-warning/5 p-2 rounded">
+                      Lead does not have exact coordinates. Showing all partners in city.
+                    </p>
+                  )}
+                  
                   <div>
-                    <label className="block text-sm font-medium text-neutral-dark mb-1.5">Select Partners</label>
-                    <div className="max-h-48 overflow-y-auto space-y-2 border border-neutral-muted/20 p-2 rounded-lg bg-neutral-white">
+                    <div className="max-h-48 overflow-y-auto space-y-2 border border-neutral-muted/20 p-2 rounded-lg bg-neutral-white relative">
+                      {isFetchingPartners && (
+                        <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
+                          <Loader2 className="w-6 h-6 animate-spin text-primary-orange" />
+                        </div>
+                      )}
+                      {partners.length === 0 && !isFetchingPartners && (
+                        <p className="text-center text-sm text-neutral-muted py-4">No partners found.</p>
+                      )}
                       {partners.map(p => (
                         <div key={p._id} className="flex items-center space-x-2 p-2 hover:bg-neutral-muted/10 rounded cursor-pointer">
                           <input 
