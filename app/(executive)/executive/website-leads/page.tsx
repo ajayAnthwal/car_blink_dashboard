@@ -3,18 +3,25 @@
 import React, { useState, useEffect } from "react";
 import { getAllWebsiteLeads } from "@/lib/services";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X } from "lucide-react";
+import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
 export default function MarketingLeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  
+  // Pagination & Filters
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const limit = 20;
 
   const fetchLeads = async () => {
     setIsLoading(true);
     try {
-      const res = await getAllWebsiteLeads(1, 100);
+      const res = await getAllWebsiteLeads(page, limit, "", search, sourceFilter);
       let leadsArray = [];
       if (Array.isArray(res)) leadsArray = res;
       else if (res?.data && Array.isArray(res.data)) leadsArray = res.data;
@@ -22,6 +29,8 @@ export default function MarketingLeadsPage() {
       else if (res?.docs && Array.isArray(res.docs)) leadsArray = res.docs;
       
       setLeads(leadsArray);
+      if (res?.totalPages) setTotalPages(res.totalPages);
+      else if (res?.data?.totalPages) setTotalPages(res.data.totalPages);
     } catch (error) {
       console.error("Failed to load website leads", error);
     } finally {
@@ -31,7 +40,13 @@ export default function MarketingLeadsPage() {
 
   useEffect(() => {
     fetchLeads();
-  }, []);
+  }, [page, sourceFilter]); // Refetch when page or source filter changes
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    fetchLeads();
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in pb-12 p-4">
@@ -48,10 +63,37 @@ export default function MarketingLeadsPage() {
       </div>
 
       <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200">
-        <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
+        <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <CardTitle className="text-lg text-primary-navy flex items-center gap-2">
             <ExternalLink className="w-5 h-5 text-primary-orange" /> Lead Submissions
           </CardTitle>
+          
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-64">
+              <input 
+                type="text" 
+                placeholder="Search by name, phone..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+              />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            </form>
+            
+            <div className="relative w-full sm:w-48">
+              <select 
+                value={sourceFilter}
+                onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
+                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange appearance-none bg-white"
+              >
+                <option value="all">All Sources</option>
+                <option value="WEBSITE_QUOTE">Website Quote</option>
+                <option value="QUICK_CALLBACK">Quick Callback</option>
+                <option value="WORKSHOP_PARTNER">Workshop Partner</option>
+              </select>
+              <Filter className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -131,6 +173,31 @@ export default function MarketingLeadsPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+          
+          {/* Pagination Controls */}
+          {!isLoading && totalPages > 1 && (
+            <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
+              <span className="text-sm text-gray-500">
+                Page <span className="font-bold text-gray-900">{page}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
+              </span>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Prev
+                </button>
+                <button 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </CardContent>
