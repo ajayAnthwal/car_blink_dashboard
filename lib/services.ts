@@ -272,8 +272,8 @@ export const createSupportTicket = async (data: { bookingId: string; subject: st
   return response.data;
 };
 
-export const getSupportTickets = async () => {
-  const response = await apiClient.get("/customer/support-tickets");
+export const getSupportTickets = async (params?: { page?: number; limit?: number; search?: string }) => {
+  const response = await apiClient.get("/customer/support-tickets", { params });
   return response.data;
 };
 

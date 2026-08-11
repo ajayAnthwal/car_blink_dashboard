@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { HelpCircle, X, Send, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { HelpCircle, Send, Loader2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, MessageSquareWarning } from "lucide-react";
 
 interface Booking {
   _id: string;
@@ -41,6 +41,12 @@ export default function SupportPage() {
   const [replyMessage, setReplyMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [limit] = useState(10);
+  
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,23 +55,42 @@ export default function SupportPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Load Bookings once
   useEffect(() => {
-    fetchInitialData();
+    const fetchBookings = async () => {
+      try {
+        const res = await getBookings();
+        setBookings(Array.isArray(res) ? res : (res?.docs || res?.data || []));
+      } catch (err) {
+        console.error("Failed to load bookings", err);
+      } finally {
+        setIsLoadingBookings(false);
+      }
+    };
+    fetchBookings();
   }, []);
 
-  const fetchInitialData = async () => {
+  // Debounced Search and Fetch Tickets
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchTickets();
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, currentPage]);
+
+  const fetchTickets = async () => {
+    setIsLoadingTickets(true);
     try {
-      const [bookingsRes, ticketsRes] = await Promise.all([
-        getBookings(),
-        getSupportTickets(),
-      ]);
-      setBookings((Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || [])));
-      const data = (Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.docs || ticketsRes?.data || []));
+      const res = await getSupportTickets({ page: currentPage, limit, search: searchQuery });
+      const data = Array.isArray(res) ? res : (res?.tickets || res?.data?.tickets || res?.docs || []);
       setTickets(data);
+      
+      const count = res?.total || res?.data?.total || data.length;
+      setTotalCount(count);
+      setTotalPages(Math.ceil(count / limit) || 1);
     } catch (err) {
-      console.error("Failed to load initial data", err);
+      console.error("Failed to load tickets", err);
     } finally {
-      setIsLoadingBookings(false);
       setIsLoadingTickets(false);
     }
   };
@@ -87,7 +112,7 @@ export default function SupportPage() {
       setSubject("");
       setDescription("");
       setPriority("MEDIUM");
-      fetchInitialData();
+      fetchTickets();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to submit query." });
     } finally {
@@ -104,8 +129,6 @@ export default function SupportPage() {
     setIsLoadingDetails(true);
     try {
       const res = await getSupportTicketById(ticket._id);
-      // The API interceptor returns the ticket object directly, but may alias its array fields.
-      // So 'res' is the ticket object itself.
       setSelectedTicket(res._id ? res : (res?.data?._id ? res.data : res));
       setExpandedId(ticket._id);
       setReplyMessage("");
@@ -233,12 +256,17 @@ export default function SupportPage() {
 
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
-          <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight">Your Queries ({tickets.length})</h3>
+          <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight">
+            Your Queries {totalCount > 0 && `(${totalCount})`}
+          </h3>
           <div className="w-full sm:w-64">
             <Input 
               placeholder="Search by query title..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1); // Reset to page 1 on search
+              }}
             />
           </div>
         </div>
@@ -253,111 +281,166 @@ export default function SupportPage() {
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
               <HelpCircle className="w-10 h-10 text-gray-300" />
             </div>
-            <p className="text-gray-500 font-medium">No queries yet.</p>
+            <p className="text-gray-500 font-medium">No queries found.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {tickets.filter(t => t.subject.toLowerCase().includes(searchQuery.toLowerCase())).map((ticket) => (
-              <Card key={ticket._id} className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between cursor-pointer" onClick={() => handleViewDetails(ticket)}>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="font-heading font-bold text-gray-900 text-lg">{ticket.subject}</h4>
-                        <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(ticket.priority)}`}>
-                          {ticket.priority}
-                        </span>
-                        <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(ticket.status)}`}>
-                          {ticket.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-neutral-muted line-clamp-1">{ticket.description}</p>
-                      <p className="text-xs text-neutral-muted mt-1">
-                        Booking: {ticket.bookingId?.vehicleId?.brand} {ticket.bookingId?.vehicleId?.model}
-                      </p>
-                    </div>
-                    <button className="text-neutral-muted hover:text-neutral-dark p-1">
-                      {expandedId === ticket._id ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-
-                  {expandedId === ticket._id && (
-                    <div className="mt-4 pt-4 border-t border-neutral-muted/10 animate-in fade-in duration-300">
-                      {isLoadingDetails ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="w-6 h-6 text-primary-orange animate-spin" />
-                        </div>
-                      ) : selectedTicket && selectedTicket._id === ticket._id ? (
-                        <div className="flex flex-col h-[400px]">
-                          {/* Chat Messages Area */}
-                          <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 space-y-4 mb-4">
-                            {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
-                              selectedTicket.messages.map((reply: any) => {
-                                const isCustomer = reply.senderRole === "CUSTOMER";
-                                return (
-                                  <div
-                                    key={reply._id}
-                                    className={`flex w-full ${isCustomer ? 'justify-end' : 'justify-start'}`}
-                                  >
-                                    <div className={`max-w-[80%] flex flex-col ${isCustomer ? 'items-end' : 'items-start'}`}>
-                                      <span className="text-[11px] font-medium text-gray-400 mb-1 px-1">
-                                        {isCustomer ? "You" : "Support Team"}
-                                      </span>
-                                      <div
-                                        className={`px-4 py-2.5 rounded-2xl text-sm shadow-sm ${
-                                          isCustomer 
-                                            ? 'bg-primary-navy text-white rounded-tr-sm' 
-                                            : 'bg-gray-100 text-gray-800 rounded-tl-sm border border-gray-200'
-                                        }`}
-                                      >
-                                        <p className="whitespace-pre-wrap leading-relaxed">{reply.message}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })
+          <div className="bg-white rounded-2xl shadow-subtle border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100 text-sm font-semibold text-gray-500">
+                    <th className="py-4 px-6 uppercase tracking-wider">Subject</th>
+                    <th className="py-4 px-6 uppercase tracking-wider">Booking</th>
+                    <th className="py-4 px-6 uppercase tracking-wider">Priority</th>
+                    <th className="py-4 px-6 uppercase tracking-wider">Status</th>
+                    <th className="py-4 px-6 uppercase tracking-wider text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {tickets.map((ticket) => (
+                    <React.Fragment key={ticket._id}>
+                      <tr 
+                        className={`hover:bg-gray-50/50 transition-colors cursor-pointer ${expandedId === ticket._id ? 'bg-gray-50/50' : ''}`}
+                        onClick={() => handleViewDetails(ticket)}
+                      >
+                        <td className="py-4 px-6">
+                          <p className="font-heading font-bold text-gray-900 line-clamp-1">{ticket.subject}</p>
+                          <p className="text-xs text-neutral-muted line-clamp-1 mt-1">{ticket.description}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <p className="text-sm font-medium text-gray-900">
+                            {ticket.bookingId?.vehicleId?.brand} {ticket.bookingId?.vehicleId?.model}
+                          </p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(ticket.priority)}`}>
+                            {ticket.priority}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(ticket.status)}`}>
+                            {ticket.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <button className="text-neutral-muted hover:text-primary-navy p-1 transition-colors">
+                            {expandedId === ticket._id ? (
+                              <ChevronUp className="w-5 h-5" />
                             ) : (
-                              <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
-                                <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100">
-                                  <MessageSquareWarning className="w-5 h-5 text-gray-300" />
-                                </div>
-                                <p className="text-sm text-gray-500 font-medium">No messages yet.<br/>Start the conversation below.</p>
-                              </div>
+                              <ChevronDown className="w-5 h-5" />
                             )}
-                          </div>
+                          </button>
+                        </td>
+                      </tr>
+                      {/* Expanded View */}
+                      {expandedId === ticket._id && (
+                        <tr>
+                          <td colSpan={5} className="p-0 border-b border-gray-100 bg-white">
+                            <div className="p-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                              {isLoadingDetails ? (
+                                <div className="flex items-center justify-center py-12">
+                                  <Loader2 className="w-6 h-6 text-primary-orange animate-spin" />
+                                </div>
+                              ) : selectedTicket && selectedTicket._id === ticket._id ? (
+                                <div className="flex flex-col h-[400px] max-w-4xl mx-auto bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
+                                  {/* Chat Messages Area */}
+                                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-5">
+                                    {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
+                                      selectedTicket.messages.map((reply: any) => {
+                                        const isCustomer = reply.senderRole === "CUSTOMER";
+                                        return (
+                                          <div
+                                            key={reply._id}
+                                            className={`flex w-full ${isCustomer ? 'justify-end' : 'justify-start'}`}
+                                          >
+                                            <div className={`max-w-[85%] flex flex-col ${isCustomer ? 'items-end' : 'items-start'}`}>
+                                              <span className="text-[11px] font-medium text-gray-400 mb-1 px-1">
+                                                {isCustomer ? "You" : "Support Team"}
+                                              </span>
+                                              <div
+                                                className={`px-5 py-3 rounded-2xl text-sm shadow-sm ${
+                                                  isCustomer 
+                                                    ? 'bg-primary-navy text-white rounded-tr-sm' 
+                                                    : 'bg-white text-gray-800 rounded-tl-sm border border-gray-100'
+                                                }`}
+                                              >
+                                                <p className="whitespace-pre-wrap leading-relaxed">{reply.message}</p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })
+                                    ) : (
+                                      <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-sm">
+                                          <MessageSquareWarning className="w-5 h-5 text-gray-300" />
+                                        </div>
+                                        <p className="text-sm text-gray-500 font-medium">No messages yet.<br/>Start the conversation below.</p>
+                                      </div>
+                                    )}
+                                  </div>
 
-                          {/* Reply Input Area */}
-                          <div className="pt-3 border-t border-gray-100 shrink-0">
-                            <form onSubmit={handleReply} className="flex space-x-3 items-end relative">
-                              <div className="flex-1 relative">
-                                <Input
-                                  placeholder="Type your reply here..."
-                                  value={replyMessage}
-                                  onChange={(e) => setReplyMessage(e.target.value)}
-                                  className="pr-12 bg-gray-50 border-gray-200 focus:bg-white rounded-xl"
-                                />
-                              </div>
-                              <Button 
-                                type="submit" 
-                                className="rounded-xl px-5 h-10 shadow-sm"
-                                isLoading={isReplying} 
-                                disabled={!replyMessage.trim()}
-                              >
-                                <Send className="w-4 h-4 mr-2" /> Send
-                              </Button>
-                            </form>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                                  {/* Reply Input Area */}
+                                  <div className="p-4 bg-white border-t border-gray-100 shrink-0">
+                                    <form onSubmit={handleReply} className="flex space-x-3 items-end">
+                                      <div className="flex-1 relative">
+                                        <Input
+                                          placeholder="Type your reply here..."
+                                          value={replyMessage}
+                                          onChange={(e) => setReplyMessage(e.target.value)}
+                                          className="bg-gray-50/50 border-gray-200 focus:bg-white rounded-xl"
+                                        />
+                                      </div>
+                                      <Button 
+                                        type="submit" 
+                                        className="rounded-xl px-6 h-10 shadow-sm"
+                                        isLoading={isReplying} 
+                                        disabled={!replyMessage.trim()}
+                                      >
+                                        <Send className="w-4 h-4 mr-2" /> Send
+                                      </Button>
+                                    </form>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50">
+                <span className="text-sm text-gray-500 font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white border-gray-200 hover:bg-gray-50 hover:text-primary-navy text-gray-600 rounded-lg"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1 || isLoadingTickets}
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white border-gray-200 hover:bg-gray-50 hover:text-primary-navy text-gray-600 rounded-lg"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || isLoadingTickets}
+                  >
+                    Next <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
