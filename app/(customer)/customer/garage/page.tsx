@@ -417,12 +417,19 @@ export default function MyGaragePage() {
                         </div>
                         <div className="flex items-center">
                           <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-                          {booking.cityId?.name || "N/A"}
+                          {booking.cityId?.name || booking.description?.match(/\[Location:\s*(.*?)\]/)?.[1] || "N/A"}
                         </div>
                       </div>
                       <div className="pt-3 border-t border-gray-50 flex justify-between items-center">
                         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Amount</span>
-                        <span className="font-bold text-gray-900">₹{booking.totalAmount || "0"}</span>
+                        <span className="font-bold text-gray-900">
+                          ₹{booking.acceptedBidId ? (
+                              ((booking.acceptedBidId as any)?.quotedAmount || 0) + 
+                              (((booking as any).jobDetails?.jobExtensions || booking.jobExtensions || [])
+                                .filter((e: any) => e.status === 'APPROVED')
+                                .reduce((sum: number, ext: any) => sum + ext.cost, 0))
+                            ) : "0"}
+                        </span>
                       </div>
                     </div>
                   ))}
