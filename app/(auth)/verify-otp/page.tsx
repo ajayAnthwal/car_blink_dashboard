@@ -31,7 +31,7 @@ function VerifyOTPContent() {
       const data = await verifyOtp({ identifier, otp });
       
       const { user, tokens } = data;
-      login(user, tokens.accessToken, tokens.refreshToken);
+      await login(user, tokens.accessToken, tokens.refreshToken);
       
       const route = ROLE_ROUTES[user.role] || "/";
       router.push(route);

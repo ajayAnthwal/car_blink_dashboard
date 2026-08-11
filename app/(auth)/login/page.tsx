@@ -31,9 +31,9 @@ function LoginContent() {
       setApiAccessToken(ssoToken);
       
       getCurrentUserProfile()
-        .then((user) => {
+        .then(async (user) => {
           // Use ssoToken as refresh token temporarily or just pass it twice
-          login(user, ssoToken, ssoToken);
+          await login(user, ssoToken, ssoToken);
           const route = ROLE_ROUTES[user.role] || "/";
           router.push(route);
         })
@@ -54,7 +54,7 @@ function LoginContent() {
       const data = await loginUser({ identifier, password });
 
       const { user, tokens } = data;
-      login(user, tokens.accessToken, tokens.refreshToken);
+      await login(user, tokens.accessToken, tokens.refreshToken);
 
       // Redirect based on role
       const route = ROLE_ROUTES[user.role] || "/";

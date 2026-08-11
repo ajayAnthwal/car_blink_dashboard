@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { setApiAccessToken, setTokenRefreshProvider, setLogoutCallback } from "@/lib/axios";
 import { ROLE_ROUTES, Role } from "@/lib/constants";
 import { logoutUser, refreshToken, getCurrentUserProfile } from "@/lib/services";
+import { setSessionCookie, clearSessionCookie } from "@/app/actions/auth";
 
 interface User {
   id?: string;
@@ -34,13 +35,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   const handleLogout = async () => {
-    // Call the backend logout if we have a token
-    if (accessToken || localStorage.getItem("refreshToken")) {
-      try {
-        await logoutUser();
-      } catch (e) {
-        // Ignore API errors on logout
-      }
+    try {
+      await logoutUser();
+      await clearSessionCookie();
+    } catch (error) {
+      console.error("Logout failed", error);
     }
 
     setUser(null);
@@ -49,10 +48,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     router.push("/login");
   };
 
-  const handleLogin = (newUser: User, newAccessToken: string, newRefreshToken: string) => {
+  const handleLogin = async (newUser: User, newAccessToken: string, newRefreshToken: string) => {
     setUser(newUser);
     setAccessToken(newAccessToken);
     setApiAccessToken(newAccessToken);
+    await setSessionCookie(newAccessToken);
   };
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Hydrate user profile
           const userProfile = await getCurrentUserProfile();
-          handleLogin(userProfile, newAccessToken, "");
+          await handleLogin(userProfile, newAccessToken, "");
         } else {
           setIsLoading(false);
         }
