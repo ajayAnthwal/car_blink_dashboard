@@ -198,24 +198,6 @@ export default function CustomerDashboardPage() {
         </div>
       </div>
 
-      {/* Actionable Callout for Quotes */}
-      {quotesWaiting.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-500">
-          <div className="flex items-center">
-            <div className="bg-primary-orange/20 p-2 rounded-full mr-3 shrink-0">
-              <BellRing className="w-5 h-5 text-primary-orange" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-900">Quotes ready for review</h3>
-              <p className="text-sm text-gray-600 font-medium mt-0.5">You have {quotesWaiting.length} booking(s) with quotes waiting for your approval.</p>
-            </div>
-          </div>
-          <Button asChild size="sm" className="bg-primary-orange hover:bg-primary-orange-dark text-white shrink-0">
-            <Link href="/customer/bookings">Review Quotes</Link>
-          </Button>
-        </div>
-      )}
-
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
         <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
@@ -327,7 +309,42 @@ export default function CustomerDashboardPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Pending Quotes Section */}
+      {quotesWaiting.length > 0 && (
+        <div className="mt-6 animate-in fade-in duration-500">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <BellRing className="w-5 h-5 mr-2 text-primary-orange animate-bounce" />
+            Action Required: Pending Quotes
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {quotesWaiting.map((booking) => (
+              <Card key={booking._id} className="bg-white/90 backdrop-blur-md shadow-sm border-orange-200 hover:border-primary-orange/50 hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-1 h-full bg-primary-orange"></div>
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">ID: {booking._id.substring(booking._id.length - 6).toUpperCase()}</p>
+                      <h3 className="font-bold text-gray-900 line-clamp-1">{typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service'}</h3>
+                    </div>
+                    <StatusBadge status="QUOTED" />
+                  </div>
+                  <div className="flex items-center text-sm text-gray-600 mb-4">
+                    <Car className="w-4 h-4 mr-2 text-gray-400" />
+                    <span className="line-clamp-1">{typeof booking.vehicleId === 'object' ? `${booking.vehicleId.brand} ${booking.vehicleId.model}` : 'Your Vehicle'}</span>
+                  </div>
+                  <Button asChild className="w-full bg-primary-orange hover:bg-primary-orange-dark text-white font-semibold shadow-sm group-hover:shadow transition-all duration-300">
+                    <Link href={`/customer/bookings/${booking._id}`}>
+                      Review & Accept Quote <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {/* Bookings Chart */}
         <Card className="bg-white/90 backdrop-blur-md shadow-sm border-white/40 flex flex-col hover:shadow-md transition-shadow duration-300">
           <CardHeader>
