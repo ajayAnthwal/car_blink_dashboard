@@ -440,9 +440,23 @@ export default function CustomerDashboardPage() {
                         <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0">
                           <Wrench className="w-4 h-4 text-gray-500" />
                         </div>
-                        <span className="text-gray-900 font-heading">
-                          {typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service Appointment'}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-gray-900 font-heading">
+                            {typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service Appointment'}
+                          </span>
+                          {booking.assignedExecutiveId && typeof booking.assignedExecutiveId === 'object' && (
+                            <div className="text-[10px] uppercase font-bold tracking-wider text-secondary-blue mt-1.5 border border-secondary-blue/30 bg-secondary-blue/10 px-2 py-0.5 rounded-md inline-flex items-center w-max">
+                              <span className="w-1.5 h-1.5 rounded-full bg-secondary-blue mr-1.5"></span>
+                              Assigned to {booking.assignedExecutiveId.fullName} (Executive)
+                            </div>
+                          )}
+                          {booking.assignedPartnerId && typeof booking.assignedPartnerId === 'object' && (
+                            <div className="text-[10px] uppercase font-bold tracking-wider text-success mt-1.5 border border-success/30 bg-success/10 px-2 py-0.5 rounded-md inline-flex items-center w-max">
+                              <span className="w-1.5 h-1.5 rounded-full bg-success mr-1.5"></span>
+                              Assigned to {booking.assignedPartnerId.businessName} (Partner)
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-gray-600 font-medium">

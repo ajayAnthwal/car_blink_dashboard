@@ -25,6 +25,13 @@ export default function ExecutiveLeadsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   
+  const [filterByService, setFilterByService] = useState<boolean>(false);
+  
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+  const [editFollowUpDate, setEditFollowUpDate] = useState("");
+  const [editRemarks, setEditRemarks] = useState("");
+  const [isUpdatingLead, setIsUpdatingLead] = useState(false);
+  
   const [forwardBidData, setForwardBidData] = useState<{ leadId: string, bids: any[] } | null>(null);
   const [selectedBidIds, setSelectedBidIds] = useState<string[]>([]);
 
@@ -104,8 +111,9 @@ export default function ExecutiveLeadsPage() {
     }
   };
 
-  const handleRadiusChange = async (radius: string, lead: any) => {
+  const handleFilterChange = async (radius: string, byService: boolean, lead: any) => {
     setRadiusKm(radius);
+    setFilterByService(byService);
     setIsFetchingPartners(true);
     try {
       let query = "status=ACTIVE";
@@ -114,10 +122,14 @@ export default function ExecutiveLeadsPage() {
         const lat = lead.location.coordinates[1];
         query += `&lat=${lat}&lng=${lng}&radius=${radius}`;
       }
+      if (byService && lead?.serviceId?._id) {
+        query += `&serviceId=${lead.serviceId._id}`;
+      }
       const partnersRes = await getPartnerStatus(1, 100, query);
-      setPartners(Array.isArray(partnersRes?.docs) ? partnersRes.docs : (Array.isArray(partnersRes?.partners) ? partnersRes.partners : (Array.isArray(partnersRes?.data?.partners) ? partnersRes.data.partners : (Array.isArray(partnersRes) ? partnersRes : []))));
+      const fetchedPartners = Array.isArray(partnersRes?.docs) ? partnersRes.docs : (Array.isArray(partnersRes) ? partnersRes : []);
+      setPartners(fetchedPartners);
     } catch (err) {
-      console.error("Failed to fetch nearby partners:", err);
+      console.error("Failed to fetch partners", err);
     } finally {
       setIsFetchingPartners(false);
     }
@@ -128,8 +140,24 @@ export default function ExecutiveLeadsPage() {
     setPartnerIds([]);
     setNotes("");
     setRadiusKm("all");
-    // Default fetch all partners (or we can keep existing partners state)
-    handleRadiusChange("all", lead);
+    setFilterByService(false);
+    handleFilterChange("all", false, lead);
+  };
+
+  const handleUpdateLead = async (leadId: string) => {
+    setIsUpdatingLead(true);
+    try {
+      await updateExecutiveLead(leadId, { 
+        followUpDate: editFollowUpDate || undefined, 
+        remarks: editRemarks 
+      });
+      setEditingLeadId(null);
+      fetchLeads();
+    } catch (err) {
+      console.error("Failed to update lead", err);
+    } finally {
+      setIsUpdatingLead(false);
+    }
   };
 
   const handleForwardQuote = async (e: React.FormEvent) => {
@@ -268,6 +296,58 @@ export default function ExecutiveLeadsPage() {
                   </div>
                 </div>
 
+                {/* Follow up & Remarks */}
+                <div className="bg-neutral-bg rounded-lg p-3 mb-4 text-xs border border-neutral-muted/10">
+                  {editingLeadId === lead._id ? (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-neutral-dark mb-1">Follow-up Date</label>
+                        <input 
+                          type="datetime-local" 
+                          className="w-full border rounded p-1"
+                          value={editFollowUpDate}
+                          onChange={e => setEditFollowUpDate(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-neutral-dark mb-1">Remarks</label>
+                        <input 
+                          type="text" 
+                          className="w-full border rounded p-1"
+                          placeholder="e.g., Called customer, waiting for reply"
+                          value={editRemarks}
+                          onChange={e => setEditRemarks(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex space-x-2 pt-1">
+                        <Button size="sm" onClick={() => handleUpdateLead(lead._id)} isLoading={isUpdatingLead} className="flex-1 text-[10px] h-6 bg-secondary-blue">Save</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingLeadId(null)} className="flex-1 text-[10px] h-6">Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-semibold text-primary-navy mb-1 flex items-center">
+                          <Calendar className="w-3 h-3 mr-1" /> Follow-up
+                        </div>
+                        <div className="text-neutral-dark mb-1">
+                          Date: <span className="font-medium">{lead.followUpDate ? new Date(lead.followUpDate).toLocaleString() : 'Not Set'}</span>
+                        </div>
+                        <div className="text-neutral-muted italic">
+                          {lead.remarks || 'No remarks added.'}
+                        </div>
+                      </div>
+                      <button onClick={() => {
+                        setEditingLeadId(lead._id);
+                        setEditFollowUpDate(lead.followUpDate ? new Date(new Date(lead.followUpDate).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : "");
+                        setEditRemarks(lead.remarks || "");
+                      }} className="text-secondary-blue hover:underline text-[10px]">
+                        Edit
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center space-x-3">
                   <Button 
                     className={`flex-1 flex items-center justify-center ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-neutral-muted/20 text-neutral-dark hover:bg-neutral-muted/30' : 'bg-secondary-blue hover:bg-secondary-blue/90'}`}
@@ -311,18 +391,24 @@ export default function ExecutiveLeadsPage() {
               <form onSubmit={handleAssignLead} className="space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-medium text-neutral-dark">Select Partners</label>
-                    <select 
-                      value={radiusKm} 
-                      onChange={(e) => handleRadiusChange(e.target.value, selectedLead)}
-                      className="text-xs border border-neutral-muted/20 rounded px-2 py-1 bg-neutral-white"
-                      disabled={!selectedLead?.location?.coordinates}
-                    >
-                      <option value="all">All Partners</option>
-                      <option value="5">Within 5 km</option>
-                      <option value="10">Within 10 km</option>
-                      <option value="15">Within 15 km</option>
-                      <option value="50">Within 50 km</option>
-                    </select>
+                    <div className="flex space-x-2">
+                      <label className="flex items-center space-x-1 text-xs">
+                        <input type="checkbox" checked={filterByService} onChange={(e) => handleFilterChange(radiusKm, e.target.checked, selectedLead)} />
+                        <span>Filter by Service</span>
+                      </label>
+                      <select 
+                        value={radiusKm} 
+                        onChange={(e) => handleFilterChange(e.target.value, filterByService, selectedLead)}
+                        className="text-xs border border-neutral-muted/20 rounded px-2 py-1 bg-neutral-white"
+                        disabled={!selectedLead?.location?.coordinates}
+                      >
+                        <option value="all">All Partners</option>
+                        <option value="5">Within 5 km</option>
+                        <option value="10">Within 10 km</option>
+                        <option value="15">Within 15 km</option>
+                        <option value="50">Within 50 km</option>
+                      </select>
+                    </div>
                   </div>
                   
                   {!selectedLead?.location?.coordinates && (

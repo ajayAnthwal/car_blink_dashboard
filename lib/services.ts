@@ -478,6 +478,16 @@ export const getExecutiveLeadById = async (id: string) => {
   return response.data;
 };
 
+export const updateExecutiveLead = async (id: string, data: { followUpDate?: string; remarks?: string }) => {
+  const response = await apiClient.patch(`/executive/leads/${id}`, data);
+  return response.data;
+};
+
+export const convertWebsiteLeadToBooking = async (id: string, data: { serviceId: string; cityId: string; vehicleBrand: string; vehicleModel: string }) => {
+  const response = await apiClient.post(`/executive/leads/${id}/convert`, data);
+  return response.data;
+};
+
 export const assignLeadToPartner = async (id: string, data: { partnerIds: string[]; notes?: string }) => {
   const response = await apiClient.patch(`/executive/leads/${id}/assign-partner`, data);
   return response.data;

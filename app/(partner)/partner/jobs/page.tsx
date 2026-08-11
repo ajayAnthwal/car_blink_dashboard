@@ -102,12 +102,20 @@ export default function PartnerJobsPage() {
     }
   };
 
-  const handleCompleteJob = async (id: string) => {
+  const handleCompleteJob = async (job: any) => {
+    if (!job.invoiceUrl && !invoiceUrl) {
+      setMessage({ type: "error", text: "Please upload an invoice document before completing the job." });
+      return;
+    }
+
     setIsCompleting(true);
     setMessage({ type: "", text: "" });
     try {
-      const payload = finalAmount ? { finalAmount: parseFloat(finalAmount) } : undefined;
-      await completeJob(id, payload);
+      const payload: any = {};
+      if (finalAmount) payload.finalAmount = parseFloat(finalAmount);
+      if (invoiceUrl) payload.invoiceUrl = invoiceUrl;
+
+      await completeJob(job._id, payload);
       setMessage({ type: "success", text: "Job marked as complete!" });
       setFinalAmount("");
       fetchJobs();
@@ -475,7 +483,7 @@ export default function PartnerJobsPage() {
                               value={finalAmount}
                               onChange={(e) => setFinalAmount(e.target.value)}
                             />
-                            <Button onClick={() => handleCompleteJob(job._id)} isLoading={isCompleting} className="bg-success hover:bg-success/90 w-48">
+                            <Button onClick={() => handleCompleteJob(job)} isLoading={isCompleting} className="bg-success hover:bg-success/90 w-48">
                               <CheckCircle2 className="w-4 h-4 mr-2" /> Complete Job
                             </Button>
                           </div>

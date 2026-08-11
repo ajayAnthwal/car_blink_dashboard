@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getAllWebsiteLeads } from "@/lib/services";
+import { getAllWebsiteLeads, convertWebsiteLeadToBooking, getCities, getServices, getVehicleBrands, getVehicleModels } from "@/lib/services";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
@@ -17,6 +18,19 @@ export default function MarketingLeadsPage() {
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const limit = 20;
+
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [models, setModels] = useState<any[]>([]);
+
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [selectedCityId, setSelectedCityId] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [convertMessage, setConvertMessage] = useState("");
 
   const fetchLeads = async () => {
     setIsLoading(true);
@@ -46,6 +60,61 @@ export default function MarketingLeadsPage() {
     e.preventDefault();
     setPage(1);
     fetchLeads();
+  };
+
+  const openConvertModal = async () => {
+    setShowConvertModal(true);
+    // Pre-fill if we have text from the lead, though user still needs to pick from master lists ideally,
+    // but the backend takes strings anyway. So we can just use strings, but let's offer dropdowns.
+    setSelectedBrand(selectedLead?.vehicleBrand || "");
+    setSelectedModel(selectedLead?.vehicleModel || "");
+
+    if (services.length === 0 || cities.length === 0 || brands.length === 0) {
+      try {
+        const [servicesRes, citiesRes, brandsRes] = await Promise.all([getServices(), getCities(), getVehicleBrands()]);
+        setServices(Array.isArray(servicesRes?.docs) ? servicesRes.docs : (Array.isArray(servicesRes?.data) ? servicesRes.data : []));
+        setCities(Array.isArray(citiesRes?.docs) ? citiesRes.docs : (Array.isArray(citiesRes?.data) ? citiesRes.data : []));
+        setBrands(brandsRes?.data || []);
+      } catch (err) {
+        console.error("Failed to load master data", err);
+      }
+    }
+  };
+
+  const handleBrandChange = async (brandId: string, brandName: string) => {
+    setSelectedBrand(brandName);
+    setSelectedModel(""); // reset model
+    try {
+      const modelsRes = await getVehicleModels(brandId);
+      setModels(modelsRes?.data || []);
+    } catch (err) {
+      console.error("Failed to load models", err);
+    }
+  };
+
+  const handleConvertLead = async () => {
+    if (!selectedServiceId || !selectedCityId || !selectedBrand || !selectedModel) {
+      setConvertMessage("Please select service, city, brand, and model.");
+      return;
+    }
+    
+    setIsConverting(true);
+    setConvertMessage("");
+    try {
+      await convertWebsiteLeadToBooking(selectedLead._id, {
+        serviceId: selectedServiceId,
+        cityId: selectedCityId,
+        vehicleBrand: selectedBrand,
+        vehicleModel: selectedModel
+      });
+      setShowConvertModal(false);
+      setSelectedLead(null);
+      fetchLeads(); // Refresh list to reflect conversion
+    } catch (err: any) {
+      setConvertMessage(err.response?.data?.message || err.message || "Failed to convert lead");
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   return (
@@ -296,11 +365,115 @@ export default function MarketingLeadsPage() {
                     </a>
                   </p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-}
+                </div>
+
+                {selectedLead.status !== 'CONVERTED' && (
+                  <div className="pt-4 border-t border-gray-100 flex justify-end mt-4">
+                    <Button 
+                      onClick={openConvertModal}
+                      className="bg-primary-orange hover:bg-orange-600 text-white"
+                    >
+                      Convert to Booking / Assign Partner
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Convert Modal */}
+        {showConvertModal && selectedLead && (
+          <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+            <Card className="w-full max-w-md shadow-2xl">
+              <CardHeader className="border-b border-gray-100 pb-4">
+                <CardTitle className="text-lg">Convert Lead to Booking</CardTitle>
+                <p className="text-xs text-neutral-muted mt-1">Select required details to add this lead to the formal assignment pipeline.</p>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                {convertMessage && (
+                  <div className="p-2 bg-red-50 text-red-600 text-xs rounded border border-red-200">
+                    {convertMessage}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Service Type *</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+                    value={selectedServiceId}
+                    onChange={e => setSelectedServiceId(e.target.value)}
+                  >
+                    <option value="">-- Select Service --</option>
+                    {services.map(s => (
+                      <option key={s._id} value={s._id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+                    value={selectedCityId}
+                    onChange={e => setSelectedCityId(e.target.value)}
+                  >
+                    <option value="">-- Select City --</option>
+                    {cities.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Brand *</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+                    value={brands.find(b => b.name === selectedBrand)?.id || ""}
+                    onChange={e => {
+                      const selectedOption = e.target.options[e.target.selectedIndex];
+                      handleBrandChange(e.target.value, selectedOption.text);
+                    }}
+                  >
+                    <option value="">-- Select Brand --</option>
+                    {brands.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model *</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+                    value={selectedModel}
+                    onChange={e => setSelectedModel(e.target.value)}
+                    disabled={!selectedBrand || models.length === 0}
+                  >
+                    <option value="">-- Select Model --</option>
+                    {models.map(m => (
+                      <option key={m.id} value={m.name}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex space-x-3 pt-4">
+                  <Button 
+                    className="flex-1 bg-primary-orange hover:bg-orange-600" 
+                    onClick={handleConvertLead}
+                    isLoading={isConverting}
+                  >
+                    Confirm & Convert
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={() => setShowConvertModal(false)}
+                    disabled={isConverting}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    );
+  }

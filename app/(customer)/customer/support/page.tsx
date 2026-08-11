@@ -39,6 +39,7 @@ export default function SupportPage() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [replyMessage, setReplyMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
@@ -200,8 +201,8 @@ export default function SupportPage() {
               />
               <div className="md:col-span-2">
                 <Input
-                  label="Subject"
-                  placeholder="Brief description of the issue"
+                  label="Ticket Title / Subject"
+                  placeholder="e.g. Need help with my recent booking"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   required
@@ -231,7 +232,17 @@ export default function SupportPage() {
       </Card>
 
       <div>
-        <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight mb-5">Your Tickets ({tickets.length})</h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
+          <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight">Your Tickets ({tickets.length})</h3>
+          <div className="w-full sm:w-64">
+            <Input 
+              placeholder="Search by ticket title..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+        
         {isLoadingTickets ? (
           <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center">
             <Loader2 className="w-8 h-8 text-primary-orange animate-spin mx-auto mb-3" />
@@ -246,7 +257,7 @@ export default function SupportPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {tickets.map((ticket) => (
+            {tickets.filter(t => t.subject.toLowerCase().includes(searchQuery.toLowerCase())).map((ticket) => (
               <Card key={ticket._id} className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between cursor-pointer" onClick={() => handleViewDetails(ticket)}>

@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getVehicleBrands, getVehicleModels, createGarageVehicle, getGarageVehicles, updateGarageVehicle, deleteGarageVehicle } from "@/lib/services";
+import { getVehicleBrands, getVehicleModels, createGarageVehicle, getGarageVehicles, updateGarageVehicle, deleteGarageVehicle, getBookings } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Car, Pencil, Trash2, Plus } from "lucide-react";
+import { Car, Pencil, Trash2, Plus, History, X, CalendarCheck, MapPin } from "lucide-react";
 
 interface Vehicle {
   _id: string;
@@ -36,6 +36,10 @@ export default function MyGaragePage() {
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const [historyVehicle, setHistoryVehicle] = useState<Vehicle | null>(null);
+  const [vehicleHistory, setVehicleHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
     fetchBrands();
@@ -160,6 +164,26 @@ export default function MyGaragePage() {
       setMessage({ type: "error", text: err?.message || "Failed to delete vehicle." });
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleViewHistory = async (vehicle: Vehicle) => {
+    setHistoryVehicle(vehicle);
+    setIsLoadingHistory(true);
+    try {
+      const res = await getBookings();
+      const allBookings = Array.isArray(res) ? res : (res?.docs || res?.data || []);
+      // Filter by vehicleId and only show completed/past
+      const history = allBookings.filter((b: any) => 
+        b.vehicleId && 
+        (b.vehicleId._id === vehicle._id || b.vehicleId === vehicle._id) &&
+        ['COMPLETED', 'CANCELLED'].includes(b.status)
+      );
+      setVehicleHistory(history);
+    } catch (err) {
+      console.error("Failed to fetch history", err);
+    } finally {
+      setIsLoadingHistory(false);
     }
   };
 
@@ -307,6 +331,13 @@ export default function MyGaragePage() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
+                        onClick={() => handleViewHistory(vehicle)}
+                        className="p-2 text-neutral-muted hover:text-secondary-blue hover:bg-secondary-blue/5 rounded-lg transition-colors"
+                        title="View Service History"
+                      >
+                        <History className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => handleEdit(vehicle)}
                         className="p-2 text-neutral-muted hover:text-primary-orange hover:bg-neutral-bg rounded-lg transition-colors"
                         title="Edit"
@@ -333,6 +364,76 @@ export default function MyGaragePage() {
           </div>
         )}
       </div>
+
+      {historyVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-3xl">
+              <h3 className="font-heading font-bold text-xl text-gray-900 flex items-center">
+                <History className="w-5 h-5 mr-2 text-secondary-blue" /> 
+                Service History: {historyVehicle.brand} {historyVehicle.model}
+              </h3>
+              <button 
+                onClick={() => setHistoryVehicle(null)}
+                className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              {isLoadingHistory ? (
+                <div className="flex justify-center p-8">
+                  <div className="w-8 h-8 border-4 border-secondary-blue border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : vehicleHistory.length === 0 ? (
+                <div className="text-center p-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
+                    <History className="w-8 h-8 text-gray-300" />
+                  </div>
+                  <p className="text-gray-500 font-medium">No past services found for this vehicle.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {vehicleHistory.map((booking: any) => (
+                    <div key={booking._id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="font-heading font-bold text-lg text-primary-navy">
+                          {booking.serviceId?.name || "Service Appointment"}
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          booking.status === 'COMPLETED' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
+                        }`}>
+                          {booking.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center">
+                          <CalendarCheck className="w-4 h-4 mr-2 text-gray-400" />
+                          {new Date(booking.preferredDate).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center">
+                          <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                          {booking.cityId?.name || "N/A"}
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-gray-50 flex justify-between items-center">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Amount</span>
+                        <span className="font-bold text-gray-900">₹{booking.totalAmount || "0"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 flex justify-end bg-gray-50/50 rounded-b-3xl">
+              <Button onClick={() => setHistoryVehicle(null)} variant="outline" className="font-semibold">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { getPendingFollowUps, getEscalations, getExecutiveLeads } from "@/lib/services";
+import { getPendingFollowUps, getEscalations, getExecutiveLeads, getAllWebsiteLeads } from "@/lib/services";
 import { FollowUp, Escalation, Lead } from "@/lib/types";
 import { getStatusColorTheme, StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -63,12 +63,19 @@ export default function ExecutiveDashboardPage() {
         const [followUpsRes, escalationsRes, leadsRes] = await Promise.all([
           getPendingFollowUps(1, 100).catch(() => ({ docs: [], data: [] })),
           getEscalations(1, 100).catch(() => ({ docs: [], data: [] })),
-          getExecutiveLeads(1, 100).catch(() => ({ docs: [], data: [] }))
+          getExecutiveLeads(1, 100).catch(() => ({ docs: [], data: [] })),
+          getAllWebsiteLeads(1, 100).catch(() => ({ data: { leads: [] } }))
         ]);
         
-        const fUps: FollowUp[] = Array.isArray(followUpsRes?.docs) ? followUpsRes.docs : (Array.isArray(followUpsRes?.followUps) ? followUpsRes.followUps : (Array.isArray(followUpsRes?.data?.followUps) ? followUpsRes.data.followUps : (Array.isArray(followUpsRes) ? followUpsRes : [])));
-        const esc: Escalation[] = Array.isArray(escalationsRes?.docs) ? escalationsRes.docs : (Array.isArray(escalationsRes?.escalations) ? escalationsRes.escalations : (Array.isArray(escalationsRes?.data?.escalations) ? escalationsRes.data.escalations : (Array.isArray(escalationsRes) ? escalationsRes : [])));
-        const lds: Lead[] = Array.isArray(leadsRes?.docs) ? leadsRes.docs : (Array.isArray(leadsRes?.leads) ? leadsRes.leads : (Array.isArray(leadsRes?.data?.leads) ? leadsRes.data.leads : (Array.isArray(leadsRes) ? leadsRes : [])));
+        const fUps: FollowUp[] = Array.isArray(followUpsRes) ? followUpsRes : (followUpsRes?.docs || followUpsRes?.data?.followUps || []);
+        const esc: Escalation[] = Array.isArray(escalationsRes) ? escalationsRes : (escalationsRes?.docs || escalationsRes?.data?.escalations || []);
+        const lds: Lead[] = Array.isArray(leadsRes) ? leadsRes : (leadsRes?.docs || leadsRes?.data?.leads || []);
+        
+        let wLds: any[] = [];
+        if (Array.isArray(websiteLeadsRes)) wLds = websiteLeadsRes;
+        else if (websiteLeadsRes?.data && Array.isArray(websiteLeadsRes.data)) wLds = websiteLeadsRes.data;
+        else if (websiteLeadsRes?.data?.leads && Array.isArray(websiteLeadsRes.data.leads)) wLds = websiteLeadsRes.data.leads;
+        else if (websiteLeadsRes?.docs && Array.isArray(websiteLeadsRes.docs)) wLds = websiteLeadsRes.docs;
 
         setPendingFollowUps(fUps);
         setEscalations(esc);
@@ -76,13 +83,14 @@ export default function ExecutiveDashboardPage() {
 
         // 1. Compute Stats
         const todayStr = new Date().toDateString();
-        const leadsToday = lds.filter(l => new Date(l.createdAt).toDateString() === todayStr).length;
+        const leadsToday = lds.filter((l: any) => new Date(l.createdAt).toDateString() === todayStr).length;
+        const websiteLeadsToday = wLds.filter((l: any) => new Date(l.createdAt).toDateString() === todayStr).length;
         
         const openEsc = esc.filter(e => ['OPEN', 'IN_PROGRESS'].includes(e.status)).length;
         const awaitingAssg = lds.filter(l => ['PENDING', 'QUOTED'].includes(l.status)).length;
 
         setStats({
-          totalLeadsToday: leadsToday,
+          totalLeadsToday: leadsToday + websiteLeadsToday,
           openEscalations: openEsc,
           pendingFollowUps: fUps.length,
           leadsAwaitingAssignment: awaitingAssg

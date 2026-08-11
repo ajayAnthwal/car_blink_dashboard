@@ -13,6 +13,8 @@ export function ProfileForm() {
   
   const [formData, setFormData] = useState({
     fullName: "",
+    email: "",
+    address: "",
     profileImage: "",
   });
   
@@ -25,6 +27,8 @@ export function ProfileForm() {
       // but let's fetch the absolute latest if needed, or just use what we have.
       setFormData({
         fullName: user.fullName || "",
+        email: user.email || "",
+        address: (user as any).address || "",
         profileImage: (user as any).profileImage || "",
       });
     }
@@ -80,11 +84,10 @@ export function ProfileForm() {
               required
             />
             <Input
-              label="Email"
+              label="Email (Optional)"
               name="email"
-              value={user?.email || ""}
-              readOnly
-              className="bg-neutral-bg text-neutral-muted"
+              value={formData.email}
+              onChange={handleChange}
             />
             <Input
               label="Phone"
@@ -92,6 +95,13 @@ export function ProfileForm() {
               value={user?.phone || ""}
               readOnly
               className="bg-neutral-bg text-neutral-muted"
+            />
+            <Input
+              label="Address"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="e.g. Connaught Place, New Delhi"
             />
           </div>
 
