@@ -286,56 +286,71 @@ export default function SupportPage() {
                   </div>
 
                   {expandedId === ticket._id && (
-                    <div className="mt-4 pt-4 border-t border-neutral-muted/20">
+                    <div className="mt-4 pt-4 border-t border-neutral-muted/10 animate-in fade-in duration-300">
                       {isLoadingDetails ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="w-5 h-5 text-primary-orange animate-spin" />
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-6 h-6 text-primary-orange animate-spin" />
                         </div>
                       ) : selectedTicket && selectedTicket._id === ticket._id ? (
-                        <div className="space-y-4">
-                          <div className="text-sm text-neutral-muted space-y-1">
-                            <p><span className="font-medium text-neutral-dark">Subject:</span> {selectedTicket.subject}</p>
-                            <p><span className="font-medium text-neutral-dark">Description:</span> {selectedTicket.description}</p>
-                            <p><span className="font-medium text-neutral-dark">Priority:</span> {selectedTicket.priority}</p>
-                            <p><span className="font-medium text-neutral-dark">Status:</span> {selectedTicket.status}</p>
-                          </div>
-
-                          <div className="space-y-3">
-                            <h5 className="font-medium text-primary-navy">Conversation</h5>
+                        <div className="flex flex-col h-[400px]">
+                          {/* Chat Messages Area */}
+                          <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 space-y-4 mb-4">
                             {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
-                              <div className="space-y-3 max-h-60 overflow-y-auto">
-                                {selectedTicket.messages.map((reply: any) => (
+                              selectedTicket.messages.map((reply: any) => {
+                                const isCustomer = reply.senderRole === "CUSTOMER";
+                                return (
                                   <div
                                     key={reply._id}
-                                    className={`p-3 rounded-lg text-sm ${
-                                      reply.senderRole === "CUSTOMER"
-                                        ? "bg-primary-navy/5 ml-8"
-                                        : "bg-neutral-bg mr-8"
-                                    }`}
+                                    className={`flex w-full ${isCustomer ? 'justify-end' : 'justify-start'}`}
                                   >
-                                    <p className="font-medium text-xs text-neutral-muted mb-1">
-                                      {reply.senderRole === "CUSTOMER" ? "You" : "Support Team"}
-                                    </p>
-                                    <p>{reply.message}</p>
+                                    <div className={`max-w-[80%] flex flex-col ${isCustomer ? 'items-end' : 'items-start'}`}>
+                                      <span className="text-[11px] font-medium text-gray-400 mb-1 px-1">
+                                        {isCustomer ? "You" : "Support Team"}
+                                      </span>
+                                      <div
+                                        className={`px-4 py-2.5 rounded-2xl text-sm shadow-sm ${
+                                          isCustomer 
+                                            ? 'bg-primary-navy text-white rounded-tr-sm' 
+                                            : 'bg-gray-100 text-gray-800 rounded-tl-sm border border-gray-200'
+                                        }`}
+                                      >
+                                        <p className="whitespace-pre-wrap leading-relaxed">{reply.message}</p>
+                                      </div>
+                                    </div>
                                   </div>
-                                ))}
-                              </div>
+                                );
+                              })
                             ) : (
-                              <p className="text-sm text-neutral-muted">No messages yet.</p>
+                              <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
+                                <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100">
+                                  <MessageSquareWarning className="w-5 h-5 text-gray-300" />
+                                </div>
+                                <p className="text-sm text-gray-500 font-medium">No messages yet.<br/>Start the conversation below.</p>
+                              </div>
                             )}
                           </div>
 
-                          <form onSubmit={handleReply} className="flex space-x-3">
-                            <Input
-                              placeholder="Type your reply..."
-                              value={replyMessage}
-                              onChange={(e) => setReplyMessage(e.target.value)}
-                              className="flex-1"
-                            />
-                            <Button type="submit" size="sm" isLoading={isReplying} disabled={!replyMessage.trim()}>
-                              <Send className="w-4 h-4" />
-                            </Button>
-                          </form>
+                          {/* Reply Input Area */}
+                          <div className="pt-3 border-t border-gray-100 shrink-0">
+                            <form onSubmit={handleReply} className="flex space-x-3 items-end relative">
+                              <div className="flex-1 relative">
+                                <Input
+                                  placeholder="Type your reply here..."
+                                  value={replyMessage}
+                                  onChange={(e) => setReplyMessage(e.target.value)}
+                                  className="pr-12 bg-gray-50 border-gray-200 focus:bg-white rounded-xl"
+                                />
+                              </div>
+                              <Button 
+                                type="submit" 
+                                className="rounded-xl px-5 h-10 shadow-sm"
+                                isLoading={isReplying} 
+                                disabled={!replyMessage.trim()}
+                              >
+                                <Send className="w-4 h-4 mr-2" /> Send
+                              </Button>
+                            </form>
+                          </div>
                         </div>
                       ) : null}
                     </div>
