@@ -8,7 +8,10 @@ export function middleware(request: NextRequest) {
   if (accessToken) {
     try {
       const payloadBase64 = accessToken.split('.')[1];
-      const payloadString = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+      let base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+      const padLength = (4 - (base64.length % 4)) % 4;
+      base64 += '='.repeat(padLength);
+      const payloadString = atob(base64);
       const payload = JSON.parse(payloadString);
       userRole = payload.role;
     } catch (error) {
