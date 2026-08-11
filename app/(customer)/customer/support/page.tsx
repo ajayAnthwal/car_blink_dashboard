@@ -82,14 +82,14 @@ export default function SupportPage() {
         description,
         priority,
       });
-      setMessage({ type: "success", text: "Support ticket created successfully!" });
+      setMessage({ type: "success", text: "Query submitted successfully!" });
       setBookingId("");
       setSubject("");
       setDescription("");
       setPriority("MEDIUM");
       fetchInitialData();
     } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to create support ticket." });
+      setMessage({ type: "error", text: err?.message || "Failed to submit query." });
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +153,7 @@ export default function SupportPage() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-      <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Support Tickets</h2>
+      <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Queries</h2>
 
       {message.text && (
         <div className={`p-3 rounded-lg text-sm border ${
@@ -171,7 +171,7 @@ export default function SupportPage() {
             <div className="bg-orange-50 p-2 rounded-xl text-primary-orange">
               <HelpCircle className="w-5 h-5" />
             </div>
-            <span>Create Support Ticket</span>
+            <span>Create Query</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -201,7 +201,7 @@ export default function SupportPage() {
               />
               <div className="md:col-span-2">
                 <Input
-                  label="Ticket Title / Subject"
+                  label="Query Title / Subject"
                   placeholder="e.g. Need help with my recent booking"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
@@ -221,11 +221,11 @@ export default function SupportPage() {
             </div>
             <div className="flex justify-end">
               <Button type="submit" isLoading={isSubmitting} disabled={bookings.length === 0}>
-                Create Ticket
+                Submit Query
               </Button>
             </div>
             {bookings.length === 0 && (
-              <p className="text-xs text-neutral-muted">You need at least one booking to create a support ticket.</p>
+              <p className="text-xs text-neutral-muted">You need at least one booking to raise a query.</p>
             )}
           </form>
         </CardContent>
@@ -233,10 +233,10 @@ export default function SupportPage() {
 
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
-          <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight">Your Tickets ({tickets.length})</h3>
+          <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight">Your Queries ({tickets.length})</h3>
           <div className="w-full sm:w-64">
             <Input 
-              placeholder="Search by ticket title..."
+              placeholder="Search by query title..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -246,14 +246,14 @@ export default function SupportPage() {
         {isLoadingTickets ? (
           <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center">
             <Loader2 className="w-8 h-8 text-primary-orange animate-spin mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">Loading tickets...</p>
+            <p className="text-gray-500 font-medium">Loading queries...</p>
           </div>
         ) : tickets.length === 0 ? (
           <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center flex flex-col items-center justify-center">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
               <HelpCircle className="w-10 h-10 text-gray-300" />
             </div>
-            <p className="text-gray-500 font-medium">No support tickets yet.</p>
+            <p className="text-gray-500 font-medium">No queries yet.</p>
           </div>
         ) : (
           <div className="space-y-4">

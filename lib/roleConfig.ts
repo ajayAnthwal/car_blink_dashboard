@@ -90,7 +90,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         label: "Account",
         items: [
           { name: "My Reviews", href: "/customer/reviews", icon: Star },
-          { name: "Support / Tickets", href: "/customer/support", icon: HelpCircle },
+          { name: "Queries", href: "/customer/support", icon: HelpCircle },
           { name: "Profile", href: "/customer/profile", icon: User },
         ],
       },

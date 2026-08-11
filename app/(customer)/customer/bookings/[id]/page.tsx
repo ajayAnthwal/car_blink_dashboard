@@ -811,14 +811,15 @@ export default function CustomerBookingDetailsPage() {
 
           <Card className="shadow-sm border-neutral-muted/10 bg-primary-navy rounded-3xl text-white">
             <CardContent className="p-8">
-              <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mb-6">
-                <AlertCircle className="w-6 h-6 text-white" />
+              <div className="bg-primary-navy rounded-3xl p-8 shadow-elevated relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-16 -mt-16" />
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary-orange/20 rounded-full blur-xl -ml-12 -mb-12" />
+                <h3 className="font-heading font-bold text-xl text-white mb-3">Need Help?</h3>
+                <p className="text-sm text-white/70 mb-8 leading-relaxed">If you have any questions or need to make changes to your booking, please raise a query with our team.</p>
+                <Button variant="outline" className="w-full bg-white/10 border-white/20 hover:bg-white text-white hover:text-primary-navy rounded-xl py-6 font-bold transition-colors" onClick={() => router.push('/customer/support')}>
+                  Raise Query <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
               </div>
-              <h3 className="font-bold text-xl mb-3">Need Help?</h3>
-              <p className="text-sm text-white/70 mb-8 leading-relaxed">If you have any questions or need to make changes to your booking, please contact our support team immediately.</p>
-              <Button variant="outline" className="w-full bg-white/10 border-white/20 hover:bg-white text-white hover:text-primary-navy rounded-xl py-6 font-bold transition-colors" onClick={() => router.push('/customer/support')}>
-                Contact Support <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
             </CardContent>
           </Card>
         </div>
