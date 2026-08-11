@@ -310,7 +310,11 @@ export default function MyGaragePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {vehicles.map((vehicle) => (
-              <Card key={vehicle._id} className="bg-white/90 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
+              <Card 
+                key={vehicle._id} 
+                onClick={() => handleViewHistory(vehicle)}
+                className="bg-white/90 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:border-secondary-blue/50 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div>
@@ -329,7 +333,7 @@ export default function MyGaragePage() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleViewHistory(vehicle)}
                         className="p-2 text-neutral-muted hover:text-secondary-blue hover:bg-secondary-blue/5 rounded-lg transition-colors"

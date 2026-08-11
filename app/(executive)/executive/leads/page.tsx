@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/Select";
-import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus } from "lucide-react";
+import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus, Search } from "lucide-react";
 import { useSocket } from "@/lib/SocketContext";
 import Link from "next/link";
 
@@ -15,6 +15,12 @@ export default function ExecutiveLeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Pagination & Search
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
+  const limit = 10;
   
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [partnerIds, setPartnerIds] = useState<string[]>([]);
@@ -37,7 +43,7 @@ export default function ExecutiveLeadsPage() {
 
   useEffect(() => {
     fetchLeads();
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     if (!socket) return;
@@ -58,7 +64,9 @@ export default function ExecutiveLeadsPage() {
       // Fetch available leads for assignment (PENDING status)
       let res, partnersRes;
       try {
-        res = await getExecutiveLeads(1, 50, "status=PENDING,QUOTED");
+        let filters = "status=PENDING,QUOTED";
+        if (search) filters += `&search=${encodeURIComponent(search)}`;
+        res = await getExecutiveLeads(page, limit, filters);
       } catch (e) {
         console.error("Failed to fetch leads from API:", e);
       }
@@ -77,6 +85,9 @@ export default function ExecutiveLeadsPage() {
       else if (res?.docs && Array.isArray(res.docs)) leadsArray = res.docs;
       console.log("FINAL LEADS ARRAY:", leadsArray);
       setLeads(leadsArray);
+      if (res?.totalPages) setTotalPages(res.totalPages);
+      else if (res?.data?.totalPages) setTotalPages(res.data.totalPages);
+
       setPartners(Array.isArray(partnersRes?.docs) ? partnersRes.docs : (Array.isArray(partnersRes?.partners) ? partnersRes.partners : (Array.isArray(partnersRes?.data?.partners) ? partnersRes.data.partners : (Array.isArray(partnersRes) ? partnersRes : []))));
     } catch (err) {
       console.error("Failed to load leads", err);
@@ -187,11 +198,23 @@ export default function ExecutiveLeadsPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto relative">
-      <h2 className="text-2xl font-bold text-primary-navy">Lead Assignment</h2>
-      
-      <p className="text-neutral-muted text-sm mb-6">
-        Review unassigned service requests and manually allocate them to specific partners.
-      </p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-primary-navy">Lead Assignment</h2>
+          <p className="text-neutral-muted text-sm mt-1">
+            Review unassigned service requests and manually allocate them to specific partners.
+          </p>
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); fetchLeads(); }} className="w-full md:w-64 relative">
+          <Input 
+            placeholder="Search leads..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+          <Search className="w-4 h-4 text-neutral-muted absolute left-3 top-1/2 -translate-y-1/2" />
+        </form>
+      </div>
 
       {message.text && (
         <div className={`p-3 rounded-lg text-sm border ${
@@ -366,6 +389,31 @@ export default function ExecutiveLeadsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {!isLoading && totalPages > 1 && (
+        <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50 mt-4 rounded-lg">
+          <span className="text-sm text-gray-500">
+            Page <span className="font-bold text-gray-900">{page}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
+          </span>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <button 
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

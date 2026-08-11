@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { getUserProfile, updateUserProfile } from "@/lib/services";
+import { getUserProfile, updateUserProfile, getCities } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/Select";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
@@ -15,24 +16,37 @@ export function ProfileForm() {
     fullName: "",
     email: "",
     address: "",
+    cityId: "",
     profileImage: "",
   });
   
+  const [cities, setCities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
     if (user) {
-      // In a real scenario, we might have profileImage in the hydrated user context too,
-      // but let's fetch the absolute latest if needed, or just use what we have.
       setFormData({
         fullName: user.fullName || "",
         email: user.email || "",
         address: (user as any).address || "",
+        cityId: (user as any).cityId || "",
         profileImage: (user as any).profileImage || "",
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const res = await getCities();
+        setCities(Array.isArray(res) ? res : (res?.docs || res?.data || []));
+      } catch (error) {
+        console.error("Failed to fetch cities", error);
+      }
+    };
+    fetchCities();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -102,6 +116,13 @@ export function ProfileForm() {
               value={formData.address}
               onChange={handleChange}
               placeholder="e.g. Connaught Place, New Delhi"
+            />
+            <Select
+              label="Location / City"
+              name="cityId"
+              value={formData.cityId}
+              onChange={(e) => setFormData(prev => ({ ...prev, cityId: e.target.value }))}
+              options={cities.map(c => ({ value: c._id, label: c.name }))}
             />
           </div>
 
