@@ -145,10 +145,25 @@ export default function BookingsPage() {
     try {
       setIsLoadingData(true);
       const res = await getBookings({ page: currentPage, limit: 10, search });
-      const data = res?.data || res;
-      setBookings(data?.bookings || []);
-      setTotalPages(Math.ceil((data?.total || 0) / 10));
-      setTotalBookings(data?.total || 0);
+      // res is the payload: { bookings: [...], total: 6, page: 1, limit: 10 }
+      // due to the axios interceptor magic fix, res.data is the array itself.
+      // We should extract the array robustly.
+      let bookingsArray = [];
+      let totalCount = 0;
+      
+      if (Array.isArray(res)) {
+        bookingsArray = res;
+      } else if (res?.bookings && Array.isArray(res.bookings)) {
+        bookingsArray = res.bookings;
+        totalCount = res.total || 0;
+      } else if (res?.data && Array.isArray(res.data)) {
+        bookingsArray = res.data;
+        totalCount = res.total || res.data.length || 0;
+      }
+
+      setBookings(bookingsArray);
+      setTotalPages(Math.ceil(totalCount / 10) || 1);
+      setTotalBookings(totalCount);
     } catch (err) {
       console.error("Failed to load bookings", err);
     } finally {
