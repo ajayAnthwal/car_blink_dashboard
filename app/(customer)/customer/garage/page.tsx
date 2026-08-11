@@ -301,11 +301,15 @@ export default function MyGaragePage() {
             <p className="text-gray-500 font-medium">Loading vehicles...</p>
           </div>
         ) : vehicles.length === 0 ? (
-          <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center flex flex-col items-center justify-center">
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
-              <Car className="w-10 h-10 text-gray-300" />
+          <div className="bg-gradient-to-r from-orange-50/50 via-white to-orange-50/50 p-12 md:p-16 rounded-3xl shadow-sm border border-orange-100/50 text-center flex flex-col items-center justify-center">
+            <div className="w-24 h-24 bg-white rounded-3xl shadow-subtle flex items-center justify-center mb-6 border border-orange-100 rotate-3">
+              <Car className="w-12 h-12 text-primary-orange -rotate-3" />
             </div>
-            <p className="text-gray-500 font-medium">You haven&apos;t added any vehicles to your garage yet.</p>
+            <h3 className="text-xl font-bold text-gray-900 font-heading mb-2">No Vehicles Yet</h3>
+            <p className="text-gray-500 font-medium max-w-sm mb-6">You haven&apos;t added any vehicles to your garage yet. Add your first car to manage its health and bookings!</p>
+            <Button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="bg-primary-orange hover:bg-primary-orange-dark text-white rounded-xl px-8 shadow-sm">
+              <Plus className="w-4 h-4 mr-2" /> Add Vehicle
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -324,6 +328,15 @@ export default function MyGaragePage() {
                       <p className="text-sm font-medium text-gray-500 mt-0.5">
                         {vehicle.registrationNumber}
                       </p>
+                      
+                      {/* Vehicle Health Indicator */}
+                      <div className="mt-4 flex items-center space-x-2" title="Estimated Vehicle Health">
+                        <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
+                           <div className={`h-full ${vehicle.year > 2018 ? 'bg-success w-[85%]' : 'bg-warning w-[60%]'}`}></div>
+                        </div>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Health</span>
+                      </div>
+
                       <div className="flex items-center space-x-2 mt-4 text-xs font-semibold text-gray-600">
                         <span className="bg-gray-100/80 px-2.5 py-1 rounded-md border border-gray-200/50">
                           {vehicle.fuelType}

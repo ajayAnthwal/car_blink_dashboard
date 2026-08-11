@@ -193,6 +193,24 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
+      {/* Action Center Alerts */}
+      {quotesWaiting.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-3xl p-5 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in zoom-in-95 duration-500">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-blue-600">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg">Action Required: Pending Quote</h3>
+              <p className="text-gray-600 text-sm font-medium">You have {quotesWaiting.length} booking(s) waiting for quote approval.</p>
+            </div>
+          </div>
+          <Button asChild className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm">
+            <Link href={`/customer/bookings/${quotesWaiting[0]._id}`}>Review Quote</Link>
+          </Button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">Overview</h1>

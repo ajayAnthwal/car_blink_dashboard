@@ -167,6 +167,14 @@ export function Header() {
           </button>
         )}
 
+        {/* Quick Book Button for Customer */}
+        {currentRole === "CUSTOMER" && (
+          <Link href="/customer/bookings" className="hidden md:flex items-center space-x-2 px-4 py-2 bg-[#F97316] text-white rounded-lg hover:bg-[#EA580C] shadow-sm transition-all duration-200 font-semibold text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            <span>Book Service</span>
+          </Link>
+        )}
+
         <div className="flex items-center h-8 space-x-3 md:space-x-5 border-l border-gray-100 pl-3 md:pl-5">
           {/* Notifications Dropdown */}
           <DropdownMenu>
