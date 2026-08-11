@@ -46,11 +46,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setAccessToken(null);
     setApiAccessToken(null);
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    Cookies.remove("isLoggedIn");
-    Cookies.remove("userRole");
-    Cookies.remove("accessToken");
     router.push("/login");
   };
 
@@ -58,33 +53,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(newUser);
     setAccessToken(newAccessToken);
     setApiAccessToken(newAccessToken);
-    localStorage.setItem("refreshToken", newRefreshToken);
-    localStorage.setItem("user", JSON.stringify(newUser));
-    Cookies.set("isLoggedIn", "true", { path: "/" });
-    Cookies.set("userRole", newUser.role, { path: "/" });
-    Cookies.set("accessToken", newAccessToken, { path: "/" });
   };
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const storedRefreshToken = localStorage.getItem("refreshToken");
-
-        if (storedRefreshToken) {
-          // 1. Get a new access token
-          const refreshData = await refreshToken({ refreshToken: storedRefreshToken });
+        // Attempt to get a new access token using HttpOnly cookies
+        const refreshData = await refreshToken({});
+        if (refreshData?.accessToken) {
           const newAccessToken = refreshData.accessToken;
-          const newRefreshToken = refreshData.refreshToken || storedRefreshToken;
-
-          // Temporarily set it so the /me request has auth
           setApiAccessToken(newAccessToken);
-
-          // 2. Hydrate accurate user profile directly from backend
+          
+          // Hydrate user profile
           const userProfile = await getCurrentUserProfile();
-
-          handleLogin(userProfile, newAccessToken, newRefreshToken);
+          handleLogin(userProfile, newAccessToken, "");
         } else {
-          // No token found, just finish loading
           setIsLoading(false);
         }
       } catch (error) {
@@ -93,11 +76,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setAccessToken(null);
         setApiAccessToken(null);
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        Cookies.remove("isLoggedIn");
-        Cookies.remove("userRole");
-        Cookies.remove("accessToken");
       } finally {
         setIsLoading(false);
       }
@@ -106,16 +84,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Setup API client callbacks for Axios interceptors
     setLogoutCallback(handleLogout);
     setTokenRefreshProvider(async () => {
-      const storedRefreshToken = localStorage.getItem("refreshToken");
-      if (!storedRefreshToken) return null;
-
       try {
-        const refreshData = await refreshToken({ refreshToken: storedRefreshToken });
+        const refreshData = await refreshToken({});
         const newAccessToken = refreshData.accessToken;
-
-        if (refreshData.refreshToken) {
-          localStorage.setItem("refreshToken", refreshData.refreshToken);
-        }
 
         setAccessToken(newAccessToken);
         return newAccessToken;

@@ -3,8 +3,20 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("accessToken")?.value;
-  const userRole = request.cookies.get("userRole")?.value;
-  const isLoggedIn = !!accessToken;
+  let userRole = null;
+  
+  if (accessToken) {
+    try {
+      const payloadBase64 = accessToken.split('.')[1];
+      const payloadString = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+      const payload = JSON.parse(payloadString);
+      userRole = payload.role;
+    } catch (error) {
+      console.error("Failed to decode token", error);
+    }
+  }
+
+  const isLoggedIn = !!accessToken && !!userRole;
   const { pathname } = request.nextUrl;
 
   // Protect role-specific routes
