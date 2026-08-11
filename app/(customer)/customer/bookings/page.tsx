@@ -171,11 +171,14 @@ export default function BookingsPage() {
     }
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-    setSearch(searchInput);
-  };
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      setSearch(searchInput);
+      setCurrentPage(1);
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchInput]);
 
   const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -409,17 +412,14 @@ export default function BookingsPage() {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-4">
           <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight">Your Bookings ({totalBookings})</h3>
-          <form onSubmit={handleSearchSubmit} className="flex gap-2 max-w-sm w-full">
+          <div className="flex gap-2 max-w-sm w-full">
             <Input 
               placeholder="Search by ID or Status..." 
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="bg-white border-neutral-muted/20"
             />
-            <Button type="submit" variant="outline" className="bg-white border-neutral-muted/20 text-primary-navy">
-              Search
-            </Button>
-          </form>
+          </div>
         </div>
         
         {isLoadingData ? (
@@ -530,6 +530,19 @@ export default function BookingsPage() {
                   >
                     Previous
                   </Button>
+                  <div className="hidden sm:flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={currentPage === page ? "bg-primary-navy text-white hover:bg-primary-navy/90" : "border-neutral-muted/20 text-primary-navy hover:bg-neutral-muted/5"}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
                   <Button 
                     variant="outline" 
                     size="sm" 
