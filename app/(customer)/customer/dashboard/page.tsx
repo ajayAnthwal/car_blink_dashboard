@@ -56,18 +56,18 @@ export default function CustomerDashboardPage() {
           getCustomerStats().catch(() => ({ data: { totalSavings: 0, rewardPoints: 0 } }))
         ]);
 
-          const extractArray = (res: any, key: string) => {
-            if (Array.isArray(res)) return res;
-            if (res?.data && Array.isArray(res.data)) return res.data;
-            if (res?.data && Array.isArray(res.data[key])) return res.data[key];
-            if (res && Array.isArray(res[key])) return res[key];
-            if (res?.docs && Array.isArray(res.docs)) return res.docs;
-            return [];
-          };
+        const extractArray = (res: any, key: string) => {
+          if (Array.isArray(res)) return res;
+          if (res?.data && Array.isArray(res.data)) return res.data;
+          if (res?.data && Array.isArray(res.data[key])) return res.data[key];
+          if (res && Array.isArray(res[key])) return res[key];
+          if (res?.docs && Array.isArray(res.docs)) return res.docs;
+          return [];
+        };
 
-          const allBookings: Booking[] = extractArray(bookingsRes, 'bookings');
-          const allPayments: Payment[] = extractArray(paymentsRes, 'payments');
-          const allWarranties: Warranty[] = extractArray(warrantiesRes, 'warranties');
+        const allBookings: Booking[] = extractArray(bookingsRes, 'bookings');
+        const allPayments: Payment[] = extractArray(paymentsRes, 'payments');
+        const allWarranties: Warranty[] = extractArray(warrantiesRes, 'warranties');
 
         setBookings(allBookings);
 
@@ -141,7 +141,7 @@ export default function CustomerDashboardPage() {
   }, [user]);
 
   // Derived state
-  const recentBookings = bookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+  const recentBookings = [...bookings].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
   const quotesWaiting = bookings.filter(b => b.status === 'QUOTED');
 
   const todayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
