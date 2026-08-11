@@ -465,7 +465,11 @@ export default function BookingsPage() {
                         {booking.serviceId?.name}
                       </td>
                       <td className="p-4 text-sm text-neutral-muted">
-                        {booking.cityId?.name}, {booking.cityId?.state}
+                        {booking.cityId ? (
+                          `${booking.cityId.name}, ${booking.cityId.state}`
+                        ) : (
+                          booking.description?.match(/\[Location:\s*(.*?)\]/)?.[1] || '-'
+                        )}
                       </td>
                       <td className="p-4">
                         {booking.acceptedBidId ? (
