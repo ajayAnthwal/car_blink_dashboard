@@ -56,9 +56,18 @@ export default function CustomerDashboardPage() {
           getCustomerStats().catch(() => ({ data: { totalSavings: 0, rewardPoints: 0 } }))
         ]);
 
-        const allBookings: Booking[] = (Array.isArray(bookingsRes) ? bookingsRes : (bookingsRes?.docs || bookingsRes?.data || []));
-        const allPayments: Payment[] = (Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes?.docs || paymentsRes?.data || []));
-        const allWarranties: Warranty[] = (Array.isArray(warrantiesRes) ? warrantiesRes : (warrantiesRes?.docs || warrantiesRes?.data || []));
+          const extractArray = (res: any, key: string) => {
+            if (Array.isArray(res)) return res;
+            if (res?.data && Array.isArray(res.data)) return res.data;
+            if (res?.data && Array.isArray(res.data[key])) return res.data[key];
+            if (res && Array.isArray(res[key])) return res[key];
+            if (res?.docs && Array.isArray(res.docs)) return res.docs;
+            return [];
+          };
+
+          const allBookings: Booking[] = extractArray(bookingsRes, 'bookings');
+          const allPayments: Payment[] = extractArray(paymentsRes, 'payments');
+          const allWarranties: Warranty[] = extractArray(warrantiesRes, 'warranties');
 
         setBookings(allBookings);
 
