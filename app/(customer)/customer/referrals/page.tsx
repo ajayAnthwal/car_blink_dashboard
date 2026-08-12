@@ -22,7 +22,7 @@ export default function ReferralsPage() {
   const fetchProfile = async () => {
     try {
       const res = await getCurrentUserProfile();
-      setMyProfile(res?.data);
+      setMyProfile(res);
     } catch (err) {
       console.error("Failed to fetch profile", err);
     }
@@ -107,21 +107,21 @@ export default function ReferralsPage() {
                   <div className="mx-auto w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-2">
                     <Users className="w-5 h-5" />
                   </div>
-                  <p className="text-xl font-bold text-gray-900">0</p>
+                  <p className="text-xl font-bold text-gray-900">{myProfile?.referralsCount || 0}</p>
                   <p className="text-xs text-gray-500 font-medium">Friends Joined</p>
                 </div>
                 <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
                   <div className="mx-auto w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-2">
                     <IndianRupee className="w-5 h-5" />
                   </div>
-                  <p className="text-xl font-bold text-gray-900">₹0</p>
+                  <p className="text-xl font-bold text-gray-900">₹{myProfile?.rewardPoints || 0}</p>
                   <p className="text-xs text-gray-500 font-medium">Earned</p>
                 </div>
                 <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
                   <div className="mx-auto w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-2">
                     <Gift className="w-5 h-5" />
                   </div>
-                  <p className="text-xl font-bold text-gray-900">0</p>
+                  <p className="text-xl font-bold text-gray-900">{myProfile?.pendingRewards || 0}</p>
                   <p className="text-xs text-gray-500 font-medium">Pending</p>
                 </div>
               </div>

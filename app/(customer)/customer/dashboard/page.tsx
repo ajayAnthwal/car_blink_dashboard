@@ -182,14 +182,7 @@ export default function CustomerDashboardPage() {
               <p className="text-gray-600 mt-1 font-medium">Your premium dashboard is ready. Start by adding a vehicle to unlock full insights.</p>
             </div>
           </div>
-          <div className="flex gap-3 w-full md:w-auto">
-            <Button asChild variant="outline" className="flex-1 md:flex-none font-semibold bg-white border-gray-200">
-              <Link href="/customer/garage"><Plus className="w-4 h-4 mr-2" /> Add Vehicle</Link>
-            </Button>
-            <Button asChild className="flex-1 md:flex-none font-semibold bg-primary-orange hover:bg-primary-orange-dark text-white">
-              <Link href="/customer/bookings"><CalendarCheck className="w-4 h-4 mr-2" /> Book Service</Link>
-            </Button>
-          </div>
+         
         </div>
       )}
 
