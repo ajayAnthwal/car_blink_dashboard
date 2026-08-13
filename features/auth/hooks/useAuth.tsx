@@ -24,6 +24,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,6 +57,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     if (window.location.pathname !== "/login") {
       window.location.href = "/login";
+    }
+  };
+
+  const refreshUser = async () => {
+    if (!accessToken) return;
+    try {
+      const userProfile = await getCurrentUserProfile();
+      setUser(userProfile);
+    } catch (error) {
+      console.error("Failed to refresh user profile", error);
     }
   };
 
@@ -115,11 +126,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
+    const onFocus = () => {
+      if (localStorage.getItem("car_blink_refresh_token")) {
+        refreshUser();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+
     initAuth();
+
+    return () => {
+      setLogoutCallback(() => {});
+      setTokenRefreshProvider(null as any);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, isLoading, isAuthenticated: !!user, login: handleLogin, logout: handleLogout }}>
+    <AuthContext.Provider value={{ user, accessToken, isLoading, isAuthenticated: !!user, login: handleLogin, logout: handleLogout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

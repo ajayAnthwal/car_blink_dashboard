@@ -303,7 +303,7 @@ export const useVerifyPartnerMutation = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => verifyExecutivePartner(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executive", "partner-status"] });
+      queryClient.invalidateQueries({ queryKey: ["executive", "partners"] });
     },
   });
 };

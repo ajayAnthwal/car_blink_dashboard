@@ -271,7 +271,7 @@ export default function CustomerBookingDetailsPage() {
           </div>
 
           {(booking.status !== 'COMPLETED' && booking.status !== 'CANCELLED') && !showCancel && (
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 hover:text-white rounded-xl backdrop-blur-sm" onClick={() => setShowCancel(true)}>
+            <Button variant="outline" className="bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white rounded-xl backdrop-blur-sm" onClick={() => setShowCancel(true)}>
               Cancel & Request Refund
             </Button>
           )}
