@@ -23,6 +23,8 @@ export default function RefundsPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectFor, setShowRejectFor] = useState<string | null>(null);
+  const [securityPin, setSecurityPin] = useState("");
+  const [showProcessFor, setShowProcessFor] = useState<string | null>(null);
 
   // Initiate Refund state
   const [showInitiateModal, setShowInitiateModal] = useState(false);
@@ -71,8 +73,15 @@ export default function RefundsPage() {
         await approveMutation.mutateAsync(id);
         setMessage({ type: "success", text: "Refund approved." });
       } else if (action === "process") {
-        await processMutation.mutateAsync(id);
+        if (!securityPin || securityPin.length < 4) {
+          setMessage({ type: "error", text: "Please enter a valid 4-digit Security PIN." });
+          setActionId(null);
+          return;
+        }
+        await processMutation.mutateAsync({ id, pin: securityPin });
         setMessage({ type: "success", text: "Refund processed successfully." });
+        setShowProcessFor(null);
+        setSecurityPin("");
       } else if (action === "reject") {
         await rejectMutation.mutateAsync({ id, reason: rejectReason });
         setMessage({ type: "success", text: "Refund rejected." });
@@ -157,7 +166,7 @@ export default function RefundsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
-                        {refund.status === 'REQUESTED' && (
+                        {refund.status === 'REQUESTED' ? (
                           <>
                             <Button
                               size="sm"
@@ -177,16 +186,17 @@ export default function RefundsPage() {
                               <X className="w-4 h-4" />
                             </Button>
                           </>
-                        )}
-                        {refund.status === 'APPROVED' && (
+                        ) : refund.status === 'APPROVED' ? (
                           <Button
                             size="sm"
                             className="bg-primary-navy hover:bg-primary-navy-light"
-                            onClick={() => handleAction(refund._id, "process")}
+                            onClick={() => setShowProcessFor(refund._id)}
                             isLoading={actionId === refund._id}
                           >
                             <ArrowRightCircle className="w-4 h-4 mr-1" /> Process
                           </Button>
+                        ) : (
+                          <span className="text-neutral-muted text-xs px-4">-</span>
                         )}
                       </td>
                     </tr>
@@ -224,6 +234,45 @@ export default function RefundsPage() {
                   disabled={!rejectReason}
                 >
                   Reject Refund
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Process Modal Overlay */}
+      {showProcessFor && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-xl">
+            <CardHeader>
+              <CardTitle>Process Refund (RazorpayX)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-primary-navy/5 border border-primary-navy/10 rounded-lg">
+                <p className="text-sm text-primary-navy/80 font-medium leading-relaxed">
+                  This will automatically deduct funds from your RazorpayX account and transfer them back to the customer's original payment method.
+                </p>
+              </div>
+              <Input
+                label="Security PIN"
+                type="password"
+                placeholder="Enter 4-digit PIN"
+                value={securityPin}
+                onChange={(e) => setSecurityPin(e.target.value)}
+                maxLength={4}
+                required
+              />
+              <div className="flex justify-end space-x-3 pt-2">
+                <Button variant="outline" onClick={() => { setShowProcessFor(null); setSecurityPin(""); }}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => handleAction(showProcessFor, "process")}
+                  isLoading={actionId === showProcessFor}
+                  disabled={!securityPin || securityPin.length < 4}
+                >
+                  Initiate Automatic Refund
                 </Button>
               </div>
             </CardContent>

@@ -12,9 +12,9 @@ import {
   generateSettlement,
   getGstReport,
   getInvoicesReport,
-  getNotifications,
   markNotificationAsRead,
-  markAllNotificationsAsRead
+  markAllNotificationsAsRead,
+  getActivityLogs
 } from "@/lib/services";
 
 // Helper to safely extract arrays from API responses
@@ -50,10 +50,20 @@ export const useAccountsDashboardData = () => {
         stats: {
           pendingRefunds: pendingRefunds.length,
           pendingSettlements: pendingSettlements.length,
-          totalRefundsAmount: pendingRefunds.reduce((sum: number, r: any) => sum + (r.amount || 0), 0),
-          totalSettlementsAmount: pendingSettlements.reduce((sum: number, s: any) => sum + (s.amount || 0), 0)
+          totalRefundsAmount: refundsList.reduce((sum: number, r: any) => sum + (Number(r.amount) || 0), 0),
+          totalSettlementsAmount: settlementsList.reduce((sum: number, s: any) => sum + (Number(s.netPayoutAmount) || Number(s.grossAmount) || 0), 0)
         }
       };
+    },
+  });
+};
+
+export const useActivityLogs = (limit: number = 10) => {
+  return useQuery({
+    queryKey: ["accounts", "activity-logs", limit],
+    queryFn: async () => {
+      const res = await getActivityLogs(limit);
+      return extractArray(res, "data") || extractArray(res, "logs") || res;
     },
   });
 };
@@ -113,7 +123,7 @@ export const useApproveRefundMutation = () => {
 export const useProcessRefundMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => processRefund(id),
+    mutationFn: (data: { id: string, pin: string }) => processRefund(data.id, { pin: data.pin }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts", "refunds"] });
       queryClient.invalidateQueries({ queryKey: ["accounts", "dashboard"] });
@@ -176,7 +186,8 @@ export const useGenerateSettlementMutation = () => {
 export const useProcessSettlementMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, transactionReference }: { id: string, transactionReference: string }) => processSettlement(id, { transactionReference }),
+    mutationFn: (data: { id: string, transactionReference?: string, pin: string }) => 
+      processSettlement(data.id, { transactionReference: data.transactionReference, pin: data.pin }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts", "settlements"] });
       queryClient.invalidateQueries({ queryKey: ["accounts", "dashboard"] });

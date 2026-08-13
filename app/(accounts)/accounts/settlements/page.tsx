@@ -24,6 +24,7 @@ export default function SettlementsPage() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [transactionRef, setTransactionRef] = useState("");
+  const [securityPin, setSecurityPin] = useState("");
   const [showProcessFor, setShowProcessFor] = useState<string | null>(null);
 
   const [showGenerateFor, setShowGenerateFor] = useState<unknown | null>(null);
@@ -36,15 +37,19 @@ export default function SettlementsPage() {
   const generateMutation = useGenerateSettlementMutation();
 
   const handleProcess = async () => {
-    if (!showProcessFor || !transactionRef) return;
+    if (!showProcessFor || !securityPin || securityPin.length < 4) {
+      setMessage({ type: "error", text: "Please enter a valid 4-digit Security PIN." });
+      return;
+    }
     
     setActionId(showProcessFor);
     setMessage({ type: "", text: "" });
     try {
-      await processMutation.mutateAsync({ id: showProcessFor, transactionReference: transactionRef });
+      await processMutation.mutateAsync({ id: showProcessFor, transactionReference: "", pin: securityPin });
       setMessage({ type: "success", text: "Settlement processed successfully." });
       setShowProcessFor(null);
       setTransactionRef("");
+      setSecurityPin("");
     } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || `Failed to process settlement.` });
     } finally {
@@ -304,26 +309,33 @@ export default function SettlementsPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-md shadow-xl">
             <CardHeader>
-              <CardTitle>Process Settlement</CardTitle>
+              <CardTitle>Process Settlement (RazorpayX)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="p-4 bg-primary-navy/5 border border-primary-navy/10 rounded-lg">
+                <p className="text-sm text-primary-navy/80 font-medium leading-relaxed">
+                  This will automatically deduct funds from your RazorpayX account and transfer them to the partner's registered bank account.
+                </p>
+              </div>
               <Input
-                label="Transaction Reference"
-                placeholder="e.g. UTR1234567890"
-                value={transactionRef}
-                onChange={(e) => setTransactionRef(e.target.value)}
+                label="Security PIN"
+                type="password"
+                placeholder="Enter 4-digit PIN"
+                value={securityPin}
+                onChange={(e) => setSecurityPin(e.target.value)}
+                maxLength={4}
                 required
               />
               <div className="flex justify-end space-x-3 pt-2">
-                <Button variant="outline" onClick={() => { setShowProcessFor(null); setTransactionRef(""); }}>
+                <Button variant="outline" onClick={() => { setShowProcessFor(null); setSecurityPin(""); }}>
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleProcess}
                   isLoading={actionId === showProcessFor}
-                  disabled={!transactionRef}
+                  disabled={!securityPin || securityPin.length < 4}
                 >
-                  Mark as Processed
+                  Initiate Automatic Payout
                 </Button>
               </div>
             </CardContent>

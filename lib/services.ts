@@ -623,8 +623,13 @@ export const approveRefund = async (id: string) => {
   return response.data;
 };
 
-export const processRefund = async (id: string) => {
-  const response = await apiClient.patch(`/accounts/refunds/${id}/process`);
+export const getActivityLogs = async (limit: number = 10) => {
+  const response = await apiClient.get(`/accounts/activity-logs?limit=${limit}`);
+  return response.data;
+};
+
+export const processRefund = async (id: string, data: { pin: string }) => {
+  const response = await apiClient.patch(`/accounts/refunds/${id}/process`, data);
   return response.data;
 };
 
@@ -642,7 +647,7 @@ export const getAllSettlements = async (page = 1, limit = 10, otherFilters = "")
   return response.data;
 };
 
-export const processSettlement = async (id: string, data: { transactionReference: string }) => {
+export const processSettlement = async (id: string, data: { transactionReference?: string, pin: string }) => {
   const response = await apiClient.patch(`/accounts/settlements/${id}/process`, data);
   return response.data;
 };
