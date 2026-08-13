@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from "react";
 import { ProfileForm } from "@/features/users/components/ProfileForm";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";

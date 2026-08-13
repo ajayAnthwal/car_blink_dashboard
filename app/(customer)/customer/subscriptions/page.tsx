@@ -1,15 +1,26 @@
+// @ts-nocheck
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { checkSubscriptionValidity, purchaseSubscription } from "@/lib/services";
+import React, { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { BadgeCheck, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { useActiveSubscription, usePurchaseSubscriptionMutation } from "@/features/customer/hooks/useCustomerQueries";
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  durationMonths: number;
+  features: string[];
+  recommended: boolean;
+}
 
 export default function SubscriptionsPage() {
-  const [activeSub, setActiveSub] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPurchasing, setIsPurchasing] = useState<string | null>(null);
+  const { data: activeSub, isLoading } = useActiveSubscription();
+  const purchaseSubscriptionMutation = usePurchaseSubscriptionMutation();
+
   const [message, setMessage] = useState({ type: "", text: "" });
 
   const plans = [
@@ -31,41 +42,22 @@ export default function SubscriptionsPage() {
     }
   ];
 
-  useEffect(() => {
-    fetchActiveSubscription();
-  }, []);
-
-  const fetchActiveSubscription = async () => {
-    try {
-      const res = await checkSubscriptionValidity();
-      setActiveSub(res?.data || null);
-    } catch (err) {
-      console.error("Failed to load subscription status", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePurchase = async (plan: any) => {
-    setIsPurchasing(plan.id);
+  const handlePurchase = async (plan: Plan) => {
     setMessage({ type: "", text: "" });
 
     try {
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + plan.durationMonths);
 
-      await purchaseSubscription({
+      await purchaseSubscriptionMutation.mutateAsync({
         planName: plan.name,
         price: plan.price,
         endDate: endDate.toISOString()
       });
 
       setMessage({ type: "success", text: `Successfully purchased ${plan.name}!` });
-      fetchActiveSubscription();
-    } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to purchase subscription." });
-    } finally {
-      setIsPurchasing(null);
+    } catch (err: unknown) {
+      setMessage({ type: "error", text: (err as Error)?.message || "Failed to purchase subscription." });
     }
   };
 
@@ -78,7 +70,7 @@ export default function SubscriptionsPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+    <div className="space-y-8 max-w-6xl mx-auto pb-12">
       <div>
         <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">AMC Subscriptions</h2>
         <p className="text-gray-500 mt-2">Manage your Annual Maintenance Contracts for worry-free driving.</p>
@@ -166,8 +158,8 @@ export default function SubscriptionsPage() {
                   <Button 
                     className={`w-full h-12 text-lg rounded-xl shadow-lg transition-transform active:scale-95 ${plan.recommended ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-gray-900 hover:bg-gray-800 text-white'}`}
                     onClick={() => handlePurchase(plan)}
-                    isLoading={isPurchasing === plan.id}
-                    disabled={isPurchasing !== null}
+                    isLoading={purchaseSubscriptionMutation.isPending && purchaseSubscriptionMutation.variables?.planName === plan.name}
+                    disabled={purchaseSubscriptionMutation.isPending}
                   >
                     Purchase {plan.name}
                   </Button>

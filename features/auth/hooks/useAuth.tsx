@@ -34,32 +34,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const handleLogout = async () => {
+  const handleLogout = async (force: boolean = false) => {
+    if (!force) {
+      try {
+        await logoutUser();
+      } catch (error) {
+        console.error("Logout failed", error);
+      }
+    }
+    
     try {
-      await logoutUser();
       await clearSessionCookie();
     } catch (error) {
-      console.error("Logout failed", error);
+      console.error("Clear session cookie failed", error);
     }
 
     setUser(null);
     setAccessToken(null);
     setApiAccessToken(null);
-    router.push("/login");
+    localStorage.removeItem("car_blink_refresh_token");
+    
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
   };
 
   const handleLogin = async (newUser: User, newAccessToken: string, newRefreshToken: string) => {
     setUser(newUser);
     setAccessToken(newAccessToken);
     setApiAccessToken(newAccessToken);
+    if (newRefreshToken) {
+      localStorage.setItem("car_blink_refresh_token", newRefreshToken);
+    }
     await setSessionCookie(newAccessToken);
   };
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Attempt to get a new access token using HttpOnly cookies
-        const refreshData = await refreshToken({});
+        const storedRefreshToken = localStorage.getItem("car_blink_refresh_token") || "";
+        const refreshData = await refreshToken({ refreshToken: storedRefreshToken });
         if (refreshData?.accessToken) {
           const newAccessToken = refreshData.accessToken;
           setApiAccessToken(newAccessToken);
@@ -72,10 +86,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error) {
         console.error("Failed to restore session", error);
-        // Clear any stray state if incomplete
         setUser(null);
         setAccessToken(null);
         setApiAccessToken(null);
+        localStorage.removeItem("car_blink_refresh_token");
       } finally {
         setIsLoading(false);
       }
@@ -85,8 +99,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLogoutCallback(handleLogout);
     setTokenRefreshProvider(async () => {
       try {
-        const refreshData = await refreshToken({});
+        const storedRefreshToken = localStorage.getItem("car_blink_refresh_token") || "";
+        if (!storedRefreshToken) return null;
+        const refreshData = await refreshToken({ refreshToken: storedRefreshToken });
         const newAccessToken = refreshData.accessToken;
+        
+        if (refreshData.refreshToken) {
+          localStorage.setItem("car_blink_refresh_token", refreshData.refreshToken);
+        }
 
         setAccessToken(newAccessToken);
         return newAccessToken;

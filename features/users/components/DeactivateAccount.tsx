@@ -5,6 +5,7 @@ import { deactivateAccount } from "@/lib/services";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { AlertTriangle } from "lucide-react";
 
 export function DeactivateAccount() {
   const { logout } = useAuth();
@@ -28,14 +29,17 @@ export function DeactivateAccount() {
   };
 
   return (
-    <Card className="border-danger/20">
-      <CardHeader>
-        <CardTitle className="text-danger">Danger Zone</CardTitle>
-        <CardDescription>
+    <Card className="bg-white/80 backdrop-blur-md shadow-sm border border-danger/20 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-danger/5 to-transparent border-b border-danger/10">
+        <CardTitle className="flex items-center space-x-2 text-danger">
+          <AlertTriangle className="w-5 h-5" />
+          <span>Danger Zone</span>
+        </CardTitle>
+        <CardDescription className="text-danger/80">
           Deactivating your account will hide your profile and active listings. This action is reversible by contacting support.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         {error && (
           <div className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">
             {error}

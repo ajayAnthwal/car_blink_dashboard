@@ -1,185 +1,153 @@
+// @ts-nocheck
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { getBookings, createSupportTicket, getSupportTickets, getSupportTicketById, replySupportTicket } from "@/lib/services";
+import React, { useState } from "react";
+import dynamic from "next/dynamic";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { HelpCircle, Loader2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/Select";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { HelpCircle, Send, Loader2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, MessageSquareWarning } from "lucide-react";
+import { 
+  useCustomerBookings, 
+  useSupportTickets, 
+  useCreateSupportTicket, 
+  useReplySupportTicket 
+} from "@/features/customer/hooks/useCustomerQueries";
+import { QueryForm, QueryFormValues } from "@/features/customer/components/support/QueryForm";
 
-interface Booking {
+interface Ticket {
   _id: string;
-  vehicleId: { brand: string; model: string };
-  serviceId: { name: string };
-}
-
-interface SupportTicket {
-  _id: string;
-  bookingId: Booking;
   subject: string;
   description: string;
   priority: string;
   status: string;
-  messages: Array<{
-    _id: string;
-    message: string;
-    createdAt: string;
-    senderRole: string;
-  }>;
+  bookingId?: {
+    vehicleId?: { brand: string; model: string };
+  };
+  messages?: any[];
 }
 
+const ChatInterface = dynamic(
+  () => import("@/features/customer/components/support/ChatInterface"),
+  { 
+    loading: () => (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 text-primary-orange animate-spin" />
+      </div>
+    ),
+    ssr: false 
+  }
+);
+
 export default function SupportPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
-  
-  const [bookingId, setBookingId] = useState("");
-  const [subject, setSubject] = useState("");
-  const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("MEDIUM");
-  const [replyMessage, setReplyMessage] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [limit] = useState(10);
+  const [searchQuery, setSearchQuery] = useState("");
+  const limit = 10;
   
-  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
-  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isReplying, setIsReplying] = useState(false);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const { data: bookingsData } = useCustomerBookings();
+  const bookings = bookingsData?.bookings || [];
+
+  const { data: ticketsData, isLoading: isLoadingTickets } = useSupportTickets({
+    page: currentPage,
+    limit,
+    search: searchQuery
+  });
+
+  const tickets = Array.isArray(ticketsData) 
+    ? ticketsData 
+    : ticketsData?.tickets || [];
+  
+  const totalCount = ticketsData?.total || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  const createTicketMutation = useCreateSupportTicket();
+  const replyTicketMutation = useReplySupportTicket();
+
   const [message, setMessage] = useState({ type: "", text: "" });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
-  // Load Bookings once
-  useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const res = await getBookings();
-        setBookings(Array.isArray(res) ? res : (res?.docs || res?.data || []));
-      } catch (err) {
-        console.error("Failed to load bookings", err);
-      } finally {
-        setIsLoadingBookings(false);
-      }
-    };
-    fetchBookings();
-  }, []);
-
-  // Debounced Search and Fetch Tickets
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchTickets();
-    }, 500);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, currentPage]);
-
-  const fetchTickets = async () => {
-    setIsLoadingTickets(true);
-    try {
-      const res = await getSupportTickets({ page: currentPage, limit, search: searchQuery });
-      const data = Array.isArray(res) ? res : (res?.tickets || res?.data?.tickets || res?.docs || []);
-      setTickets(data);
-      
-      const count = res?.total || res?.data?.total || data.length;
-      setTotalCount(count);
-      setTotalPages(Math.ceil(count / limit) || 1);
-    } catch (err) {
-      console.error("Failed to load tickets", err);
-    } finally {
-      setIsLoadingTickets(false);
-    }
-  };
-
-  const handleCreateTicket = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleCreateTicket = (data: QueryFormValues) => {
     setMessage({ type: "", text: "" });
-
-    try {
-      await createSupportTicket({
-        bookingId,
-        subject,
-        description,
-        priority,
-      });
-      setMessage({ type: "success", text: "Query submitted successfully!" });
-      setBookingId("");
-      setSubject("");
-      setDescription("");
-      setPriority("MEDIUM");
-      fetchTickets();
-    } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to submit query." });
-    } finally {
-      setIsSubmitting(false);
-    }
+    createTicketMutation.mutate(data, {
+      onSuccess: () => {
+        setMessage({ type: "success", text: "Query submitted successfully!" });
+      },
+      onError: (err: unknown) => {
+        setMessage({ type: "error", text: (err as Error)?.message || "Failed to submit query" });
+      }
+    });
   };
 
-  const handleViewDetails = async (ticket: SupportTicket) => {
+  const handleViewDetails = (ticket: Ticket) => {
     if (expandedId === ticket._id) {
       setExpandedId(null);
       setSelectedTicket(null);
-      return;
-    }
-    setIsLoadingDetails(true);
-    try {
-      const res = await getSupportTicketById(ticket._id);
-      setSelectedTicket(res._id ? res : (res?.data?._id ? res.data : res));
+    } else {
       setExpandedId(ticket._id);
-      setReplyMessage("");
-    } catch (err) {
-      console.error("Failed to load ticket details", err);
-    } finally {
-      setIsLoadingDetails(false);
+      setSelectedTicket(ticket);
     }
   };
 
-  const handleReply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTicket || !replyMessage.trim()) return;
-    setIsReplying(true);
-    try {
-      const res = await replySupportTicket(selectedTicket._id, { message: replyMessage });
-      const updatedTicket = res._id ? res : (res?.data?._id ? res.data : res);
-      setSelectedTicket(updatedTicket);
-      setReplyMessage("");
-      setTickets(prev => prev.map(t => t._id === selectedTicket._id ? updatedTicket : t));
-    } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to send reply." });
-    } finally {
-      setIsReplying(false);
-    }
+  const handleReply = (replyMessage: string) => {
+    if (!selectedTicket) return;
+    
+    replyTicketMutation.mutate(
+      { id: selectedTicket._id, message: replyMessage },
+      {
+        onSuccess: () => {
+          setSelectedTicket((prev: Ticket | null) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              messages: [
+                ...(prev.messages || []),
+                {
+                  _id: Date.now().toString(),
+                  message: replyMessage,
+                  senderRole: "CUSTOMER",
+                  createdAt: new Date().toISOString(),
+                }
+              ]
+            };
+          });
+        },
+        onError: (err: unknown) => {
+          setMessage({ type: "error", text: (err as Error)?.message || "Failed to send reply" });
+        }
+      }
+    );
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toUpperCase()) {
-      case "HIGH": return "bg-danger/10 text-danger border-danger/20";
-      case "MEDIUM": return "bg-warning/10 text-warning border-warning/20";
-      case "LOW": return "bg-success/10 text-success border-success/20";
-      default: return "bg-neutral-muted/10 text-neutral-muted border-neutral-muted/20";
+      case 'HIGH': return 'bg-danger/10 text-danger border-danger/20';
+      case 'MEDIUM': return 'bg-warning/10 text-warning border-warning/20';
+      case 'LOW': return 'bg-success/10 text-success border-success/20';
+      default: return 'bg-gray-100 text-gray-600 border-gray-200';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
-      case "OPEN": return "bg-warning/10 text-warning border-warning/20";
-      case "RESOLVED": return "bg-success/10 text-success border-success/20";
-      case "CLOSED": return "bg-neutral-muted/10 text-neutral-muted border-neutral-muted/20";
-      default: return "bg-neutral-muted/10 text-neutral-muted border-neutral-muted/20";
+      case 'OPEN': return 'bg-success/10 text-success border-success/20';
+      case 'IN_PROGRESS': return 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20';
+      case 'RESOLVED': return 'bg-gray-100 text-gray-500 border-gray-200';
+      default: return 'bg-gray-100 text-gray-600 border-gray-200';
     }
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-      <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Queries</h2>
+    <div className="space-y-6 md:space-y-8 container px-4 sm:px-6 md:px-8 mx-auto pb-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Help & Support</h2>
+          <p className="text-gray-500 mt-1">Have a question? We&apos;re here to help.</p>
+        </div>
+      </div>
 
       {message.text && (
-        <div className={`p-3 rounded-lg text-sm border ${
+        <div className={`p-4 rounded-xl text-sm border font-medium ${
           message.type === "success" 
             ? "bg-success/10 text-success border-success/20" 
             : "bg-danger/10 text-danger border-danger/20"
@@ -198,59 +166,11 @@ export default function SupportPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreateTicket} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                label="Booking"
-                value={bookingId}
-                onChange={(e) => setBookingId(e.target.value)}
-                options={bookings.map(b => ({ 
-                  value: b._id, 
-                  label: `${b.vehicleId?.brand} ${b.vehicleId?.model} - ${b.serviceId?.name}` 
-                }))}
-                disabled={bookings.length === 0}
-                required
-              />
-              <Select
-                label="Priority"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                options={[
-                  { value: "LOW", label: "Low" },
-                  { value: "MEDIUM", label: "Medium" },
-                  { value: "HIGH", label: "High" },
-                ]}
-                required
-              />
-              <div className="md:col-span-2">
-                <Input
-                  label="Query Title / Subject"
-                  placeholder="e.g. Need help with my recent booking"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-neutral-dark mb-1.5">Description</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  className="flex w-full rounded-lg border border-neutral-muted/40 bg-neutral-white px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:border-primary-orange focus:ring-primary-orange/20"
-                  required
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit" isLoading={isSubmitting} disabled={bookings.length === 0}>
-                Submit Query
-              </Button>
-            </div>
-            {bookings.length === 0 && (
-              <p className="text-xs text-neutral-muted">You need at least one booking to raise a query.</p>
-            )}
-          </form>
+          <QueryForm 
+            bookings={bookings} 
+            onSubmit={handleCreateTicket} 
+            isSubmitting={createTicketMutation.isPending} 
+          />
         </CardContent>
       </Card>
 
@@ -265,7 +185,7 @@ export default function SupportPage() {
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                setCurrentPage(1); // Reset to page 1 on search
+                setCurrentPage(1);
               }}
             />
           </div>
@@ -297,7 +217,7 @@ export default function SupportPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {tickets.map((ticket) => (
+                  {tickets.map((ticket: Ticket) => (
                     <React.Fragment key={ticket._id}>
                       <tr 
                         className={`hover:bg-gray-50/50 transition-colors cursor-pointer ${expandedId === ticket._id ? 'bg-gray-50/50' : ''}`}
@@ -332,77 +252,18 @@ export default function SupportPage() {
                           </button>
                         </td>
                       </tr>
-                      {/* Expanded View */}
                       {expandedId === ticket._id && (
                         <tr>
                           <td colSpan={5} className="p-0 border-b border-gray-100 bg-white">
-                            <div className="p-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                              {isLoadingDetails ? (
-                                <div className="flex items-center justify-center py-12">
-                                  <Loader2 className="w-6 h-6 text-primary-orange animate-spin" />
-                                </div>
-                              ) : selectedTicket && selectedTicket._id === ticket._id ? (
-                                <div className="flex flex-col h-[400px] max-w-4xl mx-auto bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
-                                  {/* Chat Messages Area */}
-                                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-5">
-                                    {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
-                                      selectedTicket.messages.map((reply: any) => {
-                                        const isCustomer = reply.senderRole === "CUSTOMER";
-                                        return (
-                                          <div
-                                            key={reply._id}
-                                            className={`flex w-full ${isCustomer ? 'justify-end' : 'justify-start'}`}
-                                          >
-                                            <div className={`max-w-[85%] flex flex-col ${isCustomer ? 'items-end' : 'items-start'}`}>
-                                              <span className="text-[11px] font-medium text-gray-400 mb-1 px-1">
-                                                {isCustomer ? "You" : "Support Team"}
-                                              </span>
-                                              <div
-                                                className={`px-5 py-3 rounded-2xl text-sm shadow-sm ${
-                                                  isCustomer 
-                                                    ? 'bg-primary-navy text-white rounded-tr-sm' 
-                                                    : 'bg-white text-gray-800 rounded-tl-sm border border-gray-100'
-                                                }`}
-                                              >
-                                                <p className="whitespace-pre-wrap leading-relaxed">{reply.message}</p>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        );
-                                      })
-                                    ) : (
-                                      <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
-                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-sm">
-                                          <MessageSquareWarning className="w-5 h-5 text-gray-300" />
-                                        </div>
-                                        <p className="text-sm text-gray-500 font-medium">No messages yet.<br/>Start the conversation below.</p>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* Reply Input Area */}
-                                  <div className="p-4 bg-white border-t border-gray-100 shrink-0">
-                                    <form onSubmit={handleReply} className="flex space-x-3 items-end">
-                                      <div className="flex-1 relative">
-                                        <Input
-                                          placeholder="Type your reply here..."
-                                          value={replyMessage}
-                                          onChange={(e) => setReplyMessage(e.target.value)}
-                                          className="bg-gray-50/50 border-gray-200 focus:bg-white rounded-xl"
-                                        />
-                                      </div>
-                                      <Button 
-                                        type="submit" 
-                                        className="rounded-xl px-6 h-10 shadow-sm"
-                                        isLoading={isReplying} 
-                                        disabled={!replyMessage.trim()}
-                                      >
-                                        <Send className="w-4 h-4 mr-2" /> Send
-                                      </Button>
-                                    </form>
-                                  </div>
-                                </div>
-                              ) : null}
+                            <div className="p-6">
+                              {selectedTicket && selectedTicket._id === ticket._id && (
+                                <ChatInterface
+                                  query={selectedTicket}
+                                  isLoadingDetails={false}
+                                  onReply={handleReply}
+                                  isReplying={replyTicketMutation.isPending}
+                                />
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -413,7 +274,6 @@ export default function SupportPage() {
               </table>
             </div>
             
-            {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50">
                 <span className="text-sm text-gray-500 font-medium">

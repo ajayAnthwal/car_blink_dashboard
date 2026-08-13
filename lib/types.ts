@@ -44,7 +44,12 @@ export interface Booking {
   description: string;
   preferredDate: string;
   status: "PENDING" | "QUOTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  assignedPartnerId?: string;
+  assignedPartnerId?: any;
+  assignedExecutiveId?: any;
+  serviceMode?: 'DOORSTEP' | 'GARAGE_VISIT';
+  paymentMode?: 'CASH' | 'ONLINE';
+  address?: string;
+  landmark?: string;
   createdAt: string;
   updatedAt: string;
 }

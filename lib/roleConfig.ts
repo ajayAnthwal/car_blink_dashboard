@@ -40,7 +40,8 @@ import {
   Key,
   User,
   MapPin,
-  Sliders
+  Sliders,
+  Wallet
 } from "lucide-react";
 import { Role } from "@/lib/constants";
 
@@ -120,6 +121,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
       {
         label: "Management",
         items: [
+          { name: "My Wallet", href: "/partner/wallet", icon: Wallet },
           { name: "Staff / Mechanics", href: "/partner/staff", icon: Users },
           { name: "Inventory & POS", href: "/partner/inventory", icon: Package },
           { name: "Earnings & Settlements", href: "/partner/earnings", icon: IndianRupee },
@@ -151,6 +153,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
           { name: "Follow-Ups", href: "/executive/follow-ups", icon: PhoneCall },
           { name: "Escalations", href: "/executive/escalations", icon: AlertTriangle },
           { name: "Logistics", href: "/executive/logistics", icon: Car },
+          { name: "History", href: "/executive/history", icon: Clock },
         ],
       },
     ],

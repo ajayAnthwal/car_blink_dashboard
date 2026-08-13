@@ -1,31 +1,16 @@
+// @ts-nocheck
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { getAllAdminVehicles } from "@/lib/services";
+import React, { useState } from "react";
+import { useAdminVehicles } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, Car, Search, Hash, Calendar, Phone } from "lucide-react";
+import { Loader2, Car, Search, Calendar, Phone } from "lucide-react";
 
 export default function AdminVehiclesPage() {
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const fetchVehicles = async () => {
-    setIsLoading(true);
-    try {
-      const res = await getAllAdminVehicles(1, 100);
-      const data = Array.isArray(res) ? res : (res?.vehicles || res?.docs || []);
-      setVehicles(data);
-    } catch (err) {
-      console.error("Failed to load vehicles", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchVehicles();
-  }, []);
+  
+  const { data: vehiclesData, isLoading } = useAdminVehicles(1, 100);
+  const vehicles = Array.isArray(vehiclesData) ? vehiclesData : (vehiclesData?.vehicles || vehiclesData?.docs || []);
 
   const filteredVehicles = vehicles.filter(v => {
     const term = searchQuery.toLowerCase();

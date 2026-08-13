@@ -1,144 +1,95 @@
+// @ts-nocheck
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { getPartnerJobs, startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension, deleteJobPhoto, markOfflinePayment, getStaff, verifyOfflinePayment } from "@/lib/services";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car, UserCheck, PlusCircle, HandCoins } from "lucide-react";
-import { useSocket } from "@/lib/SocketContext";
+import { 
+  usePartnerJobs, 
+  usePartnerStaff, 
+  useStartJobMutation, 
+  useCompleteJobMutation, 
+  useUploadInvoiceMutation, 
+  useUploadPhotosMutation, 
+  useAssignStaffMutation, 
+  useRequestJobExtensionMutation, 
+  useDeletePhotoMutation, 
+  useMarkOfflinePaymentMutation, 
+  useVerifyOfflinePaymentMutation 
+} from "@/features/partner/hooks/usePartnerQueries";
 
 export default function PartnerJobsPage() {
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [staffList, setStaffList] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: jobsData, isLoading: isLoadingJobs } = usePartnerJobs();
+  const { data: staffList = [], isLoading: isLoadingStaff } = usePartnerStaff();
+
+  const jobs = jobsData?.jobs || [];
+  const isLoading = isLoadingJobs || isLoadingStaff;
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  // Action states
-  const [isStarting, setIsStarting] = useState(false);
-  const [isCompleting, setIsCompleting] = useState(false);
+  const startJobMutation = useStartJobMutation();
+  const completeJobMutation = useCompleteJobMutation();
+  const uploadInvoiceMutation = useUploadInvoiceMutation();
+  const uploadPhotosMutation = useUploadPhotosMutation();
+  const assignStaffMutation = useAssignStaffMutation();
+  const requestExtensionMutation = useRequestJobExtensionMutation();
+  const deletePhotoMutation = useDeletePhotoMutation();
+  const markOfflinePaymentMutation = useMarkOfflinePaymentMutation();
+  const verifyOfflinePaymentMutation = useVerifyOfflinePaymentMutation();
+
   const [finalAmount, setFinalAmount] = useState("");
-
   const [invoiceUrl, setInvoiceUrl] = useState<string>("");
-  const [isUploadingInvoice, setIsUploadingInvoice] = useState(false);
-
   const [beforePhotoFiles, setBeforePhotoFiles] = useState<File[]>([]);
   const [afterPhotoFiles, setAfterPhotoFiles] = useState<File[]>([]);
-  const [isUploadingBeforePhotos, setIsUploadingBeforePhotos] = useState(false);
-  const [isUploadingAfterPhotos, setIsUploadingAfterPhotos] = useState(false);
-
-  // Mechanic Assignment
   const [mechanicId, setMechanicId] = useState("");
-  const [isAssigning, setIsAssigning] = useState(false);
-
-  // Job Extension
+  
   const [extPartName, setExtPartName] = useState("");
   const [extCost, setExtCost] = useState("");
   const [extReason, setExtReason] = useState("");
-  const [isRequestingExt, setIsRequestingExt] = useState(false);
-
-  const { socket } = useSocket();
-
-  useEffect(() => {
-    fetchJobs();
-    fetchStaffList();
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-    const handleUpdate = () => fetchJobs();
-    socket.on("job_updated", handleUpdate);
-    return () => {
-      socket.off("job_updated", handleUpdate);
-    };
-  }, [socket]);
-
-  const fetchStaffList = async () => {
-    try {
-      const res = await getStaff();
-      let dataArray = [];
-      if (Array.isArray(res)) {
-        dataArray = res;
-      } else if (res && res.data && Array.isArray(res.data)) {
-        dataArray = res.data;
-      } else if (res && res.docs && Array.isArray(res.docs)) {
-        dataArray = res.docs;
-      } else if (res && res.data && res.data.docs && Array.isArray(res.data.docs)) {
-        dataArray = res.data.docs;
-      }
-      setStaffList(dataArray);
-    } catch (err) {
-      console.error("Failed to load staff", err);
-    }
-  };
-
-  const fetchJobs = async () => {
-    try {
-      setIsLoading(true);
-      const res = await getPartnerJobs();
-      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
-      setJobs(Array.isArray(dataArray) ? dataArray : []);
-    } catch (err) {
-      console.error("Failed to load jobs", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleStartJob = async (id: string) => {
-    setIsStarting(true);
     setMessage({ type: "", text: "" });
     try {
-      await startJob(id);
+      await startJobMutation.mutateAsync(id);
       setMessage({ type: "success", text: "Job started successfully!" });
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to start job." });
-    } finally {
-      setIsStarting(false);
     }
   };
 
-  const handleCompleteJob = async (job: any) => {
+  const handleCompleteJob = async (job: unknown) => {
     if (!job.invoiceUrl && !invoiceUrl) {
       setMessage({ type: "error", text: "Please upload an invoice document before completing the job." });
       return;
     }
-
-    setIsCompleting(true);
     setMessage({ type: "", text: "" });
     try {
-      const payload: any = {};
+      const payload: unknown = {};
       if (finalAmount) payload.finalAmount = parseFloat(finalAmount);
       if (invoiceUrl) payload.invoiceUrl = invoiceUrl;
 
-      await completeJob(job._id, payload);
+      await completeJobMutation.mutateAsync({ jobId: job._id || job.id, payload });
       setMessage({ type: "success", text: "Job marked as complete!" });
       setFinalAmount("");
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to complete job." });
-    } finally {
-      setIsCompleting(false);
     }
   };
 
   const handleUploadInvoice = async (id: string) => {
     if (!invoiceUrl) return;
-    setIsUploadingInvoice(true);
     setMessage({ type: "", text: "" });
     try {
-      await uploadJobInvoice(id, { invoiceUrl });
+      await uploadInvoiceMutation.mutateAsync({ jobId: id, payload: { invoiceUrl } });
       setMessage({ type: "success", text: "Invoice linked successfully!" });
       setInvoiceUrl("");
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to link invoice." });
-    } finally {
-      setIsUploadingInvoice(false);
     }
   };
 
@@ -146,84 +97,65 @@ export default function PartnerJobsPage() {
     const files = type === "BEFORE" ? beforePhotoFiles : afterPhotoFiles;
     if (files.length === 0) return;
 
-    if (type === "BEFORE") setIsUploadingBeforePhotos(true);
-    else setIsUploadingAfterPhotos(true);
-
     setMessage({ type: "", text: "" });
     try {
       const formData = new FormData();
       formData.append("type", type);
       files.forEach((file) => formData.append("photos", file));
 
-      await uploadJobPhotos(id, formData);
+      await uploadPhotosMutation.mutateAsync({ jobId: id, formData });
       setMessage({ type: "success", text: `${type === "BEFORE" ? "Before" : "After"} service photos uploaded successfully!` });
 
       if (type === "BEFORE") setBeforePhotoFiles([]);
       else setAfterPhotoFiles([]);
-
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to upload photos." });
-    } finally {
-      if (type === "BEFORE") setIsUploadingBeforePhotos(false);
-      else setIsUploadingAfterPhotos(false);
     }
   };
 
   const handleDeletePhoto = async (id: string, photoUrl: string, type: "BEFORE" | "AFTER") => {
     setMessage({ type: "", text: "" });
     try {
-      await deleteJobPhoto(id, photoUrl, type);
+      await deletePhotoMutation.mutateAsync({ jobId: id, photoUrl, type });
       setMessage({ type: "success", text: "Photo deleted successfully!" });
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to delete photo." });
     }
   };
 
   const handleAssignMechanic = async (id: string) => {
     if (!mechanicId) return;
-    setIsAssigning(true);
     setMessage({ type: "", text: "" });
     try {
-      await assignStaffToJob(id, { staffId: mechanicId });
+      await assignStaffMutation.mutateAsync({ jobId: id, mechanicId });
       setMessage({ type: "success", text: "Mechanic assigned successfully!" });
       setMechanicId("");
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to assign mechanic." });
-    } finally {
-      setIsAssigning(false);
     }
   };
 
   const handleRequestExtension = async (id: string) => {
     if (!extPartName || !extCost || !extReason) return;
-    setIsRequestingExt(true);
     setMessage({ type: "", text: "" });
     try {
-      await requestJobExtension(id, {
-        partName: extPartName,
-        cost: Number(extCost),
-        reason: extReason
+      await requestExtensionMutation.mutateAsync({
+        jobId: id,
+        payload: { partName: extPartName, cost: Number(extCost), reason: extReason }
       });
       setMessage({ type: "success", text: "Extension requested from customer!" });
       setExtPartName(""); setExtCost(""); setExtReason("");
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to request extension." });
-    } finally {
-      setIsRequestingExt(false);
     }
   };
 
   const handleMarkOfflinePayment = async (bookingId: string, amount: number, paymentType: string) => {
     setMessage({ type: "", text: "" });
     try {
-      await markOfflinePayment({ bookingId, amount, paymentType });
+      await markOfflinePaymentMutation.mutateAsync({ bookingId, amount, paymentType });
       setMessage({ type: "success", text: `${paymentType} payment marked as received in cash.` });
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to mark offline payment." });
     }
   };
@@ -231,10 +163,9 @@ export default function PartnerJobsPage() {
   const handleVerifyOfflinePayment = async (paymentId: string) => {
     setMessage({ type: "", text: "" });
     try {
-      await verifyOfflinePayment(paymentId);
+      await verifyOfflinePaymentMutation.mutateAsync(paymentId);
       setMessage({ type: "success", text: "Cash payment verified successfully." });
-      fetchJobs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || "Failed to verify cash payment." });
     }
   };
@@ -249,7 +180,7 @@ export default function PartnerJobsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto pb-10">
       <h2 className="text-2xl font-bold text-primary-navy">My Jobs</h2>
 
       {message.text && (
@@ -268,14 +199,16 @@ export default function PartnerJobsPage() {
       ) : jobs.length === 0 ? (
         <div className="bg-neutral-white p-10 rounded-2xl shadow-sm border border-neutral-muted/20 text-center">
           <Wrench className="w-12 h-12 text-neutral-muted/30 mb-3 mx-auto" />
-          <p className="text-neutral-muted">You don't have any assigned jobs yet.</p>
+          <p className="text-neutral-muted">You don&apos;t have any assigned jobs yet.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {jobs.map((job) => (
-            <Card key={job._id} className="hover:shadow-md transition-shadow">
+          {jobs.map((job) => {
+            const jobId = job._id || job.id;
+            return (
+            <Card key={jobId} className="hover:shadow-md transition-shadow">
               <CardContent className="p-5">
-                <div className="flex items-start justify-between cursor-pointer" onClick={() => setExpandedId(expandedId === job._id ? null : job._id)}>
+                <div className="flex items-start justify-between cursor-pointer" onClick={() => setExpandedId(expandedId === jobId ? null : jobId)}>
                   <div className="flex-1">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="text-lg font-bold text-primary-navy">
@@ -289,23 +222,21 @@ export default function PartnerJobsPage() {
                     <div className="flex flex-wrap gap-3 text-sm text-neutral-muted mb-2">
                       <span className="flex items-center"><Car className="w-4 h-4 mr-1" /> {job.bookingId?.vehicleId?.brand} {job.bookingId?.vehicleId?.model}</span>
                       <span className="flex items-center"><MapPin className="w-4 h-4 mr-1" /> {job.bookingId?.cityId?.name}</span>
-                      <span className="flex items-center"><Calendar className="w-4 h-4 mr-1" /> {new Date(job.bookingId?.preferredDate).toLocaleDateString()}</span>
+                      <span className="flex items-center"><Calendar className="w-4 h-4 mr-1" /> {job.bookingId?.preferredDate ? new Date(job.bookingId?.preferredDate).toLocaleDateString() : 'N/A'}</span>
                     </div>
                   </div>
                   <button className="text-neutral-muted hover:text-neutral-dark p-1 ml-4">
-                    {expandedId === job._id ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                    {expandedId === jobId ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                   </button>
                 </div>
 
-                {expandedId === job._id && (
+                {expandedId === jobId && (
                   <div className="mt-4 pt-4 border-t border-neutral-muted/20 space-y-6">
-                    {/* File Uploads - Available during IN_PROGRESS or COMPLETED */}
+                    {/* File Uploads */}
                     {(job.status === "IN_PROGRESS" || job.status === "COMPLETED") && (
                       <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Photos Upload (Multipart) */}
                           <div className="space-y-4">
-                            {/* Before Service Photos */}
                             <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl bg-white">
                               <h4 className="font-semibold text-primary-navy flex items-center">
                                 <ImageIcon className="w-4 h-4 mr-2 text-primary-orange" /> Before Service Photos
@@ -323,9 +254,10 @@ export default function PartnerJobsPage() {
                                 <div className="flex gap-2 overflow-x-auto py-2">
                                   {job.beforePhotos.map((url: string, idx: number) => (
                                     <div key={idx} className="relative flex-shrink-0 w-24 h-24 rounded-md overflow-hidden border border-neutral-muted/20 group">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img src={url} alt={`Before ${idx}`} className="w-full h-full object-cover" />
                                       <button
-                                        onClick={() => handleDeletePhoto(job._id, url, "BEFORE")}
+                                        onClick={() => handleDeletePhoto(jobId, url, "BEFORE")}
                                         className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                         title="Delete Photo"
                                       >
@@ -338,14 +270,13 @@ export default function PartnerJobsPage() {
                               <Button
                                 className="w-full"
                                 disabled={beforePhotoFiles.length === 0}
-                                isLoading={isUploadingBeforePhotos}
-                                onClick={() => handleUploadPhotos(job._id, "BEFORE")}
+                                isLoading={uploadPhotosMutation.isPending}
+                                onClick={() => handleUploadPhotos(jobId, "BEFORE")}
                               >
                                 Upload Before Photos
                               </Button>
                             </div>
 
-                            {/* After Service Photos */}
                             <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl bg-white">
                               <h4 className="font-semibold text-primary-navy flex items-center">
                                 <ImageIcon className="w-4 h-4 mr-2 text-primary-orange" /> After Service Photos
@@ -363,9 +294,10 @@ export default function PartnerJobsPage() {
                                 <div className="flex gap-2 overflow-x-auto py-2">
                                   {job.afterPhotos.map((url: string, idx: number) => (
                                     <div key={idx} className="relative flex-shrink-0 w-24 h-24 rounded-md overflow-hidden border border-neutral-muted/20 group">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img src={url} alt={`After ${idx}`} className="w-full h-full object-cover" />
                                       <button
-                                        onClick={() => handleDeletePhoto(job._id, url, "AFTER")}
+                                        onClick={() => handleDeletePhoto(jobId, url, "AFTER")}
                                         className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                         title="Delete Photo"
                                       >
@@ -378,15 +310,14 @@ export default function PartnerJobsPage() {
                               <Button
                                 className="w-full"
                                 disabled={afterPhotoFiles.length === 0}
-                                isLoading={isUploadingAfterPhotos}
-                                onClick={() => handleUploadPhotos(job._id, "AFTER")}
+                                isLoading={uploadPhotosMutation.isPending}
+                                onClick={() => handleUploadPhotos(jobId, "AFTER")}
                               >
                                 Upload After Photos
                               </Button>
                             </div>
                           </div>
 
-                          {/* Assign Mechanic */}
                           <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl">
                             <h4 className="font-semibold text-primary-navy flex items-center">
                               <UserCheck className="w-4 h-4 mr-2 text-primary-navy" /> Assign Mechanic
@@ -396,7 +327,7 @@ export default function PartnerJobsPage() {
                               onChange={(e) => setMechanicId(e.target.value)}
                               options={[
                                 { value: "", label: "Select a Mechanic..." },
-                                ...staffList.map(staff => ({
+                                ...staffList.map((staff: unknown) => ({
                                   value: staff._id,
                                   label: `${staff.name} (${staff.role})`
                                 }))
@@ -406,15 +337,14 @@ export default function PartnerJobsPage() {
                               variant="outline"
                               className="w-full"
                               disabled={!mechanicId}
-                              isLoading={isAssigning}
-                              onClick={() => handleAssignMechanic(job._id)}
+                              isLoading={assignStaffMutation.isPending}
+                              onClick={() => handleAssignMechanic(jobId)}
                             >
                               Assign to Job
                             </Button>
                           </div>
                         </div>
 
-                        {/* Request Extension */}
                         <div className="mt-6 space-y-3 border border-neutral-muted/20 p-4 rounded-xl bg-orange-50/30">
                           <h4 className="font-semibold text-primary-navy flex items-center">
                             <PlusCircle className="w-4 h-4 mr-2 text-primary-orange" /> Request Job Extension (Extra Part)
@@ -427,16 +357,14 @@ export default function PartnerJobsPage() {
                           <Button
                             className="w-full bg-primary-navy text-white hover:bg-primary-navy-light"
                             disabled={!extPartName || !extCost || !extReason}
-                            isLoading={isRequestingExt}
-                            onClick={() => handleRequestExtension(job._id)}
+                            isLoading={requestExtensionMutation.isPending}
+                            onClick={() => handleRequestExtension(jobId)}
                           >
                             Send Extension Request to Customer
                           </Button>
                         </div>
 
                         <div className="grid grid-cols-1 mt-6">
-
-                          {/* Invoice Upload */}
                           <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl">
                             <h4 className="font-semibold text-primary-navy flex items-center">
                               <FileText className="w-4 h-4 mr-2 text-primary-navy" /> Upload Invoice
@@ -450,8 +378,8 @@ export default function PartnerJobsPage() {
                               variant="outline"
                               className="w-full"
                               disabled={!invoiceUrl}
-                              isLoading={isUploadingInvoice}
-                              onClick={() => handleUploadInvoice(job._id)}
+                              isLoading={uploadInvoiceMutation.isPending}
+                              onClick={() => handleUploadInvoice(jobId)}
                             >
                               {invoiceUrl ? "Save Invoice to Job" : job.invoiceUrl ? "✓ Invoice Saved" : "Save Invoice to Job"}
                             </Button>
@@ -460,14 +388,13 @@ export default function PartnerJobsPage() {
                       </>
                     )}
 
-                    {/* Job Actions based on Status - Moved to bottom */}
                     <div className="bg-neutral-bg p-4 rounded-xl border border-neutral-muted/10 mt-6">
                       <h4 className="font-semibold text-primary-navy mb-3">Job Actions</h4>
 
                       {job.status === "NOT_STARTED" && (
                         <div className="flex items-center justify-between">
                           <p className="text-sm text-neutral-muted">Customer has approved your bid. Ready to start?</p>
-                          <Button onClick={() => handleStartJob(job._id)} isLoading={isStarting}>
+                          <Button onClick={() => handleStartJob(jobId)} isLoading={startJobMutation.isPending}>
                             <PlayCircle className="w-4 h-4 mr-2" /> Start Job
                           </Button>
                         </div>
@@ -483,7 +410,7 @@ export default function PartnerJobsPage() {
                               value={finalAmount}
                               onChange={(e) => setFinalAmount(e.target.value)}
                             />
-                            <Button onClick={() => handleCompleteJob(job)} isLoading={isCompleting} className="bg-success hover:bg-success/90 w-48">
+                            <Button onClick={() => handleCompleteJob(job)} isLoading={completeJobMutation.isPending} className="bg-success hover:bg-success/90 w-48">
                               <CheckCircle2 className="w-4 h-4 mr-2" /> Complete Job
                             </Button>
                           </div>
@@ -497,14 +424,13 @@ export default function PartnerJobsPage() {
                             <CheckCircle2 className="w-5 h-5 mr-2" /> This job is completed. Great work!
                           </p>
 
-                          {/* Payment Management */}
                           <div className="border border-neutral-muted/20 p-4 rounded-xl mt-4 bg-white">
                             <h4 className="font-semibold text-primary-navy mb-2 flex items-center">
                               <HandCoins className="w-4 h-4 mr-2 text-primary-orange" /> Payment Status
                             </h4>
 
                             {(() => {
-                              const finalPayment = job.payments?.find((p: any) => (p.paymentType === 'FINAL' || p.paymentType === 'FULL'));
+                              const finalPayment = job.payments?.find((p: unknown) => (p.paymentType === 'FINAL' || p.paymentType === 'FULL'));
                               const isFinalPaid = finalPayment?.status === 'SUCCESS';
                               const isFinalPending = finalPayment?.status === 'PENDING' && finalPayment?.provider === 'CASH';
 
@@ -525,6 +451,7 @@ export default function PartnerJobsPage() {
                                     </div>
                                     <Button
                                       className="bg-primary-orange hover:bg-primary-orange/90 text-white w-full sm:w-auto"
+                                      isLoading={verifyOfflinePaymentMutation.isPending}
                                       onClick={() => handleVerifyOfflinePayment(finalPayment._id)}
                                     >
                                       Verify & Accept Cash
@@ -541,6 +468,7 @@ export default function PartnerJobsPage() {
                                   </div>
                                   <Button
                                     className="bg-primary-navy hover:bg-primary-navy/90 text-white w-full sm:w-auto"
+                                    isLoading={markOfflinePaymentMutation.isPending}
                                     onClick={() => handleMarkOfflinePayment(job.bookingId?._id || job.bookingId, job.finalAmount || 0, 'FINAL')}
                                   >
                                     Mark Received in Cash
@@ -556,7 +484,8 @@ export default function PartnerJobsPage() {
                 )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

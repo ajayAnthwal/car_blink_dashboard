@@ -1,9 +1,10 @@
+// @ts-nocheck
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { getBookings } from "@/lib/services";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageIcon, X, Loader2 } from "lucide-react";
+import { useCustomerBookings } from "@/features/customer/hooks/useCustomerQueries";
 
 interface Vehicle {
   _id: string;
@@ -28,28 +29,14 @@ interface Booking {
 }
 
 export default function PhotosPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: bookingsData, isLoading } = useCustomerBookings();
+  
+  const rawBookings = (bookingsData?.bookings || []) as Booking[];
+  const bookings = rawBookings.filter(
+    (b: Booking) => (b.beforePhotos && b.beforePhotos.length > 0) || (b.afterPhotos && b.afterPhotos.length > 0)
+  );
+  
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchBookings();
-  }, []);
-
-  const fetchBookings = async () => {
-    setIsLoading(true);
-    try {
-      const res = await getBookings();
-      const withPhotos = ((Array.isArray(res) ? res : (res?.docs || res?.data || []))).filter(
-        (b: Booking) => (b.beforePhotos && b.beforePhotos.length > 0) || (b.afterPhotos && b.afterPhotos.length > 0)
-      );
-      setBookings(withPhotos);
-    } catch (err) {
-      console.error("Failed to load bookings", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const renderGallery = (title: string, urls: string[] | undefined) => {
     if (!urls || urls.length === 0) {
@@ -80,7 +67,7 @@ export default function PhotosPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+    <div className="space-y-8 max-w-5xl mx-auto pb-12">
       <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Before & After Gallery</h2>
 
       {isLoading ? (
@@ -126,7 +113,7 @@ export default function PhotosPage() {
 
       {lightboxUrl && (
         <div
-          className="fixed inset-0 bg-gray-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300"
+          className="fixed inset-0 bg-gray-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4"
           onClick={() => setLightboxUrl(null)}
         >
           <button

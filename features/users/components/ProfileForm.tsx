@@ -1,67 +1,93 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { getUserProfile, updateUserProfile, getCities } from "@/lib/services";
+import { updateUserProfile } from "@/lib/services";
+import { useCities } from "@/features/customer/hooks/useCustomerQueries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { User, Mail, MapPin, Building2, Map } from "lucide-react";
+
+const profileSchema = z.object({
+  fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  address: z.string().optional(),
+  state: z.string().optional(),
+  cityId: z.string().optional(),
+  profileImage: z.string().optional(),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function ProfileForm() {
   const { user, login, accessToken } = useAuth();
   
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    address: "",
-    cityId: "",
-    profileImage: "",
-  });
+  const { data: citiesData, isLoading: isLoadingCities } = useCities();
   
-  const [cities, setCities] = useState<any[]>([]);
+  const states = Array.from(new Set((citiesData || []).map((c: any) => c.state))).filter(Boolean).map((s: any) => ({ name: s, value: s }));
+  
+  const [selectedState, setSelectedState] = useState("");
+  const filteredCities = (citiesData || []).filter((c: any) => selectedState ? c.state === selectedState : true).map((c: any) => ({ value: c._id, label: c.name }));
+
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      address: "",
+      state: "",
+      cityId: "",
+      profileImage: "",
+    },
+  });
+
   useEffect(() => {
     if (user) {
-      setFormData({
+      reset({
         fullName: user.fullName || "",
         email: user.email || "",
         address: (user as any).address || "",
+        state: (user as any).state || "",
         cityId: (user as any).cityId || "",
         profileImage: (user as any).profileImage || "",
       });
     }
-  }, [user]);
+  }, [user, reset]);
+
+  const profileImageValue = watch("profileImage");
+  const cityIdValue = watch("cityId");
+  const stateValue = watch("state");
 
   useEffect(() => {
-    const fetchCities = async () => {
-      try {
-        const res = await getCities();
-        setCities(Array.isArray(res) ? res : (res?.docs || res?.data || []));
-      } catch (error) {
-        console.error("Failed to fetch cities", error);
-      }
-    };
-    fetchCities();
-  }, []);
+    if (stateValue) {
+      setSelectedState(stateValue);
+    }
+  }, [stateValue]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: ProfileFormValues) => {
     setIsLoading(true);
     setMessage({ type: "", text: "" });
 
     try {
-      const responseData = await updateUserProfile(formData);
+      const responseData = await updateUserProfile(data);
       // Update local context
-      const newRefreshToken = localStorage.getItem("refreshToken") || "";
+      const newRefreshToken = localStorage.getItem("car_blink_refresh_token") || "";
       login(responseData.data, accessToken || "", newRefreshToken);
       
       setMessage({ type: "success", text: "Profile updated successfully!" });
@@ -73,14 +99,17 @@ export function ProfileForm() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Basic Information</CardTitle>
+    <Card className="bg-white/80 backdrop-blur-md shadow-sm border border-neutral-muted/20 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-primary-navy/5 to-transparent border-b border-neutral-muted/10">
+        <CardTitle className="flex items-center space-x-2 text-primary-navy">
+          <User className="w-5 h-5 text-primary-orange" />
+          <span>Basic Information</span>
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <CardContent className="p-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {message.text && (
-            <div className={`p-3 rounded-lg text-sm border ${
+            <div className={`p-4 rounded-xl text-sm font-medium border flex items-center space-x-2 ${
               message.type === "success" 
                 ? "bg-success/10 text-success border-success/20" 
                 : "bg-danger/10 text-danger border-danger/20"
@@ -89,49 +118,74 @@ export function ProfileForm() {
             </div>
           )}
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Full Name"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              required
-            />
-            <Input
-              label="Email (Optional)"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-            />
-            <Input
-              label="Phone"
-              name="phone"
-              value={user?.phone || ""}
-              readOnly
-              className="bg-neutral-bg text-neutral-muted"
-            />
-            <Input
-              label="Address"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="e.g. Connaught Place, New Delhi"
-            />
-            <Select
-              label="Location / City"
-              name="cityId"
-              value={formData.cityId}
-              onChange={(e) => setFormData(prev => ({ ...prev, cityId: e.target.value }))}
-              options={cities.map(c => ({ value: c._id, label: c.name }))}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5"><User className="w-4 h-4 text-neutral-muted" /> Full Name</label>
+              <Input
+                {...register("fullName")}
+                required
+                className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange"
+              />
+              {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5"><Mail className="w-4 h-4 text-neutral-muted" /> Email (Optional)</label>
+              <Input
+                {...register("email")}
+                className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange"
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5">Phone</label>
+              <Input
+                value={user?.phone || ""}
+                readOnly
+                className="bg-neutral-bg text-neutral-muted cursor-not-allowed border-transparent"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5"><MapPin className="w-4 h-4 text-neutral-muted" /> Address</label>
+              <Input
+                placeholder="e.g. Connaught Place, New Delhi"
+                {...register("address")}
+                className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5"><Map className="w-4 h-4 text-neutral-muted" /> State</label>
+              <Select
+                value={stateValue || ""}
+                onChange={(e) => {
+                  setValue("state", e.target.value);
+                  setValue("cityId", "");
+                }}
+                options={states.map(s => ({ value: s.value, label: s.name }))}
+                disabled={isLoadingCities}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5"><Building2 className="w-4 h-4 text-neutral-muted" /> Location / City</label>
+              <Select
+                value={cityIdValue || ""}
+                onChange={(e) => setValue("cityId", e.target.value)}
+                options={filteredCities}
+                disabled={!selectedState || isLoadingCities}
+              />
+            </div>
           </div>
 
           <div className="max-w-xs">
             <FileUpload
               label="Profile Image"
               folder="profile"
-              currentValue={formData.profileImage}
-              onUploadSuccess={(url) => setFormData(prev => ({ ...prev, profileImage: url }))}
+              currentValue={profileImageValue || ""}
+              onUploadSuccess={(url) => setValue("profileImage", url)}
               onUploadError={(err) => setMessage({ type: "error", text: err })}
             />
           </div>

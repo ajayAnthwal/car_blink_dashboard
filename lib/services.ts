@@ -104,7 +104,7 @@ export const uploadFile = async (file: File, folder?: string) => {
 import { State, City } from "country-state-city";
 import { indianCarBrands, indianCarModels } from "./data/cars";
 
-export const getCities = async (page = 1, limit = 100) => {
+export const getCities = async (page = 1, limit = 5000) => {
   try {
     const response = await apiClient.get(`/cities?page=${page}&limit=${limit}`);
     return response.data;
@@ -364,6 +364,26 @@ export const updatePartnerProfile = async (data: Partial<{ businessName: string;
   return response.data;
 };
 
+export const getWalletStatement = async () => {
+  const response = await apiClient.get("/wallet/my-wallet");
+  return response.data;
+};
+
+export const createDuesOrder = async (amount: number) => {
+  const response = await apiClient.post("/wallet/pay-dues/order", { amount });
+  return response.data;
+};
+
+export const verifyDuesPayment = async (data: { orderId: string; paymentId: string; signature: string; amount: number }) => {
+  const response = await apiClient.post("/wallet/pay-dues/verify", data);
+  return response.data;
+};
+
+export const requestWithdrawal = async (amount: number) => {
+  const response = await apiClient.post("/wallet/withdraw", { amount });
+  return response.data;
+};
+
 // ==========================================
 // PARTNER KYC APIs
 // ==========================================
@@ -557,13 +577,15 @@ export const resolveEscalation = async (id: string, data: { resolutionNotes: str
 // EXECUTIVE STATUS APIs
 // ==========================================
 
-export const getCustomerStatus = async (page = 1, limit = 10) => {
-  const response = await apiClient.get(`/executive/customer-status?page=${page}&limit=${limit}`);
+export const getCustomerStatus = async (page = 1, limit = 10, search = "") => {
+  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+  const response = await apiClient.get(`/executive/customer-status?page=${page}&limit=${limit}${searchParam}`);
   return response.data;
 };
 
-export const getPartnerStatus = async (page = 1, limit = 10) => {
-  const response = await apiClient.get(`/executive/partner-status?page=${page}&limit=${limit}`);
+export const getPartnerStatus = async (page = 1, limit = 10, filterStr?: string) => {
+  const query = filterStr ? `&${filterStr}` : '';
+  const response = await apiClient.get(`/executive/partner-status?page=${page}&limit=${limit}${query}`);
   return response.data;
 };
 
@@ -698,7 +720,7 @@ export const getAllAdminVehicles = async (page = 1, limit = 50) => {
   return response.data;
 };
 
-export const updateAdminUserStatus = async (id: string, data: { isActive: boolean }) => {
+export const updateAdminUserStatus = async (id: string, data: any) => {
   const response = await apiClient.patch(`/super-admin/users/${id}/status`, data);
   return response.data;
 };

@@ -3,7 +3,7 @@ import React from "react";
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; group?: string }[];
 }
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
@@ -30,9 +30,29 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           {...props}
         >
           <option value="" disabled>Select {label}</option>
-          {options.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
+          {(() => {
+            const hasGroups = options.some(opt => opt.group);
+            if (!hasGroups) {
+              return options.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ));
+            }
+
+            const groups = options.reduce((acc, opt) => {
+              const groupName = opt.group || "Other";
+              if (!acc[groupName]) acc[groupName] = [];
+              acc[groupName].push(opt);
+              return acc;
+            }, {} as Record<string, typeof options>);
+
+            return Object.entries(groups).map(([groupName, opts]) => (
+              <optgroup key={groupName} label={groupName}>
+                {opts.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </optgroup>
+            ));
+          })()}
         </select>
         {error && <span className="text-xs text-danger">{error}</span>}
       </div>

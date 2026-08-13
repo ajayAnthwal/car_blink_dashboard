@@ -5,6 +5,7 @@ import { AuthProvider } from "@/features/auth/hooks/useAuth";
 import { SocketProvider } from "@/lib/SocketContext";
 import { cn } from "@/lib/utils";
 import { Toaster } from "react-hot-toast";
+import QueryProvider from "@/providers/QueryProvider";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -33,12 +34,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(poppins.variable, inter.variable, "font-sans")}>
       <body>
-        <AuthProvider>
-          <SocketProvider>
-            {children}
-            <Toaster position="top-right" />
-          </SocketProvider>
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <SocketProvider>
+              {children}
+              <Toaster position="top-right" />
+            </SocketProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

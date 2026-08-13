@@ -1,203 +1,192 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getExecutiveLeads, assignLeadToPartner, getPartnerStatus, forwardQuoteToCustomer } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Select } from "@/components/ui/Select";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus, Search } from "lucide-react";
 import { useSocket } from "@/lib/SocketContext";
 import Link from "next/link";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import toast from "react-hot-toast";
+
+// Data fetching hooks
+import { 
+  useExecutiveLeads, 
+  useAssignLeadMutation, 
+  useForwardQuoteMutation, 
+  useUpdateLead,
+  useServices,
+  usePartnerStatus
+} from "@/features/executive/hooks/useExecutiveQueries";
+
+// Zod schemas
+const assignLeadSchema = z.object({
+  partnerIds: z.array(z.string()).min(1, "Select at least one partner"),
+  notes: z.string().optional(),
+});
+type AssignLeadFormValues = z.infer<typeof assignLeadSchema>;
+
+const forwardQuoteSchema = z.object({
+  bidIds: z.array(z.string()).min(1, "Select at least one quote to forward"),
+});
+type ForwardQuoteFormValues = z.infer<typeof forwardQuoteSchema>;
+
+const followUpSchema = z.object({
+  followUpDate: z.string().optional(),
+  remarks: z.string().optional(),
+});
+type FollowUpFormValues = z.infer<typeof followUpSchema>;
 
 export default function ExecutiveLeadsPage() {
   const { socket } = useSocket();
-  const [leads, setLeads] = useState<any[]>([]);
-  const [partners, setPartners] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   
-  // Pagination & Search
+  // Pagination & Search state
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
   const limit = 10;
   
-  const [selectedLead, setSelectedLead] = useState<any | null>(null);
-  const [partnerIds, setPartnerIds] = useState<string[]>([]);
-  const [notes, setNotes] = useState("");
-  const [radiusKm, setRadiusKm] = useState<string>("all");
-  const [isFetchingPartners, setIsFetchingPartners] = useState(false);
+  // React Query: Fetch Leads
+  const { 
+    data: leadsData, 
+    isLoading: isLeadsLoading, 
+    refetch: refetchLeads 
+  } = useExecutiveLeads({ page, limit, search, status: "PENDING,QUOTED" });
   
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
-  
-  const [filterByService, setFilterByService] = useState<boolean>(false);
-  
-  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
-  const [editFollowUpDate, setEditFollowUpDate] = useState("");
-  const [editRemarks, setEditRemarks] = useState("");
-  const [isUpdatingLead, setIsUpdatingLead] = useState(false);
-  
-  const [forwardBidData, setForwardBidData] = useState<{ leadId: string, bids: any[] } | null>(null);
-  const [selectedBidIds, setSelectedBidIds] = useState<string[]>([]);
+  const leads = leadsData?.leads || [];
+  const totalPages = leadsData?.total ? Math.ceil(leadsData.total / limit) : 1;
 
-  useEffect(() => {
-    fetchLeads();
-  }, [page]);
+  // React Query: Fetch Services
+  const { data: allServices = [] } = useServices();
 
+  // Socket realtime updates
   useEffect(() => {
     if (!socket) return;
-    socket.on("new_lead", fetchLeads);
-    socket.on("quote_received", fetchLeads);
-    socket.on("booking_confirmed", fetchLeads);
+    socket.on("new_lead", refetchLeads);
+    socket.on("quote_received", refetchLeads);
+    socket.on("booking_confirmed", refetchLeads);
 
     return () => {
-      socket.off("new_lead", fetchLeads);
-      socket.off("quote_received", fetchLeads);
-      socket.off("booking_confirmed", fetchLeads);
+      socket.off("new_lead", refetchLeads);
+      socket.off("quote_received", refetchLeads);
+      socket.off("booking_confirmed", refetchLeads);
     };
-  }, [socket]);
+  }, [socket, refetchLeads]);
 
-  const fetchLeads = async () => {
-    try {
-      setIsLoading(true);
-      // Fetch available leads for assignment (PENDING status)
-      let res, partnersRes;
-      try {
-        let filters = "status=PENDING,QUOTED";
-        if (search) filters += `&search=${encodeURIComponent(search)}`;
-        res = await getExecutiveLeads(page, limit, filters);
-      } catch (e) {
-        console.error("Failed to fetch leads from API:", e);
-      }
-      try {
-        partnersRes = await getPartnerStatus(1, 100, "status=ACTIVE");
-      } catch (e) {
-        console.error("Failed to fetch partners:", e);
-      } 
-      console.log("API RES:", res);
-      let leadsArray = [];
-      if (Array.isArray(res)) leadsArray = res;
-      else if (res?.data && Array.isArray(res.data)) leadsArray = res.data;
-      else if (res?.data?.leads && Array.isArray(res.data.leads)) leadsArray = res.data.leads;
-      else if (res?.leads && Array.isArray(res.leads)) leadsArray = res.leads;
-      else if (res?.data?.docs && Array.isArray(res.data.docs)) leadsArray = res.data.docs;
-      else if (res?.docs && Array.isArray(res.docs)) leadsArray = res.docs;
-      console.log("FINAL LEADS ARRAY:", leadsArray);
-      setLeads(leadsArray);
-      if (res?.totalPages) setTotalPages(res.totalPages);
-      else if (res?.data?.totalPages) setTotalPages(res.data.totalPages);
+  // Mutations
+  const assignMutation = useAssignLeadMutation();
+  const forwardMutation = useForwardQuoteMutation();
+  const updateLeadMutation = useUpdateLead();
 
-      setPartners(Array.isArray(partnersRes?.docs) ? partnersRes.docs : (Array.isArray(partnersRes?.partners) ? partnersRes.partners : (Array.isArray(partnersRes?.data?.partners) ? partnersRes.data.partners : (Array.isArray(partnersRes) ? partnersRes : []))));
-    } catch (err) {
-      console.error("Failed to load leads", err);
-    } finally {
-      setIsLoading(false);
+  // --- Assign Partner Modal State & Form ---
+  const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [radiusKm, setRadiusKm] = useState<string>("all");
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState<string>("all");
+
+  const assignForm = useForm<AssignLeadFormValues>({
+    resolver: zodResolver(assignLeadSchema),
+    defaultValues: { partnerIds: [], notes: "" }
+  });
+
+  // Construct query string for usePartnerStatus based on filters
+  const getPartnerFilterStr = () => {
+    if (!selectedLead) return "verificationStatus=APPROVED";
+    let query = "verificationStatus=APPROVED";
+    if (radiusKm !== "all" && selectedLead?.location?.coordinates) {
+      const lng = selectedLead.location.coordinates[0];
+      const lat = selectedLead.location.coordinates[1];
+      query += `&lat=${lat}&lng=${lng}&radius=${radiusKm}`;
     }
-  };
-
-  const handleAssignLead = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead || partnerIds.length === 0) return;
-
-    setIsSubmitting(true);
-    setMessage({ type: "", text: "" });
-
-    try {
-      await assignLeadToPartner(selectedLead._id, {
-        partnerIds,
-        notes
-      });
-
-      setMessage({ type: "success", text: "Lead assigned successfully!" });
-      setSelectedLead(null);
-      setPartnerIds([]);
-      setNotes("");
-      setRadiusKm("all");
-      fetchLeads();
-    } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to assign lead." });
-    } finally {
-      setIsSubmitting(false);
+    if (selectedServiceFilter !== "all") {
+      query += `&serviceId=${selectedServiceFilter}`;
     }
+    return query;
   };
-
-  const handleFilterChange = async (radius: string, byService: boolean, lead: any) => {
-    setRadiusKm(radius);
-    setFilterByService(byService);
-    setIsFetchingPartners(true);
-    try {
-      let query = "status=ACTIVE";
-      if (radius !== "all" && lead?.location?.coordinates) {
-        const lng = lead.location.coordinates[0];
-        const lat = lead.location.coordinates[1];
-        query += `&lat=${lat}&lng=${lng}&radius=${radius}`;
-      }
-      if (byService && lead?.serviceId?._id) {
-        query += `&serviceId=${lead.serviceId._id}`;
-      }
-      const partnersRes = await getPartnerStatus(1, 100, query);
-      const fetchedPartners = Array.isArray(partnersRes?.docs) ? partnersRes.docs : (Array.isArray(partnersRes) ? partnersRes : []);
-      setPartners(fetchedPartners);
-    } catch (err) {
-      console.error("Failed to fetch partners", err);
-    } finally {
-      setIsFetchingPartners(false);
-    }
-  };
+  
+  const { data: partnersData, isLoading: isFetchingPartners } = usePartnerStatus(1, 100, getPartnerFilterStr());
+  const partners = Array.isArray(partnersData?.docs) ? partnersData.docs : (Array.isArray(partnersData) ? partnersData : []);
 
   const openAssignModal = (lead: any) => {
     setSelectedLead(lead);
-    setPartnerIds([]);
-    setNotes("");
     setRadiusKm("all");
-    setFilterByService(false);
-    handleFilterChange("all", false, lead);
+    setSelectedServiceFilter("all");
+    assignForm.reset({ partnerIds: [], notes: "" });
   };
 
-  const handleUpdateLead = async (leadId: string) => {
-    setIsUpdatingLead(true);
-    try {
-      await updateExecutiveLead(leadId, { 
-        followUpDate: editFollowUpDate || undefined, 
-        remarks: editRemarks 
-      });
-      setEditingLeadId(null);
-      fetchLeads();
-    } catch (err) {
-      console.error("Failed to update lead", err);
-    } finally {
-      setIsUpdatingLead(false);
-    }
+  const handleAssignSubmit = (data: AssignLeadFormValues) => {
+    if (!selectedLead) return;
+    assignMutation.mutate(
+      { id: selectedLead._id, data },
+      {
+        onSuccess: () => {
+          toast.success("Lead assigned successfully!");
+          setSelectedLead(null);
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || "Failed to assign lead.");
+        }
+      }
+    );
   };
 
-  const handleForwardQuote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!forwardBidData || selectedBidIds.length === 0) return;
+  // --- Forward Quote Modal State & Form ---
+  const [forwardBidData, setForwardBidData] = useState<{ leadId: string, bids: any[] } | null>(null);
 
-    setIsSubmitting(true);
-    setMessage({ type: "", text: "" });
+  const forwardForm = useForm<ForwardQuoteFormValues>({
+    resolver: zodResolver(forwardQuoteSchema),
+    defaultValues: { bidIds: [] }
+  });
 
-    try {
-      await forwardQuoteToCustomer(forwardBidData.leadId, {
-        bidIds: selectedBidIds,
-        notes: notes
-      });
+  const handleForwardSubmit = (data: ForwardQuoteFormValues) => {
+    if (!forwardBidData) return;
+    forwardMutation.mutate(
+      { id: forwardBidData.leadId, data },
+      {
+        onSuccess: () => {
+          toast.success("Quotes successfully forwarded to the customer!");
+          setForwardBidData(null);
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || "Failed to forward quote.");
+        }
+      }
+    );
+  };
 
-      setMessage({ type: "success", text: "Quotes successfully forwarded to the customer!" });
-      setForwardBidData(null);
-      setSelectedBidIds([]);
-      setNotes("");
-      fetchLeads();
-    } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to forward quote." });
-    } finally {
-      setIsSubmitting(false);
-    }
+  // --- Follow-Up Edit State & Form ---
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+  
+  const followUpForm = useForm<FollowUpFormValues>({
+    resolver: zodResolver(followUpSchema),
+    defaultValues: { followUpDate: "", remarks: "" }
+  });
+
+  const handleUpdateLead = (leadId: string, data: FollowUpFormValues) => {
+    updateLeadMutation.mutate(
+      { 
+        id: leadId, 
+        data: { 
+          followUpDate: data.followUpDate || undefined, 
+          remarks: data.remarks 
+        } 
+      },
+      {
+        onSuccess: () => {
+          toast.success("Follow-up updated successfully");
+          setEditingLeadId(null);
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || "Failed to update lead");
+        }
+      }
+    );
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto relative">
+    <div className="space-y-6 max-w-7xl mx-auto relative pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-primary-navy">Lead Assignment</h2>
@@ -205,7 +194,7 @@ export default function ExecutiveLeadsPage() {
             Review unassigned service requests and manually allocate them to specific partners.
           </p>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); fetchLeads(); }} className="w-full md:w-64 relative">
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); }} className="w-full md:w-64 relative">
           <Input 
             placeholder="Search leads..." 
             value={search}
@@ -216,17 +205,7 @@ export default function ExecutiveLeadsPage() {
         </form>
       </div>
 
-      {message.text && (
-        <div className={`p-3 rounded-lg text-sm border ${
-          message.type === "success" 
-            ? "bg-success/10 text-success border-success/20" 
-            : "bg-danger/10 text-danger border-danger/20"
-        }`}>
-          {message.text}
-        </div>
-      )}
-
-      {isLoading ? (
+      {isLeadsLoading ? (
         <div className="flex items-center justify-center p-10 bg-neutral-white rounded-2xl shadow-sm border border-neutral-muted/20">
           <Loader2 className="w-8 h-8 text-primary-orange animate-spin" />
         </div>
@@ -236,164 +215,202 @@ export default function ExecutiveLeadsPage() {
           <p className="text-neutral-muted">All leads are currently assigned or no new requests exist.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {leads.map((lead) => (
-            <Card key={lead._id} className="hover:shadow-md transition-shadow border-l-4 border-l-secondary-blue">
-              <CardContent className="p-5">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-primary-navy mb-1">{lead.serviceId?.name || "Service Request"}</h3>
-                    <div className="flex items-center text-xs text-neutral-muted space-x-3">
-                      <span className="flex items-center"><MapPin className="w-3 h-3 mr-1"/> {lead.cityId?.name}</span>
-                      <span className="flex items-center"><Calendar className="w-3 h-3 mr-1"/> {new Date(lead.preferredDate).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-warning/10 text-warning-dark border-warning/20' : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'}`}>
-                    {lead.assignment?.assignedPartnerIds?.length > 0 ? (lead.bids?.length > 0 ? 'Quotes Received' : 'Bidding Requested') : 'Unassigned'}
-                  </span>
-                </div>
-                
-                <div className="bg-neutral-bg rounded-lg p-3 mb-4 text-sm border border-neutral-muted/10">
-                  <div className="flex items-center mb-2">
-                    <Car className="w-4 h-4 text-neutral-muted mr-2" />
-                    <span className="font-medium text-neutral-dark">{lead.vehicleId?.brand} {lead.vehicleId?.model}</span>
-                  </div>
-                  <div className="flex items-start">
-                    <Wrench className="w-4 h-4 text-neutral-muted mr-2 mt-0.5" />
-                    <span className="text-neutral-muted line-clamp-2">{lead.description || "No description provided."}</span>
-                  </div>
-                </div>
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-muted/20 overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow>
+                  <TableHead className="whitespace-nowrap font-semibold">Lead ID & Customer</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold">Service Details</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold">Location & Time</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold">Bids & Status</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leads.map((lead: any) => (
+                  <TableRow key={lead._id} className="hover:bg-gray-50/50">
+                    
+                    {/* Customer & Lead ID */}
+                    <TableCell className="min-w-[200px] align-top">
+                      <div className="flex flex-col space-y-1">
+                        <span className="font-semibold text-primary-navy text-sm">
+                          {lead.customerId?.fullName || "Unknown Customer"}
+                        </span>
+                        <div className="text-xs text-neutral-muted flex flex-col">
+                          {lead.customerId?.phone && <span>{lead.customerId.phone}</span>}
+                          {lead.customerId?.email && <span>{lead.customerId.email}</span>}
+                        </div>
+                        <div className="mt-2 text-[10px] text-neutral-muted flex items-center space-x-2">
+                          <span className="bg-gray-100 px-1.5 py-0.5 rounded font-medium border">ID: {lead._id.substring(0,8)}</span>
+                          {lead.customerId?.rewardPoints !== undefined && <span className="text-yellow-600 font-bold">⭐ {lead.customerId?.rewardPoints}</span>}
+                        </div>
+                      </div>
+                    </TableCell>
 
-                {lead.assignment?.assignedPartnerIds?.length > 0 && (
-                  <div className="mb-4 p-2 bg-warning/5 rounded text-xs text-warning-dark flex items-center border border-warning/10">
-                    <UserPlus className="w-3 h-3 mr-1" />
-                    Requested Bids From: {lead.assignment.assignedPartnerIds.map((p: any) => p.businessName || 'Partner').join(', ')}
-                  </div>
-                )}
-
-                {lead.bids && lead.bids.length > 0 && (
-                  <div className="mb-4 p-3 bg-primary-navy/5 rounded-lg border border-primary-navy/10">
-                    <h4 className="text-xs font-semibold text-primary-navy mb-2 flex items-center">
-                      <Target className="w-3 h-3 mr-1" />
-                      Received Bids ({lead.bids.length})
-                    </h4>
-                    <div className="space-y-2">
-                      {lead.bids.map((bid: any) => (
-                        <div key={bid._id} className="flex justify-between items-center text-xs bg-white p-2 rounded border border-neutral-muted/20">
-                          <div>
-                            <span className="font-medium text-neutral-dark">{bid.partnerId?.businessName || 'Partner'}</span>
-                            <div className="text-neutral-muted mt-0.5">₹{bid.quotedAmount} {bid.estimatedDuration ? `• ${bid.estimatedDuration}` : ''}</div>
+                    {/* Service Details */}
+                    <TableCell className="min-w-[220px] align-top">
+                      <div className="flex flex-col space-y-1">
+                        <span className="font-bold text-sm text-neutral-dark flex items-center gap-1.5">
+                          <Wrench className="w-3.5 h-3.5 text-primary-orange" />
+                          {lead.serviceId?.name || "Service Request"}
+                        </span>
+                        <span className="text-xs font-medium text-neutral-600 flex items-center gap-1.5">
+                          <Car className="w-3.5 h-3.5 text-neutral-muted" />
+                          {lead.vehicleId?.brand} {lead.vehicleId?.model}
+                        </span>
+                        
+                        {(lead.serviceMode || lead.paymentMode) && (
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {lead.serviceMode && (
+                              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-medium border border-blue-100 uppercase">
+                                {lead.serviceMode.replace('_', ' ')}
+                              </span>
+                            )}
+                            {lead.paymentMode && (
+                              <span className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px] font-medium border border-green-100 uppercase">
+                                {lead.paymentMode}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="px-2 py-0.5 bg-neutral-muted/10 rounded-full text-neutral-dark font-medium text-[10px]">
-                              {bid.status === 'PENDING' ? 'AWAITING REVIEW' : bid.status}
-                            </span>
+                        )}
+                        <p className="text-[11px] text-neutral-muted line-clamp-2 mt-1.5" title={lead.description}>
+                          {lead.description || "No description provided."}
+                        </p>
+                      </div>
+                    </TableCell>
+
+                    {/* Location & Time */}
+                    <TableCell className="min-w-[200px] align-top">
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-start text-xs text-neutral-700 gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-neutral-muted mt-0.5 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{lead.cityId?.name}</span>
+                            {lead.address && <span className="text-[10px] text-neutral-muted">{lead.address} {lead.landmark && `(${lead.landmark})`}</span>}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                    {lead.status === 'PENDING' && lead.bids.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-3 text-xs text-secondary-blue border-secondary-blue/30 hover:bg-secondary-blue/10"
-                        onClick={() => {
-                          setForwardBidData({ leadId: lead._id, bids: lead.bids });
-                          setSelectedBidIds(lead.bids.map((b: any) => b._id));
-                        }}
-                      >
-                        Forward Quotes to Customer
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between text-xs text-neutral-muted mb-4 border-t border-neutral-muted/10 pt-3">
-                  <div className="flex flex-col space-y-1">
-                    <span>Customer ID: {lead.customerId?._id?.substring(0,8) || "Unknown"}</span>
-                    {lead.customerId?.rewardPoints !== undefined && <span className="text-yellow-600 font-bold">Points: {lead.customerId?.rewardPoints}</span>}
-                  </div>
-                  <div className="flex flex-col space-y-1 text-right">
-                    <span>Booking ID: {lead._id.substring(0,8)}</span>
-                    {lead.customerId?.totalSavings !== undefined && <span className="text-teal-600 font-bold">Savings: ₹{lead.customerId?.totalSavings}</span>}
-                  </div>
-                </div>
-
-                {/* Follow up & Remarks */}
-                <div className="bg-neutral-bg rounded-lg p-3 mb-4 text-xs border border-neutral-muted/10">
-                  {editingLeadId === lead._id ? (
-                    <div className="space-y-2">
-                      <div>
-                        <label className="block text-neutral-dark mb-1">Follow-up Date</label>
-                        <input 
-                          type="datetime-local" 
-                          className="w-full border rounded p-1"
-                          value={editFollowUpDate}
-                          onChange={e => setEditFollowUpDate(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-neutral-dark mb-1">Remarks</label>
-                        <input 
-                          type="text" 
-                          className="w-full border rounded p-1"
-                          placeholder="e.g., Called customer, waiting for reply"
-                          value={editRemarks}
-                          onChange={e => setEditRemarks(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex space-x-2 pt-1">
-                        <Button size="sm" onClick={() => handleUpdateLead(lead._id)} isLoading={isUpdatingLead} className="flex-1 text-[10px] h-6 bg-secondary-blue">Save</Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingLeadId(null)} className="flex-1 text-[10px] h-6">Cancel</Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-semibold text-primary-navy mb-1 flex items-center">
-                          <Calendar className="w-3 h-3 mr-1" /> Follow-up
+                        <div className="flex items-start text-xs text-neutral-700 gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-neutral-muted mt-0.5 shrink-0" />
+                          <span className="font-medium">{new Date(lead.preferredDate).toLocaleString()}</span>
                         </div>
-                        <div className="text-neutral-dark mb-1">
-                          Date: <span className="font-medium">{lead.followUpDate ? new Date(lead.followUpDate).toLocaleString() : 'Not Set'}</span>
+                        
+                        {/* Follow Up */}
+                        <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between group">
+                           <div className="flex flex-col">
+                             <span className="text-[10px] font-semibold text-primary-navy">Follow-up:</span>
+                             <span className="text-[10px] text-neutral-600">
+                               {lead.followUpDate ? new Date(lead.followUpDate).toLocaleString() : 'Not Set'}
+                             </span>
+                           </div>
+                           <button onClick={() => {
+                              setEditingLeadId(lead._id);
+                              followUpForm.reset({
+                                followUpDate: lead.followUpDate ? new Date(new Date(lead.followUpDate).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : "",
+                                remarks: lead.remarks || ""
+                              });
+                            }} className="text-[10px] text-secondary-blue hover:underline opacity-0 group-hover:opacity-100 transition-opacity">
+                              Edit
+                           </button>
                         </div>
-                        <div className="text-neutral-muted italic">
-                          {lead.remarks || 'No remarks added.'}
-                        </div>
+                        {editingLeadId === lead._id && (
+                          <form onSubmit={followUpForm.handleSubmit((d) => handleUpdateLead(lead._id, d))} className="mt-2 space-y-2 bg-gray-50 p-2 rounded border border-gray-100">
+                            <div>
+                              <input 
+                                type="datetime-local" 
+                                className="w-full border rounded p-1 text-[10px]"
+                                {...followUpForm.register("followUpDate")}
+                              />
+                            </div>
+                            <div>
+                              <input 
+                                type="text" 
+                                className="w-full border rounded p-1 text-[10px]"
+                                placeholder="Remarks..."
+                                {...followUpForm.register("remarks")}
+                              />
+                            </div>
+                            <div className="flex space-x-2 pt-1">
+                              <Button type="submit" size="sm" isLoading={updateLeadMutation.isPending} className="flex-1 text-[10px] h-5 bg-secondary-blue p-0">Save</Button>
+                              <Button type="button" size="sm" variant="outline" onClick={() => setEditingLeadId(null)} className="flex-1 text-[10px] h-5 p-0">Cancel</Button>
+                            </div>
+                          </form>
+                        )}
                       </div>
-                      <button onClick={() => {
-                        setEditingLeadId(lead._id);
-                        setEditFollowUpDate(lead.followUpDate ? new Date(new Date(lead.followUpDate).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : "");
-                        setEditRemarks(lead.remarks || "");
-                      }} className="text-secondary-blue hover:underline text-[10px]">
-                        Edit
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    </TableCell>
 
-                <div className="flex items-center space-x-3">
-                  <Button 
-                    className={`flex-1 flex items-center justify-center ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-neutral-muted/20 text-neutral-dark hover:bg-neutral-muted/30' : 'bg-secondary-blue hover:bg-secondary-blue/90'}`}
-                    onClick={() => openAssignModal(lead)}
-                    variant={lead.assignment?.assignedPartnerIds?.length > 0 ? "outline" : "default"}
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" /> 
-                    {lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More" : "Assign to Partner"}
-                  </Button>
-                  <Button variant="outline" asChild className="flex-1 flex items-center justify-center border-gray-200 hover:bg-gray-50">
-                    <Link href={`/executive/leads/${lead._id || lead.id}`}>
-                      View Details
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {/* Bids & Status */}
+                    <TableCell className="min-w-[220px] align-top">
+                      <div className="flex flex-col space-y-2">
+                        <span className={`inline-flex self-start px-2 py-0.5 rounded text-[10px] font-bold border ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-warning/10 text-warning-dark border-warning/20' : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'}`}>
+                          {lead.assignment?.assignedPartnerIds?.length > 0 ? (lead.bids?.length > 0 ? 'QUOTES RECEIVED' : 'BIDDING REQUESTED') : 'UNASSIGNED'}
+                        </span>
+                        
+                        {lead.assignment?.assignedPartnerIds?.length > 0 && (
+                          <div className="text-[10px] text-neutral-600 bg-gray-50 p-1.5 rounded border">
+                            <span className="font-semibold block mb-0.5">Requested from:</span>
+                            <span className="line-clamp-2">{lead.assignment.assignedPartnerIds.map((p: any) => p.businessName || 'Partner').join(', ')}</span>
+                          </div>
+                        )}
+
+                        {lead.bids && lead.bids.length > 0 && (
+                          <div className="flex flex-col gap-1 mt-1">
+                            <span className="text-[10px] font-semibold text-primary-navy">{lead.bids.length} Bids Received:</span>
+                            {lead.bids.map((bid: any) => (
+                               <div key={bid._id} className="flex justify-between items-center text-[10px] bg-white p-1 rounded border border-gray-200">
+                                 <span className="font-medium truncate max-w-[80px]" title={bid.partnerId?.businessName}>{bid.partnerId?.businessName || 'Partner'}</span>
+                                 <span className="font-bold text-green-700">₹{bid.quotedAmount}</span>
+                               </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell className="align-top text-right min-w-[140px]">
+                      <div className="flex flex-col gap-2 items-end">
+                        <Button 
+                          size="sm"
+                          className={`w-full text-xs h-8 ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-white text-neutral-dark border border-gray-200 hover:bg-gray-50' : 'bg-secondary-blue hover:bg-secondary-blue/90'}`}
+                          onClick={() => openAssignModal(lead)}
+                        >
+                          <UserPlus className="w-3.5 h-3.5 mr-1.5" /> 
+                          {lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More" : "Assign"}
+                        </Button>
+
+                        {lead.status === 'PENDING' && lead.bids?.length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full text-[10px] h-7 text-secondary-blue border-secondary-blue/30 hover:bg-secondary-blue/10"
+                            onClick={() => {
+                              setForwardBidData({ leadId: lead._id, bids: lead.bids });
+                              forwardForm.reset({ bidIds: lead.bids.map((b: any) => b._id) });
+                            }}
+                          >
+                            Forward Quotes
+                          </Button>
+                        )}
+                        
+                        <Button variant="ghost" size="sm" asChild className="w-full text-xs h-7 text-neutral-500 hover:text-primary-navy">
+                          <Link href={`/executive/leads/${lead._id || lead.id}`}>
+                            View Full Details
+                          </Link>
+                        </Button>
+                      </div>
+                    </TableCell>
+
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 
       {/* Pagination Controls */}
-      {!isLoading && totalPages > 1 && (
+      {!isLeadsLoading && totalPages > 1 && (
         <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50 mt-4 rounded-lg">
           <span className="text-sm text-gray-500">
             Page <span className="font-bold text-gray-900">{page}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
@@ -419,166 +436,247 @@ export default function ExecutiveLeadsPage() {
 
       {/* Assignment Modal */}
       {selectedLead && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-muted/10 pb-4">
-              <CardTitle>Assign Partner</CardTitle>
+        <div className="fixed inset-0 bg-neutral-navy/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 font-heading">Assign Partner</h3>
+                <p className="text-sm text-gray-500 mt-1">Select the best partner for this service request</p>
+              </div>
               <button 
                 onClick={() => setSelectedLead(null)}
-                className="text-neutral-muted hover:text-neutral-dark"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="mb-4 bg-primary-navy/5 p-3 rounded-lg text-sm">
-                <p className="font-medium text-primary-navy">{selectedLead.serviceId?.name}</p>
-                <p className="text-neutral-muted">{selectedLead.vehicleId?.brand} {selectedLead.vehicleId?.model} • {selectedLead.cityId?.name}</p>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="mb-6 bg-gradient-to-r from-primary-navy/5 to-transparent p-4 rounded-xl border border-primary-navy/10 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-primary-navy/10 flex items-center justify-center shrink-0">
+                   <Car className="w-5 h-5 text-primary-navy" />
+                </div>
+                <div>
+                  <p className="font-bold text-primary-navy text-lg">{selectedLead.serviceId?.name}</p>
+                  <p className="text-gray-600 text-sm mt-0.5">{selectedLead.vehicleId?.brand} {selectedLead.vehicleId?.model} • {selectedLead.cityId?.name}</p>
+                </div>
               </div>
 
-              <form onSubmit={handleAssignLead} className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-sm font-medium text-neutral-dark">Select Partners</label>
-                    <div className="flex space-x-2">
-                      <label className="flex items-center space-x-1 text-xs">
-                        <input type="checkbox" checked={filterByService} onChange={(e) => handleFilterChange(radiusKm, e.target.checked, selectedLead)} />
-                        <span>Filter by Service</span>
-                      </label>
-                      <select 
-                        value={radiusKm} 
-                        onChange={(e) => handleFilterChange(e.target.value, filterByService, selectedLead)}
-                        className="text-xs border border-neutral-muted/20 rounded px-2 py-1 bg-neutral-white"
-                        disabled={!selectedLead?.location?.coordinates}
-                      >
-                        <option value="all">All Partners</option>
-                        <option value="5">Within 5 km</option>
-                        <option value="10">Within 10 km</option>
-                        <option value="15">Within 15 km</option>
-                        <option value="50">Within 50 km</option>
-                      </select>
-                    </div>
+              <form id="assignForm" onSubmit={assignForm.handleSubmit(handleAssignSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Service Filter</label>
+                        <select 
+                          value={selectedServiceFilter}
+                          onChange={(e) => setSelectedServiceFilter(e.target.value)}
+                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 hover:bg-gray-100/50 transition-colors focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy outline-none"
+                        >
+                          <option value="all">All Categories</option>
+                          {selectedLead?.serviceId?._id && (
+                            <option value={selectedLead.serviceId._id}>Match Lead Service ({selectedLead.serviceId.name})</option>
+                          )}
+                          <optgroup label="All Services">
+                            {allServices.map(s => (
+                              <option key={s._id} value={s._id}>{s.name} {s.category ? `(${s.category})` : ''}</option>
+                            ))}
+                          </optgroup>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Distance</label>
+                        <select 
+                          value={radiusKm} 
+                          onChange={(e) => setRadiusKm(e.target.value)}
+                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 hover:bg-gray-100/50 transition-colors focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy outline-none disabled:opacity-50"
+                          disabled={!selectedLead?.location?.coordinates}
+                        >
+                          <option value="all">Anywhere in city</option>
+                          <option value="5">Within 5 km</option>
+                          <option value="10">Within 10 km</option>
+                          <option value="15">Within 15 km</option>
+                          <option value="50">Within 50 km</option>
+                        </select>
+                      </div>
                   </div>
                   
                   {!selectedLead?.location?.coordinates && (
-                    <p className="text-xs text-warning-dark bg-warning/5 p-2 rounded">
+                    <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200/50">
+                      <MapPin className="w-4 h-4 shrink-0" />
                       Lead does not have exact coordinates. Showing all partners in city.
-                    </p>
+                    </div>
                   )}
                   
-                  <div>
-                    <div className="max-h-48 overflow-y-auto space-y-2 border border-neutral-muted/20 p-2 rounded-lg bg-neutral-white relative">
+                  <div className="space-y-3">
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider flex justify-between">
+                      <span>Available Partners</span>
+                      {assignForm.formState.errors.partnerIds && (
+                        <span className="text-red-500 font-medium normal-case">{assignForm.formState.errors.partnerIds.message}</span>
+                      )}
+                    </label>
+                    <div className="max-h-64 overflow-y-auto space-y-3 pr-2 relative custom-scrollbar">
                       {isFetchingPartners && (
-                        <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
-                          <Loader2 className="w-6 h-6 animate-spin text-primary-orange" />
+                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center rounded-xl border border-gray-100">
+                          <Loader2 className="w-8 h-8 animate-spin text-primary-navy" />
+                          <p className="text-sm font-medium text-primary-navy mt-2">Finding partners...</p>
                         </div>
                       )}
+                      
                       {partners.length === 0 && !isFetchingPartners && (
-                        <p className="text-center text-sm text-neutral-muted py-4">No partners found.</p>
-                      )}
-                      {partners.map(p => (
-                        <div key={p._id} className="flex items-center space-x-2 p-2 hover:bg-neutral-muted/10 rounded cursor-pointer">
-                          <input 
-                            type="checkbox"
-                            id={`partner-${p._id}`}
-                            checked={partnerIds.includes(p._id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setPartnerIds(prev => [...prev, p._id]);
-                              } else {
-                                setPartnerIds(prev => prev.filter(id => id !== p._id));
-                              }
-                            }}
-                            className="rounded border-neutral-muted text-secondary-blue focus:ring-secondary-blue cursor-pointer"
-                          />
-                          <label htmlFor={`partner-${p._id}`} className="flex-1 text-sm cursor-pointer select-none">
-                            <span className="font-medium">{p.businessName || p.fullName}</span>
-                            <span className="text-neutral-muted ml-1">({p.city?.name || 'Unknown Location'})</span>
-                          </label>
+                        <div className="flex flex-col items-center justify-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                           <Target className="w-10 h-10 text-gray-300 mb-3" />
+                           <p className="text-sm font-medium text-gray-500">No partners found matching criteria.</p>
+                           <button type="button" onClick={() => { setSelectedServiceFilter("all"); setRadiusKm("all"); }} className="text-xs text-primary-orange font-semibold mt-2 hover:underline">Clear Filters</button>
                         </div>
-                      ))}
+                      )}
+                      
+                      <Controller
+                        name="partnerIds"
+                        control={assignForm.control}
+                        render={({ field }) => (
+                          <>
+                            {partners.map(p => {
+                              const isSelected = field.value.includes(p._id);
+                              return (
+                                <div 
+                                  key={p._id} 
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      field.onChange(field.value.filter(id => id !== p._id));
+                                    } else {
+                                      field.onChange([...field.value, p._id]);
+                                    }
+                                  }}
+                                  className={`flex items-center space-x-4 p-4 rounded-xl border transition-all cursor-pointer ${isSelected ? 'border-primary-orange bg-primary-orange/5 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}`}
+                                >
+                                  <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-primary-orange text-white' : 'border-2 border-gray-300'}`}>
+                                    {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-sm font-bold truncate ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}>{p.businessName || p.fullName}</p>
+                                    <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
+                                      <MapPin className="w-3 h-3" />
+                                      <span className="truncate">{p.city?.name || 'Unknown Location'}</span>
+                                    </div>
+                                  </div>
+                                  {p.distance && (
+                                     <div className="text-xs font-semibold bg-gray-100 px-2 py-1 rounded text-gray-600">
+                                       {(p.distance / 1000).toFixed(1)} km
+                                     </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                      />
                     </div>
                   </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-dark mb-1.5">Assignment Notes (Optional)</label>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Notes for Partner <span className="text-gray-400 font-normal lowercase">(Optional)</span></label>
                   <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    {...assignForm.register("notes")}
                     placeholder="E.g. Expedite this request..."
-                    rows={3}
-                    className="flex w-full rounded-lg border border-neutral-muted/40 bg-neutral-white px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:border-primary-orange focus:ring-primary-orange/20"
+                    rows={2}
+                    className="w-full text-sm rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy"
                   />
                 </div>
 
-                <div className="flex space-x-3 pt-2">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setSelectedLead(null)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="flex-1 bg-secondary-blue hover:bg-secondary-blue/90" isLoading={isSubmitting}>
-                    Assign Partner
-                  </Button>
-                </div>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+            
+            <div className="p-5 border-t border-gray-100 bg-gray-50 flex space-x-3 mt-auto">
+              <Button type="button" variant="outline" className="flex-1 bg-white border-gray-200 hover:bg-gray-100 text-gray-700 h-12 rounded-xl shadow-sm" onClick={() => setSelectedLead(null)}>
+                Cancel
+              </Button>
+              <Button 
+                form="assignForm"
+                type="submit"
+                className="flex-1 bg-primary-navy hover:bg-primary-navy-light text-white h-12 rounded-xl shadow-lg shadow-primary-navy/20" 
+                isLoading={assignMutation.isPending}
+              >
+                Assign Partner {assignForm.watch("partnerIds").length > 0 && `(${assignForm.watch("partnerIds").length})`}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Forward Quote Modal */}
       {forwardBidData && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-muted/10 pb-4">
-              <CardTitle>Forward Quotes to Customer</CardTitle>
+        <div className="fixed inset-0 bg-neutral-navy/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 font-heading">Forward Quotes</h3>
+                <p className="text-sm text-gray-500 mt-1">Send received bids to the customer</p>
+              </div>
               <button 
-                onClick={() => { setForwardBidData(null); setSelectedBidIds([]); }}
-                className="text-neutral-muted hover:text-neutral-dark"
+                onClick={() => setForwardBidData(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="mb-4 bg-primary-navy/5 p-3 rounded-lg text-sm max-h-48 overflow-y-auto">
-                <p className="font-semibold text-primary-navy mb-2">Select Quotes to Forward:</p>
-                {forwardBidData.bids.map((bid: any) => (
-                  <div key={bid._id} className="flex items-center space-x-2 mb-2 p-2 bg-white rounded border border-neutral-muted/20">
-                    <input 
-                      type="checkbox" 
-                      id={`bid-${bid._id}`}
-                      checked={selectedBidIds.includes(bid._id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedBidIds(prev => [...prev, bid._id]);
-                        } else {
-                          setSelectedBidIds(prev => prev.filter(id => id !== bid._id));
-                        }
-                      }}
-                      className="rounded border-neutral-muted text-secondary-blue focus:ring-secondary-blue cursor-pointer"
-                    />
-                    <label htmlFor={`bid-${bid._id}`} className="flex-1 text-sm cursor-pointer">
-                      <div className="font-medium text-neutral-dark">{bid.partnerId?.businessName}</div>
-                      <div className="text-xs text-neutral-muted">₹{bid.quotedAmount} {bid.estimatedDuration ? `• ${bid.estimatedDuration}` : ''}</div>
-                    </label>
-                  </div>
-                ))}
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              <div className="mb-4 bg-primary-navy/5 p-4 rounded-xl border border-primary-navy/10">
+                <p className="font-semibold text-primary-navy mb-3">Select Quotes to Forward:</p>
+                <form id="forwardForm" onSubmit={forwardForm.handleSubmit(handleForwardSubmit)}>
+                  <Controller
+                    name="bidIds"
+                    control={forwardForm.control}
+                    render={({ field }) => (
+                      <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                        {forwardBidData.bids.map((bid: any) => {
+                          const isSelected = field.value.includes(bid._id);
+                          return (
+                            <div 
+                              key={bid._id} 
+                              onClick={() => {
+                                if (isSelected) field.onChange(field.value.filter(id => id !== bid._id));
+                                else field.onChange([...field.value, bid._id]);
+                              }}
+                              className={`flex items-center space-x-3 p-3 rounded-xl border transition-all cursor-pointer ${isSelected ? 'border-secondary-blue bg-secondary-blue/5' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                            >
+                              <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-secondary-blue text-white' : 'border-2 border-gray-300'}`}>
+                                {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                              </div>
+                              <div className="flex-1 cursor-pointer">
+                                <div className="font-bold text-gray-900 text-sm">{bid.partnerId?.businessName}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">₹{bid.quotedAmount} {bid.estimatedDuration ? `• ${bid.estimatedDuration}` : ''}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  />
+                  {forwardForm.formState.errors.bidIds && (
+                    <p className="text-red-500 text-xs font-medium mt-2">{forwardForm.formState.errors.bidIds.message}</p>
+                  )}
+                </form>
               </div>
 
-              <form onSubmit={handleForwardQuote} className="space-y-4">
-                <p className="text-sm text-neutral-muted">
-                  Are you sure you want to forward the selected quotes to the customer? The booking status will be changed to QUOTED and the customer will receive an SMS notification.
-                </p>
-
-                <div className="flex space-x-3 pt-2">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => { setForwardBidData(null); setSelectedBidIds([]); }}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="flex-1 bg-secondary-blue hover:bg-secondary-blue/90" isLoading={isSubmitting} disabled={selectedBidIds.length === 0}>
-                    Forward Quotes ({selectedBidIds.length})
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+              <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                Are you sure you want to forward the selected quotes to the customer? The booking status will be changed to <span className="font-bold">QUOTED</span> and the customer will receive an SMS notification.
+              </p>
+            </div>
+            
+            <div className="p-5 border-t border-gray-100 bg-gray-50 flex space-x-3 mt-auto">
+              <Button type="button" variant="outline" className="flex-1 bg-white border-gray-200 hover:bg-gray-100 text-gray-700 h-12 rounded-xl" onClick={() => setForwardBidData(null)}>
+                Cancel
+              </Button>
+              <Button 
+                form="forwardForm"
+                type="submit" 
+                className="flex-1 bg-secondary-blue hover:bg-secondary-blue/90 text-white h-12 rounded-xl" 
+                isLoading={forwardMutation.isPending}
+              >
+                Forward {forwardForm.watch("bidIds").length > 0 && `(${forwardForm.watch("bidIds").length})`}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

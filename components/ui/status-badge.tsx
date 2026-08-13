@@ -10,7 +10,14 @@ export type StatusType =
   | "APPROVED" | "UNDER_REVIEW" | "REJECTED" | "WITHDRAWN"
   | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
-export const getStatusColorTheme = (status: string) => {
+export const getStatusColorTheme = (status: string | undefined | null) => {
+  if (!status) {
+    return {
+      bgClass: "bg-gray-500 hover:bg-gray-600 text-white",
+      hex: "#6B7280"
+    };
+  }
+
   const s = status.toUpperCase();
   
   // SUCCESS themes (Green)
@@ -53,18 +60,19 @@ export const getStatusColorTheme = (status: string) => {
 };
 
 interface StatusBadgeProps {
-  status: string;
+  status?: string | null;
   className?: string;
 }
 
 export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
-  const theme = getStatusColorTheme(status);
+  const safeStatus = status || "UNKNOWN";
+  const theme = getStatusColorTheme(safeStatus);
   
   return (
     <Badge 
       className={`uppercase text-[10px] tracking-wider border-none ${theme.bgClass} ${className}`}
     >
-      {status.replace(/_/g, " ")}
+      {safeStatus.replace(/_/g, " ")}
     </Badge>
   );
 }

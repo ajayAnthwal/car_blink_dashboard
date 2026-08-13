@@ -34,7 +34,7 @@ const onRefreshed = (token: string) => {
 // In-memory token storage for the apiClient (managed by AuthContext)
 let inMemoryToken: string | null = null;
 let refreshTokenProvider: (() => Promise<string | null>) | null = null;
-let logoutCallback: (() => void) | null = null;
+let logoutCallback: ((force?: boolean) => void) | null = null;
 
 export const setApiAccessToken = (token: string | null) => {
   inMemoryToken = token;
@@ -44,7 +44,7 @@ export const setTokenRefreshProvider = (provider: () => Promise<string | null>) 
   refreshTokenProvider = provider;
 };
 
-export const setLogoutCallback = (callback: () => void) => {
+export const setLogoutCallback = (callback: (force?: boolean) => void) => {
   logoutCallback = callback;
 };
 
@@ -94,14 +94,23 @@ apiClient.interceptors.response.use(
         errorData = (errorData as ApiResponse).error;
     }
 
+    // Prevent infinite loop if the refresh token endpoint itself returns 401
+    if (error.response?.status === 401 && originalRequest.url?.includes("/auth/refresh-token")) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           subscribeTokenRefresh((token: string) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
+            if (token) {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              resolve(apiClient(originalRequest));
+            } else {
+              reject(error);
             }
-            resolve(apiClient(originalRequest));
           });
         });
       }
@@ -122,10 +131,12 @@ apiClient.interceptors.response.use(
           }
         }
         // If refresh fails, execute logout callback
-        if (logoutCallback) logoutCallback();
+        if (logoutCallback) logoutCallback(true);
+        onRefreshed("");
         return Promise.reject(errorData || error);
       } catch (refreshError) {
-        if (logoutCallback) logoutCallback();
+        if (logoutCallback) logoutCallback(true);
+        onRefreshed("");
         return Promise.reject(errorData || refreshError);
       } finally {
         isRefreshing = false;

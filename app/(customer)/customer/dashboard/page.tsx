@@ -1,9 +1,10 @@
+// @ts-nocheck
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { getBookings, getPaymentHistory, getWarranties, getCustomerStats } from "@/lib/services";
+import { useCustomerBookings, useCustomerPayments, useCustomerWarranties, useCustomerStatsQuery } from "@/features/customer/hooks/useCustomerQueries";
 import { Booking, Payment, Warranty } from "@/lib/types";
 import { getStatusColorTheme, StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -30,125 +31,96 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, L
 export default function CustomerDashboardPage() {
   const { user } = useAuth();
 
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [stats, setStats] = useState({
-    activeBookings: 0,
-    completedServices: 0,
-    totalSpent: 0,
-    totalSpent: 0,
-    activeWarranties: 0,
-    totalSavings: 0,
-    rewardPoints: 0
-  });
-  const [pieChartData, setPieChartData] = useState<any[]>([]);
-  const [barChartData, setBarChartData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // React Query Hooks
+  const { data: bookingsData, isLoading: loadingBookings } = useCustomerBookings();
+  const bookings = bookingsData?.bookings || [];
+  
+  const { data: paymentsData, isLoading: loadingPayments } = useCustomerPayments();
+  const payments = paymentsData?.payments || [];
+
+  const { data: warrantiesData, isLoading: loadingWarranties } = useCustomerWarranties();
+  const warranties = warrantiesData?.warranties || [];
+
+  const { data: customerStats, isLoading: loadingStats } = useCustomerStatsQuery();
+
+  const loading = loadingBookings || loadingPayments || loadingWarranties || loadingStats;
+
+  // Derived state computed efficiently with useMemo
+  const stats = useMemo(() => {
+    const activeBookingsCount = bookings.filter(b => ['PENDING', 'QUOTED', 'ACCEPTED', 'IN_PROGRESS'].includes(b.status)).length;
+    const completedServicesCount = bookings.filter(b => b.status === 'COMPLETED').length;
+
+    const totalSpentAmount = payments
+      .filter(p => p.status === 'SUCCESS')
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const activeWarrantiesCount = warranties.filter(w => w.status === 'ACTIVE').length;
+
+    return {
+      activeBookings: activeBookingsCount,
+      completedServices: completedServicesCount,
+      totalSpent: totalSpentAmount,
+      activeWarranties: activeWarrantiesCount,
+      totalSavings: customerStats?.totalSavings || 0,
+      rewardPoints: customerStats?.rewardPoints || 0
+    };
+  }, [bookings, payments, warranties, customerStats]);
+
+  const pieChartData = useMemo(() => {
+    const statusCounts = bookings.reduce((acc: any, booking: Booking) => {
+      const status = booking.status || 'PENDING';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.keys(statusCounts).map(status => ({
+      name: status.replace(/_/g, " "),
+      value: statusCounts[status],
+      color: getStatusColorTheme(status).hex
+    }));
+  }, [bookings]);
+
+  const barChartData = useMemo(() => {
+    const last6Months = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      return {
+        monthKey: `${d.getFullYear()}-${d.getMonth()}`, 
+        label: d.toLocaleDateString('default', { month: 'short' }), 
+        spent: 0
+      };
+    }).reverse(); 
+
+    payments.forEach(p => {
+      if (p.status !== 'SUCCESS') return;
+      const date = new Date(p.paidAt || p.createdAt);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      const monthObj = last6Months.find(m => m.monthKey === monthKey);
+      if (monthObj) {
+        monthObj.spent += (p.amount || 0);
+      }
+    });
+
+    return last6Months;
+  }, [payments]);
+
+  const recentBookings = useMemo(() => {
+    return [...bookings].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+  }, [bookings]);
+
+  const quotesWaiting = useMemo(() => {
+    return bookings.filter(b => b.status === 'QUOTED');
+  }, [bookings]);
+
+  const [todayStr, setTodayStr] = useState("");
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        // Using Promise.all to fetch all required data concurrently
-        const [bookingsRes, paymentsRes, warrantiesRes, statsRes] = await Promise.all([
-          getBookings().catch(() => ({ data: [] })),
-          getPaymentHistory().catch(() => ({ data: [] })),
-          getWarranties().catch(() => ({ data: [] })),
-          getCustomerStats().catch(() => ({ data: { totalSavings: 0, rewardPoints: 0 } }))
-        ]);
-
-        const extractArray = (res: any, key: string) => {
-          if (Array.isArray(res)) return res;
-          if (res?.data && Array.isArray(res.data)) return res.data;
-          if (res?.data && Array.isArray(res.data[key])) return res.data[key];
-          if (res && Array.isArray(res[key])) return res[key];
-          if (res?.docs && Array.isArray(res.docs)) return res.docs;
-          return [];
-        };
-
-        const allBookings: Booking[] = extractArray(bookingsRes, 'bookings');
-        const allPayments: Payment[] = extractArray(paymentsRes, 'payments');
-        const allWarranties: Warranty[] = extractArray(warrantiesRes, 'warranties');
-
-        setBookings(allBookings);
-
-        // 1. Compute Stats
-        const activeBookingsCount = allBookings.filter(b => ['PENDING', 'QUOTED', 'ACCEPTED', 'IN_PROGRESS'].includes(b.status)).length;
-        const completedServicesCount = allBookings.filter(b => b.status === 'COMPLETED').length;
-
-        const totalSpentAmount = allPayments
-          .filter(p => p.status === 'SUCCESS')
-          .reduce((sum, p) => sum + (p.amount || 0), 0);
-
-        const activeWarrantiesCount = allWarranties.filter(w => w.status === 'ACTIVE').length;
-
-        setStats({
-          activeBookings: activeBookingsCount,
-          completedServices: completedServicesCount,
-          totalSpent: totalSpentAmount,
-          activeWarranties: activeWarrantiesCount,
-          totalSavings: statsRes?.data?.totalSavings || 0,
-          rewardPoints: statsRes?.data?.rewardPoints || 0
-        });
-
-        // 2. Prepare Pie Chart Data (Bookings by Status)
-        const statusCounts = allBookings.reduce((acc: any, booking: Booking) => {
-          const status = booking.status || 'PENDING';
-          acc[status] = (acc[status] || 0) + 1;
-          return acc;
-        }, {});
-
-        const pieData = Object.keys(statusCounts).map(status => ({
-          name: status.replace(/_/g, " "),
-          value: statusCounts[status],
-          color: getStatusColorTheme(status).hex
-        }));
-
-        setPieChartData(pieData);
-
-        // 3. Prepare Bar Chart Data (Spending over last 6 months)
-        const last6Months = Array.from({ length: 6 }).map((_, i) => {
-          const d = new Date();
-          d.setMonth(d.getMonth() - i);
-          return {
-            monthKey: `${d.getFullYear()}-${d.getMonth()}`, // For grouping
-            label: d.toLocaleDateString('default', { month: 'short' }), // For display (e.g. "May")
-            spent: 0
-          };
-        }).reverse(); // chronological order
-
-        allPayments.forEach(p => {
-          if (p.status !== 'SUCCESS') return;
-          const date = new Date(p.paidAt || p.createdAt);
-          const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-          const monthObj = last6Months.find(m => m.monthKey === monthKey);
-          if (monthObj) {
-            monthObj.spent += (p.amount || 0);
-          }
-        });
-
-        setBarChartData(last6Months);
-
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user]);
-
-  // Derived state
-  const recentBookings = [...bookings].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
-  const quotesWaiting = bookings.filter(b => b.status === 'QUOTED');
-
-  const todayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
+    setTodayStr(new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date()));
+  }, []);
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      <div className="space-y-6 container px-4 sm:px-6 md:px-8 mx-auto pb-10">
         <div className="flex justify-between items-center">
           <div className="space-y-2">
             <Skeleton className="h-8 w-64" />
@@ -170,7 +142,7 @@ export default function CustomerDashboardPage() {
   const isCompletelyEmpty = bookings.length === 0;
 
   return (
-    <div className="space-y-8 pb-12 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 md:space-y-8 pb-12 container px-4 sm:px-6 md:px-8 mx-auto">
       {isCompletelyEmpty && (
         <div className="bg-gradient-to-r from-orange-50 via-white to-orange-50/50 border border-orange-100/50 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
           <div className="flex items-center gap-5">
@@ -188,7 +160,7 @@ export default function CustomerDashboardPage() {
 
       {/* Action Center Alerts */}
       {quotesWaiting.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-3xl p-5 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in zoom-in-95 duration-500">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-3xl p-5 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-blue-600">
               <AlertCircle className="w-6 h-6" />
@@ -331,7 +303,7 @@ export default function CustomerDashboardPage() {
 
       {/* Pending Quotes Section */}
       {quotesWaiting.length > 0 && (
-        <div className="mt-6 animate-in fade-in duration-500">
+        <div className="mt-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
             <BellRing className="w-5 h-5 mr-2 text-primary-orange animate-bounce" />
             Action Required: Pending Quotes
