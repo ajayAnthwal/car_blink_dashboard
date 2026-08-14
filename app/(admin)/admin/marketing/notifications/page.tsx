@@ -4,11 +4,17 @@
 import React, { useState } from "react";
 import { useAdminMarketingNotifications, useSendAdminMarketingNotificationMutation } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, Bell, Send, History } from "lucide-react";
+import { Loader2, Bell, Send, History, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function AdminNotificationsPage() {
+  const [page, setPage] = useState(1);
+  const limit = 5;
+  
   const { data: historyData, isLoading } = useAdminMarketingNotifications();
   const history = historyData || [];
+  
+  const totalPages = Math.ceil(history.length / limit) || 1;
+  const paginatedHistory = history.slice((page - 1) * limit, page * limit);
   
   const sendNotificationMutation = useSendAdminMarketingNotificationMutation();
   
@@ -138,7 +144,7 @@ export default function AdminNotificationsPage() {
                           <td colSpan={3} className="text-center py-10 text-gray-400 font-medium">No notifications sent yet.</td>
                         </tr>
                       ) : (
-                        history.map((item: unknown) => (
+                        paginatedHistory.map((item: unknown) => (
                           <tr key={item._id} className="hover:bg-blue-50/30 transition-colors">
                             <td className="px-6 py-4">
                               <div className="font-bold text-gray-900">{item.title}</div>
@@ -161,6 +167,30 @@ export default function AdminNotificationsPage() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              )}
+              {/* Pagination */}
+              {!isLoading && history.length > 0 && (
+                <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+                  <span className="text-sm text-gray-500 font-medium">
+                    Showing Page {page} of {totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                    </button>
+                    <button 
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+                    >
+                      Next <ChevronRight className="w-4 h-4 ml-1" />
+                    </button>
+                  </div>
                 </div>
               )}
             </CardContent>

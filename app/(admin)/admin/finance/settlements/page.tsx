@@ -4,13 +4,16 @@
 import React, { useState } from "react";
 import { useAdminSettlements, useMarkAdminSettlementPaidMutation } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, IndianRupee, CheckCircle, FileText } from "lucide-react";
+import { Loader2, IndianRupee, CheckCircle, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function AdminSettlementsPage() {
   const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
   
-  const { data: settlementsData, isLoading } = useAdminSettlements(1, 50, statusFilter);
+  const { data: settlementsData, isLoading } = useAdminSettlements(page, limit, statusFilter);
   const settlements = settlementsData?.docs || settlementsData?.data || settlementsData || [];
+  const totalPages = settlementsData?.totalPages || Math.ceil((settlementsData?.totalDocs || settlementsData?.total || 0) / limit) || 1;
   
   const markPaidMutation = useMarkAdminSettlementPaidMutation();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
@@ -87,7 +90,10 @@ export default function AdminSettlementsPage() {
             <select 
               className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-primary-navy"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
             >
               <option value="">All Statuses</option>
               <option value="PENDING">Pending Payouts</option>
@@ -175,6 +181,30 @@ export default function AdminSettlementsPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+          {/* Pagination */}
+          {!isLoading && settlements.length > 0 && (
+            <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+              <span className="text-sm text-gray-500 font-medium">
+                Showing Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                </button>
+                <button 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </button>
+              </div>
             </div>
           )}
         </CardContent>
