@@ -134,7 +134,7 @@ export default function AdminDashboardPage() {
                 <Activity className="w-6 h-6 text-primary-orange" />
               </div>
             </div>
-            <Link href="/admin/users" className="mt-4 flex items-center text-xs font-semibold text-primary-orange hover:text-orange-700 group transition-colors">
+            <Link href="/admin/partners" className="mt-4 flex items-center text-xs font-semibold text-primary-orange hover:text-orange-700 group transition-colors">
               View partners <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
             </Link>
           </CardContent>
@@ -145,7 +145,9 @@ export default function AdminDashboardPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Monthly Growth</p>
-                <h3 className="text-3xl font-bold text-gray-900 font-heading">{stats.growthRate}%</h3>
+                <h3 className="text-3xl font-bold text-gray-900 font-heading">
+                  {stats.growthRate > 0 ? '+' : ''}{stats.growthRate}%
+                </h3>
               </div>
               <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center border border-purple-100">
                 <TrendingUp className="w-6 h-6 text-purple-600" />

@@ -8,14 +8,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
   Loader2, Calendar, User, Wrench, ArrowLeft, Ban, 
   MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee,
-  Phone, Mail, Info
+  Phone, Mail, Info, Camera
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function AdminBookingDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  
   const { data: booking, isLoading } = useAdminBookingDetails(id as string);
   const cancelMutation = useCancelAdminBookingMutation();
   
@@ -47,7 +46,7 @@ export default function AdminBookingDetailsPage() {
     );
   }
 
-  if (!booking) {
+  if (!booking || Array.isArray(booking)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-8 text-center bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 mt-6 mx-4">
         <Info className="w-16 h-16 text-gray-300 mb-4" />
@@ -189,6 +188,66 @@ export default function AdminBookingDetailsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Order Details */}
+          <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200">
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
+              <CardTitle className="text-lg text-primary-navy flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary-orange" /> Order Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="space-y-1">
+                <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-2">Service Mode</p>
+                <p className="font-bold text-gray-900">{booking.serviceMode?.replace('_', ' ') || "N/A"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-2">Payment Mode</p>
+                <p className="font-bold text-gray-900">{booking.paymentMode || "N/A"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-2">Coupon Discount</p>
+                <p className="font-bold text-green-600">₹{booking.couponDiscountAmount || 0}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Photos */}
+          {(booking.beforePhotos?.length > 0 || booking.afterPhotos?.length > 0) && (
+            <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200">
+              <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
+                <CardTitle className="text-lg text-primary-navy flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-primary-orange" /> Work Photos
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                {booking.beforePhotos?.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div> Before Service
+                    </h3>
+                    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200">
+                      {booking.beforePhotos.map((photo: string, i: number) => (
+                        <img key={i} src={photo} alt="Before" className="w-32 h-32 object-cover rounded-xl border border-gray-200 shadow-sm flex-shrink-0" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {booking.afterPhotos?.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500"></div> After Service
+                    </h3>
+                    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200">
+                      {booking.afterPhotos.map((photo: string, i: number) => (
+                        <img key={i} src={photo} alt="After" className="w-32 h-32 object-cover rounded-xl border border-gray-200 shadow-sm flex-shrink-0" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right Column (1/3 width) */}
@@ -216,6 +275,15 @@ export default function AdminBookingDetailsPage() {
                   <Mail className="w-4 h-4 text-gray-500" />
                 </div>
                 <p className="text-sm font-bold text-gray-700 break-all">{booking.customerId?.email || "N/A"}</p>
+              </div>
+              <div className="flex items-center gap-3 pt-2 border-t border-gray-100 mt-2">
+                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">City</p>
+                  <p className="text-sm font-bold text-gray-700">{booking.cityId?.name || "N/A"}</p>
+                </div>
               </div>
             </CardContent>
           </Card>

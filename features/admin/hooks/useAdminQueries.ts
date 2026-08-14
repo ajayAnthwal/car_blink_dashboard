@@ -61,14 +61,14 @@ export const useAdminDashboardData = () => {
     queryKey: ["admin", "dashboardData"],
     queryFn: async () => {
       const [financeRes, usersRes, revRes] = await Promise.all([
-        getAdminFinanceSummary().catch(() => ({ data: {} })),
+        getAdminFinanceSummary(undefined as any, undefined as any).catch(() => ({})),
         getAdminUsers(1, 1).catch(() => ({ total: 0 })),
-        getAdminRevenue('weekly').catch(() => ({ data: [] }))
+        getAdminRevenue('all').catch(() => ({}))
       ]);
       return {
-        finance: financeRes?.data || {},
+        finance: financeRes || {},
         totalUsers: usersRes?.total || 0,
-        revenue: revRes?.data || []
+        revenue: revRes || {}
       };
     }
   });
@@ -78,8 +78,8 @@ export const useAdminFinanceSummary = () => {
   return useQuery({
     queryKey: ["admin", "financeSummary"],
     queryFn: async () => {
-      const res = await getAdminFinanceSummary();
-      return res?.data || {};
+      const res = await getAdminFinanceSummary(undefined as any, undefined as any);
+      return res || {};
     }
   });
 };
@@ -99,7 +99,7 @@ export const useAdminRevenue = (timeframe: string) => {
     queryKey: ["admin", "revenue", timeframe],
     queryFn: async () => {
       const res = await getAdminRevenue(timeframe);
-      return res?.data || [];
+      return res || [];
     }
   });
 };
@@ -563,11 +563,18 @@ export const useAdminAuditLogs = (page: number = 1, limit: number = 50) => {
 // Bookings
 // ==========================================
 
-export const useAdminBookings = (page: number = 1, limit: number = 50, status?: string) => {
+export const useAdminBookings = (page: number = 1, limit: number = 50, status?: string, search?: string) => {
   return useQuery({
-    queryKey: ["admin", "bookings", page, limit, status],
+    queryKey: ["admin", "bookings", page, limit, status, search],
     queryFn: async () => {
-      const res = await getSuperAdminBookings(page, limit, status);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      if (status) params.append("status", status);
+      if (search) params.append("search", search);
+
+      const res = await getSuperAdminBookings(params.toString());
       return res;
     }
   });
@@ -578,6 +585,7 @@ export const useAdminBookingDetails = (id: string) => {
     queryKey: ["admin", "bookings", id],
     queryFn: async () => {
       const res = await getSuperAdminBookingDetails(id);
+      if (res && res._id) return res;
       return res?.data || res;
     },
     enabled: !!id
