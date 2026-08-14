@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ShoppingCart, Plus, FileText, Trash2, Printer, Loader2 } from "lucide-react";
+import { ShoppingCart, Plus, FileText, Trash2, Printer, Loader2, Download } from "lucide-react";
 import { useInventory, usePosInvoices, useGeneratePosInvoiceMutation } from "@/features/partner/hooks/usePartnerSecondaryQueries";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function POSPage() {
   const { data: inventory = [], isLoading: isLoadingInventory } = useInventory();
@@ -66,6 +68,65 @@ export default function POSPage() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const generateInvoicePDF = (inv: any) => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text("INVOICE", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text("CarBlink Partner Services", 14, 30);
+    doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString()}`, 14, 36);
+    doc.text(`Invoice #: ${inv._id.substring(0, 8).toUpperCase()}`, 14, 42);
+
+    // Customer Info
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(12);
+    doc.text("Bill To:", 14, 55);
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Name: ${inv.customerName}`, 14, 62);
+    doc.text(`Phone: ${inv.customerPhone || 'N/A'}`, 14, 68);
+
+    // Items Table
+    const tableColumn = ["Item", "Quantity", "Price", "Subtotal"];
+    const tableRows: any[] = [];
+
+    if (inv.items && Array.isArray(inv.items)) {
+      inv.items.forEach((item: any) => {
+        const itemName = item.inventoryItemId?.itemName || 'Item';
+        const qty = item.quantity || 1;
+        const price = item.price || 0;
+        const subtotal = qty * price;
+        tableRows.push([itemName, qty, `Rs. ${price}`, `Rs. ${subtotal}`]);
+      });
+    }
+
+    autoTable(doc, {
+      startY: 75,
+      head: [tableColumn],
+      body: tableRows,
+      theme: 'striped',
+      headStyles: { fillColor: [249, 115, 22] }, // Primary orange
+    });
+
+    // Total
+    const finalY = (doc as any).lastAutoTable.finalY || 75;
+    doc.setFontSize(12);
+    doc.setTextColor(40, 40, 40);
+    doc.text(`Total Amount: Rs. ${inv.totalAmount}`, 14, finalY + 15);
+
+    // Footer
+    doc.setFontSize(10);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Thank you for your business!", 14, finalY + 30);
+
+    doc.save(`Invoice_${inv._id.substring(0, 8)}.pdf`);
   };
 
   return (
@@ -177,7 +238,12 @@ export default function POSPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-gray-900">₹{inv.totalAmount}</p>
-                      <button className="text-xs text-blue-600 hover:underline mt-1">View / Print</button>
+                      <button 
+                        onClick={() => generateInvoicePDF(inv)}
+                        className="text-xs text-blue-600 hover:underline mt-1 flex items-center justify-end w-full"
+                      >
+                        <Download className="w-3 h-3 mr-1" /> Download PDF
+                      </button>
                     </div>
                   </div>
                 ))}
