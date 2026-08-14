@@ -229,12 +229,12 @@ export function Header() {
           {/* User Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none">
-              <Avatar className="h-9 w-9 md:h-10 md:w-10 border border-gray-200 cursor-pointer hover:ring-2 hover:ring-gray-100 transition-all duration-200 shadow-subtle">
-                <AvatarImage src={(user as any)?.profileImage || ""} alt={user?.fullName || "User"} />
-                <AvatarFallback className={`${config.accentBgColor} text-white font-bold flex items-center justify-center`}>
-                  {user?.fullName ? user.fullName.charAt(0).toUpperCase() : <UserIcon className="w-5 h-5" />}
-                </AvatarFallback>
-              </Avatar>
+                <Avatar className="h-9 w-9 md:h-10 md:w-10 border-2 border-white cursor-pointer hover:ring-2 hover:ring-gray-100 transition-all duration-200 shadow-md">
+                  <AvatarImage src={(user as any)?.profileImage || ""} alt={user?.fullName || "User"} className="object-cover" />
+                  <AvatarFallback className="bg-primary-orange text-white flex items-center justify-center">
+                    <UserIcon className="w-5 h-5" />
+                  </AvatarFallback>
+                </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl shadow-elevated border-gray-100">
               <div className="p-4 border-b border-gray-50 flex flex-col space-y-1">
