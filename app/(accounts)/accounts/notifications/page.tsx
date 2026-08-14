@@ -113,7 +113,10 @@ export default function NotificationsPage() {
                   ? 'bg-neutral-white border-l-transparent border-neutral-muted/20' 
                   : 'bg-primary-navy/5 border-l-primary-orange border-neutral-muted/10'
               }`}
-              onClick={() => handleMarkAsRead(notification._id, notification.isRead)}
+              onClick={() => {
+                handleMarkAsRead(notification._id, notification.isRead);
+                window.location.href = `/accounts/notifications/${notification._id}`;
+              }}
             >
               <CardContent className="p-4 sm:p-5 flex gap-4">
                 <div className={`mt-1 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
@@ -131,7 +134,7 @@ export default function NotificationsPage() {
                       {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true }) : ''}
                     </span>
                   </div>
-                  <p className={`text-sm ${notification.isRead ? 'text-neutral-muted' : 'text-neutral-dark'}`}>
+                  <p className={`text-sm ${notification.isRead ? 'text-neutral-muted' : 'text-neutral-dark'} line-clamp-2`}>
                     {notification.message}
                   </p>
                 </div>

@@ -2,243 +2,249 @@
 "use client";
 
 import React, { useState } from "react";
-import { useGstReportMutation, useInvoicesReportMutation } from "@/features/accounts/hooks/useAccountsQueries";
+import { useInvoicesReportMutation } from "@/features/accounts/hooks/useAccountsQueries";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { FileBarChart, Download } from "lucide-react";
+import { FileBarChart, Download, Building2, Wrench, Briefcase, TrendingUp } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function ReportsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [cityId, setCityId] = useState("");
-  const [serviceId, setServiceId] = useState("");
-
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [reportData, setReportData] = useState<any>(null);
 
-  const [reportData, setReportData] = useState<unknown>(null);
-  const [reportType, setReportType] = useState<"gst" | "invoice" | null>(null);
+  const reportMutation = useInvoicesReportMutation();
 
-  const gstMutation = useGstReportMutation();
-  const invoiceMutation = useInvoicesReportMutation();
-
-  const handleFetchReport = async (type: "gst" | "invoice") => {
+  const handleFetchReport = async () => {
     if (!fromDate || !toDate) {
-      setMessage({ type: "error", text: "Please select both From and To dates." });
+      setMessage({ type: "error", text: "Please select both Start and End dates." });
       return;
     }
 
     setMessage({ type: "", text: "" });
 
     try {
-      let res;
-      if (type === "gst") {
-        res = await gstMutation.mutateAsync({ fromDate, toDate });
-      } else {
-        res = await invoiceMutation.mutateAsync({ fromDate, toDate, cityId, serviceId });
+      const res = await reportMutation.mutateAsync({ fromDate, toDate });
+      
+      // Robust extraction
+      let actualData = res;
+      if (res?.data?.summary) {
+        actualData = res.data;
+      } else if (res?.data?.data?.summary) {
+        actualData = res.data.data;
+      } else if (res?.summary) {
+        actualData = res;
+      }
+
+      setReportData(actualData);
+      setMessage({ type: "success", text: "Business Report generated successfully." });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to generate report." });
+    }
+  };
+
+  const exportToExcel = () => {
+    try {
+      if (!reportData || !reportData.summary) {
+        setMessage({ type: "error", text: "No data available to export." });
+        return;
       }
       
-      // Unpack response properly
-      const actualData = res?.data || res;
-      setReportData(actualData);
-      setReportType(type);
+      let excelData = [];
+      const fileName = `Business_Report_${fromDate}_to_${toDate}.xlsx`;
+      
+      // Top Level Summary
+      excelData.push({ 'City': "OVERALL SUMMARY", 'Service': "", 'Total Jobs': "", 'Total Revenue (₹)': "" });
+      excelData.push({ 'City': "Platform Wide", 'Service': "All Services", 'Total Jobs': reportData.summary.totalJobs, 'Total Revenue (₹)': reportData.summary.totalRevenue });
+      excelData.push({});
+      
+      // Detailed Breakdown
+      excelData.push({ 'City': "CITY & SERVICE BREAKDOWN", 'Service': "", 'Total Jobs': "", 'Total Revenue (₹)': "" });
+      
+      const combos = Object.keys(reportData.summary.byCityAndService || {});
+      if (combos.length === 0) {
+        setMessage({ type: "error", text: "No business records found for this period." });
+        return;
+      }
 
-      setMessage({ type: "success", text: `${type.toUpperCase()} Report fetched successfully.` });
-    } catch (err: unknown) {
-      setMessage({ type: "error", text: err?.message || `Failed to fetch ${type.toUpperCase()} report.` });
+      combos.forEach(key => {
+        const item = reportData.summary.byCityAndService[key];
+        excelData.push({
+          'City': item.city,
+          'Service': item.service,
+          'Total Jobs': item.count,
+          'Total Revenue (₹)': item.revenue
+        });
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const columnWidths = [{ wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 }];
+      worksheet['!cols'] = columnWidths;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Business Report");
+      XLSX.writeFile(workbook, fileName);
+      
+    } catch (err: any) {
+      setMessage({ type: "error", text: "Failed to download Excel file: " + err.message });
     }
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-primary-navy flex items-center">
-          <FileBarChart className="w-6 h-6 mr-2 text-primary-orange" />
-          Reports & Analytics
-        </h2>
+    <div className="space-y-8 max-w-6xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between bg-white p-8 rounded-3xl shadow-sm border border-neutral-muted/10 gap-6">
+        <div>
+          <h2 className="text-3xl font-black text-primary-navy flex items-center tracking-tight">
+            <TrendingUp className="w-8 h-8 mr-3 text-primary-orange" />
+            Platform Business Dashboard
+          </h2>
+          <p className="text-neutral-muted mt-2 text-sm max-w-xl leading-relaxed">
+            Generate a unified business report to analyze performance across all cities and services. Instantly see where your revenue is coming from.
+          </p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row items-center gap-4 bg-neutral-bg/30 p-4 rounded-2xl border border-neutral-muted/10">
+          <div className="space-y-1 w-full sm:w-auto">
+            <label className="text-xs font-bold text-neutral-dark uppercase tracking-wider pl-1">Start Date</label>
+            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="bg-white border-none shadow-sm h-11" required />
+          </div>
+          <div className="space-y-1 w-full sm:w-auto">
+            <label className="text-xs font-bold text-neutral-dark uppercase tracking-wider pl-1">End Date</label>
+            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="bg-white border-none shadow-sm h-11" required />
+          </div>
+          <div className="space-y-1 w-full sm:w-auto pt-5">
+            <Button 
+              size="lg"
+              className="w-full sm:w-auto h-11 bg-primary-orange hover:bg-primary-orange-dark text-white font-bold shadow-md shadow-primary-orange/20"
+              onClick={handleFetchReport}
+              isLoading={reportMutation.isPending}
+            >
+              Generate Report
+            </Button>
+          </div>
+        </div>
       </div>
 
       {message.text && (
-        <div className={`p-3 rounded-lg text-sm border ${
-          message.type === "success" 
-            ? "bg-success/10 text-success border-success/20" 
-            : "bg-danger/10 text-danger border-danger/20"
+        <div className={`p-4 rounded-2xl text-sm font-semibold border shadow-sm flex items-center ${
+          message.type === "success" ? "bg-success/10 text-success border-success/20" : "bg-danger/10 text-danger border-danger/20"
         }`}>
           {message.text}
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Report Parameters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              type="date"
-              label="From Date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              required
-            />
-            <Input
-              type="date"
-              label="To Date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              required
-            />
+      {/* SKELETON LOADER */}
+      {reportMutation.isPending && (
+        <div className="space-y-6 animate-pulse">
+          <div className="h-8 bg-neutral-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-32 bg-neutral-200 rounded-3xl"></div>
+            <div className="h-32 bg-neutral-200 rounded-3xl"></div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="h-64 bg-neutral-200 rounded-3xl"></div>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-l-4 border-l-primary-navy">
-          <CardHeader>
-            <CardTitle>GST Report</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-neutral-muted">
-              Download the GST report containing platform fees, partner payouts, and calculated taxes for the selected period.
-            </p>
-            <Button 
-              className="w-full"
-              onClick={() => handleFetchReport("gst")}
-              isLoading={gstMutation.isPending}
-            >
-              <FileBarChart className="w-4 h-4 mr-2" /> View GST Report
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-primary-orange">
-          <CardHeader>
-            <CardTitle>Invoices Report</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-neutral-muted">
-              Download all invoice records. You can optionally filter by City ID or Service ID.
-            </p>
-            <div className="grid grid-cols-2 gap-3 mb-2">
-              <Input
-                placeholder="City ID (Optional)"
-                value={cityId}
-                onChange={(e) => setCityId(e.target.value)}
-              />
-              <Input
-                placeholder="Service ID (Optional)"
-                value={serviceId}
-                onChange={(e) => setServiceId(e.target.value)}
-              />
-            </div>
-            <Button 
-              className="w-full bg-primary-orange hover:bg-primary-orange-dark"
-              onClick={() => handleFetchReport("invoice")}
-              isLoading={invoiceMutation.isPending}
-            >
-              <FileBarChart className="w-4 h-4 mr-2" /> View Invoices Report
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {reportType && reportData && (
-        <Card className="mt-8 border-t-4 border-t-primary-navy shadow-lg overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between bg-neutral-muted/5 border-b border-neutral-muted/10 pb-4">
-            <CardTitle>{reportType === 'gst' ? 'GST Report Details' : 'Invoices Report Details'}</CardTitle>
-            <Button size="sm" variant="outline" onClick={() => {
-              const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
-              const downloadAnchorNode = document.createElement('a');
-              downloadAnchorNode.setAttribute("href", dataStr);
-              downloadAnchorNode.setAttribute("download", `${reportType}_report_${fromDate}_to_${toDate}.json`);
-              document.body.appendChild(downloadAnchorNode);
-              downloadAnchorNode.click();
-              downloadAnchorNode.remove();
-            }}>
-              <Download className="w-4 h-4 mr-2" /> Export JSON
-            </Button>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {reportType === 'gst' && reportData.summary && (
-              <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 bg-gradient-to-r from-primary-navy/5 to-transparent p-4 rounded-xl border border-primary-navy/10">
-                <div>
-                  <p className="text-sm font-semibold text-neutral-muted uppercase tracking-wider mb-1">Total Collected</p>
-                  <p className="text-xl font-extrabold text-primary-navy">₹{reportData.summary.totalAmountCollected?.toLocaleString() || 0}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-neutral-muted uppercase tracking-wider mb-1">Total Base</p>
-                  <p className="text-xl font-extrabold text-primary-navy">₹{reportData.summary.totalBaseAmount?.toLocaleString() || 0}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-neutral-muted uppercase tracking-wider mb-1">Total GST</p>
-                  <p className="text-xl font-extrabold text-primary-orange">₹{reportData.summary.totalGstAmount?.toLocaleString() || 0}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-neutral-muted uppercase tracking-wider mb-1">GST Rate</p>
-                  <p className="text-xl font-extrabold text-primary-navy">{reportData.summary.gstRatePercent || 18}%</p>
-                </div>
+      {/* RESULTS SECTION */}
+      {reportData && reportData.summary && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
+          
+          {/* HIGH-LEVEL METRICS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-8 rounded-3xl border border-neutral-muted/10 shadow-lg shadow-neutral-muted/5 flex items-center gap-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary-navy/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+              <div className="w-16 h-16 rounded-2xl bg-primary-navy/10 flex items-center justify-center text-primary-navy shrink-0">
+                <Briefcase className="w-8 h-8" />
               </div>
-            )}
-
-            <div className="overflow-x-auto rounded-xl border border-neutral-muted/20">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-neutral-dark uppercase bg-neutral-muted/10 border-b border-neutral-muted/20">
-                  {reportType === 'gst' ? (
-                    <tr>
-                      <th className="px-5 py-4 font-semibold tracking-wider">Date</th>
-                      <th className="px-5 py-4 font-semibold tracking-wider">Booking ID</th>
-                      <th className="px-5 py-4 font-semibold tracking-wider text-right">Total Amount</th>
-                      <th className="px-5 py-4 font-semibold tracking-wider text-right">Base Amount</th>
-                      <th className="px-5 py-4 font-semibold tracking-wider text-right text-primary-orange">GST Amount</th>
-                    </tr>
-                  ) : (
-                    <tr>
-                      <th className="px-5 py-4 font-semibold tracking-wider">Date</th>
-                      <th className="px-5 py-4 font-semibold tracking-wider">Booking ID</th>
-                      <th className="px-5 py-4 font-semibold tracking-wider">Partner</th>
-                      <th className="px-5 py-4 font-semibold tracking-wider text-right">Total Paid</th>
-                      <th className="px-5 py-4 font-semibold tracking-wider">Status</th>
-                    </tr>
-                  )}
-                </thead>
-                <tbody className="divide-y divide-neutral-muted/10">
-                  {reportData.itemized?.map((item: unknown, idx: number) => (
-                    <tr key={idx} className="hover:bg-neutral-muted/5 transition-colors">
-                      {reportType === 'gst' ? (
-                        <>
-                          <td className="px-5 py-4 text-neutral-dark">{new Date(item.createdAt || item.date).toLocaleDateString()}</td>
-                          <td className="px-5 py-4 font-medium text-secondary-blue">{item.bookingId || "N/A"}</td>
-                          <td className="px-5 py-4 text-right font-medium">₹{item.amount?.toLocaleString() || 0}</td>
-                          <td className="px-5 py-4 text-right">₹{item.baseAmount?.toLocaleString() || 0}</td>
-                          <td className="px-5 py-4 text-right font-bold text-primary-orange">₹{item.gstAmount?.toLocaleString() || 0}</td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-5 py-4 text-neutral-dark">{new Date(item.completedAt || item.date || item.createdAt).toLocaleDateString()}</td>
-                          <td className="px-5 py-4 font-medium text-secondary-blue">{item.bookingId || item.jobId || "N/A"}</td>
-                          <td className="px-5 py-4 font-medium">{item.partnerName || item.partnerId?.substring(0,8) || "N/A"}</td>
-                          <td className="px-5 py-4 text-right font-extrabold text-success">₹{item.paidAmount?.toLocaleString() || item.amount?.toLocaleString() || 0}</td>
-                          <td className="px-5 py-4">
-                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-neutral-muted/10 text-neutral-dark">
-                              {item.status || "COMPLETED"}
-                            </span>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                  {(!reportData.itemized || reportData.itemized.length === 0) && (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-12 text-center text-neutral-muted italic">
-                        No records found for the selected period.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <div>
+                <p className="text-sm font-bold text-neutral-muted uppercase tracking-wider mb-1">Total Platform Jobs</p>
+                <p className="text-5xl font-black text-primary-navy">{reportData.summary.totalJobs || 0}</p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="bg-white p-8 rounded-3xl border border-neutral-muted/10 shadow-lg shadow-neutral-muted/5 flex items-center gap-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-success/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+              <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center text-success shrink-0">
+                <FileBarChart className="w-8 h-8" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-neutral-muted uppercase tracking-wider mb-1">Total Platform Revenue</p>
+                <p className="text-5xl font-black text-success">₹{reportData.summary.totalRevenue?.toLocaleString() || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* DETAILED DATA TABLE */}
+          <Card className="border-0 shadow-2xl shadow-neutral-muted/10 rounded-3xl overflow-hidden bg-white">
+            <CardHeader className="bg-neutral-50/80 border-b border-neutral-muted/10 p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-2xl font-black text-primary-navy">Business Performance Breakdown</CardTitle>
+                <p className="text-sm font-medium text-neutral-muted mt-1">Aggregated by City and Service Category</p>
+              </div>
+              <Button 
+                size="lg" 
+                onClick={exportToExcel}
+                className="bg-primary-navy hover:bg-primary-navy-dark text-white font-bold rounded-xl shadow-lg shadow-primary-navy/20 transition-transform active:scale-95"
+              >
+                <Download className="w-5 h-5 mr-2" /> Download Excel Report
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-white border-b border-neutral-muted/10">
+                    <tr>
+                      <th className="px-8 py-5 text-xs font-bold text-neutral-muted uppercase tracking-wider">City</th>
+                      <th className="px-8 py-5 text-xs font-bold text-neutral-muted uppercase tracking-wider">Service</th>
+                      <th className="px-8 py-5 text-xs font-bold text-neutral-muted uppercase tracking-wider text-right">Total Jobs</th>
+                      <th className="px-8 py-5 text-xs font-bold text-neutral-muted uppercase tracking-wider text-right">Total Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-muted/5 bg-neutral-50/30">
+                    {Object.keys(reportData.summary.byCityAndService || {}).map((key, idx) => {
+                      const item = reportData.summary.byCityAndService[key];
+                      return (
+                        <tr key={idx} className="hover:bg-white transition-colors duration-200">
+                          <td className="px-8 py-5">
+                            <div className="flex items-center font-bold text-neutral-dark">
+                              <Building2 className="w-4 h-4 mr-2 text-neutral-muted" />
+                              {item.city}
+                            </div>
+                          </td>
+                          <td className="px-8 py-5 font-semibold text-secondary-blue flex items-center">
+                            <Wrench className="w-4 h-4 mr-2 text-neutral-muted" />
+                            {item.service}
+                          </td>
+                          <td className="px-8 py-5 text-right font-black text-primary-navy text-lg">{item.count}</td>
+                          <td className="px-8 py-5 text-right font-black text-success text-lg">₹{item.revenue?.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                    
+                    {Object.keys(reportData.summary.byCityAndService || {}).length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-8 py-20 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
+                              <TrendingUp className="w-10 h-10 text-neutral-muted/50" />
+                            </div>
+                            <h3 className="text-xl font-bold text-neutral-dark">No Business Data Found</h3>
+                            <p className="text-neutral-muted mt-2 max-w-sm">There are no completed services in the selected date range. Try selecting a different period.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
       )}
     </div>
   );

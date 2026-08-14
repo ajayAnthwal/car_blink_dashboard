@@ -245,77 +245,83 @@ export default function AccountsDashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Refunds Table */}
-      <Card className="shadow-subtle border-gray-100">
-        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50">
-          <div>
-            <CardTitle>Recent Refunds</CardTitle>
-            <CardDescription>Latest refund requests requiring attention</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" asChild className="text-primary-orange hover:text-orange-600">
-            <Link href="/accounts/refunds">View All Refunds</Link>
-          </Button>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          {recentRefunds.length === 0 ? (
-            <div className="p-12 text-center flex flex-col items-center justify-center">
-              <Undo2 className="w-12 h-12 text-gray-300 mb-4" />
-              <p className="text-gray-500 font-medium">No recent refunds found.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Recent Refunds Table */}
+        <Card className="col-span-1 lg:col-span-7 shadow-subtle border-gray-100">
+          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50">
+            <div>
+              <CardTitle>Recent Refunds</CardTitle>
+              <CardDescription>Latest refund requests requiring attention</CardDescription>
             </div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-gray-50/50">
-                <TableRow>
-                  <TableHead className="font-semibold text-gray-700">Refund ID</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Amount</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Date</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Status</TableHead>
-                  <TableHead className="text-right font-semibold text-gray-700">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentRefunds.map((refund, idx) => (
-                  <TableRow key={idx} className="hover:bg-gray-50/50 transition-colors">
-                    <TableCell className="font-medium">
-                      <div className="flex items-center space-x-2">
-                        <div className="bg-orange-50 rounded-lg p-1.5 shrink-0">
-                          <FileText className="w-4 h-4 text-primary-orange" />
-                        </div>
-                        <span className="text-gray-900 font-bold uppercase">#{refund._id?.slice(-6) || 'REF'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-900 font-bold">
-                      ₹{refund.amount?.toLocaleString() || 0}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Clock className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
-                        {new Date(refund.createdAt || new Date()).toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${refund.status === 'PROCESSED' ? 'bg-green-100 text-green-700' :
-                          refund.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                            refund.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                              'bg-amber-100 text-amber-700'
-                        }`}>
-                        {refund.status || 'PENDING'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-semibold">
-                        <Link href="/accounts/refunds">
-                          Manage <ChevronRight className="w-4 h-4 ml-1" />
-                        </Link>
-                      </Button>
-                    </TableCell>
+            <Button variant="ghost" size="sm" asChild className="text-primary-orange hover:text-orange-600">
+              <Link href="/accounts/refunds">View All</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            {recentRefunds.length === 0 ? (
+              <div className="p-12 text-center flex flex-col items-center justify-center">
+                <Undo2 className="w-12 h-12 text-gray-300 mb-4" />
+                <p className="text-gray-500 font-medium">No recent refunds found.</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-gray-50/50">
+                  <TableRow>
+                    <TableHead className="font-semibold text-gray-700">ID</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Amount</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {recentRefunds.map((refund, idx) => (
+                    <TableRow key={idx} className="hover:bg-gray-50/50 transition-colors">
+                      <TableCell className="font-medium text-xs">
+                        #{refund._id?.slice(-6) || 'REF'}
+                      </TableCell>
+                      <TableCell className="text-gray-900 font-bold">
+                        ₹{refund.amount?.toLocaleString() || 0}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${refund.status === 'PROCESSED' ? 'bg-green-100 text-green-700' :
+                            refund.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                              refund.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                                'bg-amber-100 text-amber-700'
+                          }`}>
+                          {refund.status || 'PENDING'}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Notifications Widget */}
+        <Card className="col-span-1 lg:col-span-5 shadow-subtle border-gray-100">
+          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-secondary-blue" />
+                Latest Notifications
+              </CardTitle>
+            </div>
+            <Button variant="ghost" size="sm" asChild className="text-secondary-blue hover:text-blue-700">
+              <Link href="/accounts/notifications">View All</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="p-4 flex flex-col justify-center h-[280px]">
+            <div className="text-center text-gray-500">
+              <p className="mb-2 text-sm">You have unread system notifications!</p>
+              <Button asChild variant="outline" className="mt-2 text-primary-navy border-primary-navy/20 hover:bg-primary-navy/5">
+                <Link href="/accounts/notifications">Read Messages Now</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
 
       {/* Activity Logs Table */}
       <Card className="shadow-subtle border-gray-100 mt-6">

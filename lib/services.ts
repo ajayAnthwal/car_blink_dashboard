@@ -647,6 +647,11 @@ export const getAllSettlements = async (page = 1, limit = 10, otherFilters = "")
   return response.data;
 };
 
+export const getPlatformRevenueStats = async () => {
+  const response = await apiClient.get(`/accounts/settlements/analytics`);
+  return response.data;
+};
+
 export const processSettlement = async (id: string, data: { transactionReference?: string, pin: string }) => {
   const response = await apiClient.patch(`/accounts/settlements/${id}/process`, data);
   return response.data;

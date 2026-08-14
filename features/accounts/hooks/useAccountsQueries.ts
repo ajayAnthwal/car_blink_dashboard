@@ -144,13 +144,26 @@ export const useRejectRefundMutation = () => {
 
 // --- Settlements Queries & Mutations ---
 
-export const useSettlements = (params?: { page?: number; limit?: number; status?: string }) => {
+export const usePlatformRevenueStats = () => {
+  return useQuery({
+    queryKey: ['accounts', 'settlements', 'analytics'],
+    queryFn: async () => {
+      const res = await getPlatformRevenueStats();
+      return res?.data || { weekly: {}, monthly: {}, yearly: {} };
+    }
+  });
+};
+
+export const useSettlements = (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
   return useQuery({
     queryKey: ["accounts", "settlements", params],
     queryFn: async () => {
       let filterStr = "";
       if (params?.status) {
         filterStr = `status=${params.status}`;
+      }
+      if (params?.search) {
+        filterStr += (filterStr ? '&' : '') + `search=${params.search}`;
       }
       const res = await getAllSettlements(params?.page || 1, params?.limit || 10, filterStr);
       return {

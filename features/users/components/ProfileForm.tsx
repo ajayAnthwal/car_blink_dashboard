@@ -26,7 +26,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function ProfileForm() {
-  const { user, login, accessToken } = useAuth();
+  const { user, refreshUser } = useAuth();
   
   const { data: citiesData, isLoading: isLoadingCities } = useCities();
   
@@ -35,6 +35,7 @@ export function ProfileForm() {
   const [selectedState, setSelectedState] = useState("");
   const filteredCities = (citiesData || []).filter((c: any) => selectedState ? c.state === selectedState : true).map((c: any) => ({ value: c._id, label: c.name }));
 
+  const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
@@ -58,7 +59,7 @@ export function ProfileForm() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && !isInitialized) {
       reset({
         fullName: user.fullName || "",
         email: user.email || "",
@@ -67,8 +68,9 @@ export function ProfileForm() {
         cityId: (user as any).cityId || "",
         profileImage: (user as any).profileImage || "",
       });
+      setIsInitialized(true);
     }
-  }, [user, reset]);
+  }, [user, reset, isInitialized]);
 
   const profileImageValue = watch("profileImage");
   const cityIdValue = watch("cityId");
@@ -85,10 +87,9 @@ export function ProfileForm() {
     setMessage({ type: "", text: "" });
 
     try {
-      const responseData = await updateUserProfile(data);
-      // Update local context
-      const newRefreshToken = localStorage.getItem("car_blink_refresh_token") || "";
-      login(responseData.data, accessToken || "", newRefreshToken);
+      await updateUserProfile(data);
+      // Fetch fresh user profile instead of mutating state directly with partial data
+      await refreshUser();
       
       setMessage({ type: "success", text: "Profile updated successfully!" });
     } catch (error: any) {
