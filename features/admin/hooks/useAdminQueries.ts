@@ -108,11 +108,11 @@ export const useAdminRevenue = (timeframe: string) => {
 // Users & Staff
 // ==========================================
 
-export const useAdminUsers = (page: number = 1, limit: number = 20, search?: string) => {
+export const useAdminUsers = (page: number = 1, limit: number = 20, role?: string, search?: string) => {
   return useQuery({
-    queryKey: ["admin", "users", page, limit, search],
+    queryKey: ["admin", "users", page, limit, role, search],
     queryFn: async () => {
-      const res = await getAdminUsers(page, limit, search);
+      const res = await getAdminUsers(page, limit, role, search);
       return res;
     }
   });
@@ -231,6 +231,7 @@ export const useAdminPartnerDetails = (id: string) => {
     queryKey: ["admin", "partners", id],
     queryFn: async () => {
       const res = await getSuperAdminPartnerDetails(id);
+      if (res && res._id) return res;
       return res?.data || res;
     },
     enabled: !!id

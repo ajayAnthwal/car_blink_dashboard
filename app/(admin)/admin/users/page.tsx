@@ -10,14 +10,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Users, Loader2, Search, PowerOff, Power, UserCheck, UserX, ShieldAlert, Edit2 } from "lucide-react";
+import { Users, Loader2, Search, PowerOff, Power, UserCheck, UserX, ShieldAlert, Edit2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
-  const { data: usersData, isLoading } = useAdminUsers(1, 100, roleFilter);
+  const { data: usersData, isLoading } = useAdminUsers(page, limit, roleFilter, searchQuery);
   const users = Array.isArray(usersData) ? usersData : (usersData?.users || usersData?.docs || []);
+  const totalPages = usersData?.totalPages || Math.ceil((usersData?.total || 0) / limit) || 1;
   
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -75,11 +78,8 @@ export default function AdminUsersPage() {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.phone?.includes(searchQuery)
-  );
+  // Backend handles search, no need to filter on frontend
+  const filteredUsers = users;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12 p-4">
@@ -119,13 +119,19 @@ export default function AdminUsersPage() {
                   placeholder="Search by name, email..."
                   className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-navy focus:ring-1 focus:ring-primary-navy w-full bg-white transition-all shadow-sm"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPage(1); // Reset page on search
+                  }}
                 />
               </div>
               <select
                 className="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-navy focus:ring-1 focus:ring-primary-navy bg-white w-full sm:w-auto shadow-sm cursor-pointer font-medium text-gray-700"
                 value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
+                onChange={(e) => {
+                  setRoleFilter(e.target.value);
+                  setPage(1); // Reset page on filter
+                }}
               >
                 <option value="">All Roles</option>
                 <option value="CUSTOMER">Customer</option>
@@ -257,6 +263,35 @@ export default function AdminUsersPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!isLoading && users.length > 0 && (
+            <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+              <span className="text-sm text-gray-500 font-medium">
+                Showing Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="rounded-lg shadow-sm"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="rounded-lg shadow-sm"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

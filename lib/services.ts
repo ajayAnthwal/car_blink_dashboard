@@ -720,8 +720,11 @@ export const getAdminRevenue = async (period = "month") => {
   return response.data;
 };
 
-export const getAdminUsers = async (page = 1, limit = 50, role = "") => {
-  const response = await apiClient.get(`/super-admin/users?page=${page}&limit=${limit}${role ? `&role=${role}` : ""}`);
+export const getAdminUsers = async (page = 1, limit = 50, role = "", search = "") => {
+  let url = `/super-admin/users?page=${page}&limit=${limit}`;
+  if (role) url += `&role=${role}`;
+  if (search) url += `&search=${search}`;
+  const response = await apiClient.get(url);
   return response.data;
 };
 

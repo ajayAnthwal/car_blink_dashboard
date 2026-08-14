@@ -5,8 +5,7 @@ import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAdminPartnerDetails, useUpdateAdminPartnerKycMutation } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, ArrowLeft, CheckCircle, XCircle, FileText, User, MapPin } from "lucide-react";
-
+import { Loader2, ArrowLeft, CheckCircle, XCircle, FileText, User, MapPin, Star, Wrench, Wallet, IndianRupee } from "lucide-react";
 
 export default function AdminPartnerDetailsPage() {
   const { id } = useParams();
@@ -114,6 +113,67 @@ export default function AdminPartnerDetailsPage() {
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">GST Number</p>
                   <p className="font-mono font-bold text-gray-900">{partner.gstNumber}</p>
+                </div>
+              )}
+              <div className="flex gap-4 border-t border-gray-100 pt-4">
+                <div className="flex-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider flex items-center gap-1"><Star className="w-3 h-3 text-yellow-500"/> Rating</p>
+                  <p className="font-bold text-gray-900">{partner.rating > 0 ? `${partner.rating}/5` : "Unrated"}</p>
+                  <p className="text-xs text-gray-400">({partner.totalReviews} reviews)</p>
+                </div>
+                <div className="flex-1 border-l border-gray-100 pl-4">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider flex items-center gap-1"><Wrench className="w-3 h-3 text-blue-500"/> Capacity</p>
+                  <p className="font-bold text-gray-900">{partner.dailyCapacity} vehicles/day</p>
+                </div>
+              </div>
+              
+              {partner.servicesOffered?.length > 0 && (
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-2">Services Offered</p>
+                  <div className="flex flex-wrap gap-2">
+                    {partner.servicesOffered.map((service: any) => (
+                      <span key={service._id} className="bg-indigo-50 text-indigo-700 text-xs font-bold px-2 py-1 rounded-md border border-indigo-100">
+                        {service.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/90 shadow-sm border-gray-200">
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
+              <CardTitle className="text-lg text-primary-navy flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-primary-orange" /> Financials & Bank Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 space-y-5">
+              <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <span className="text-sm text-gray-500 font-bold uppercase tracking-wider">Wallet Balance</span>
+                <span className="font-black text-green-600 text-lg flex items-center"><IndianRupee className="w-4 h-4 mr-1"/>{partner.walletBalance || 0}</span>
+              </div>
+              <div className="flex justify-between items-center bg-red-50 p-3 rounded-xl border border-red-100">
+                <span className="text-sm text-red-500 font-bold uppercase tracking-wider">Outstanding Dues</span>
+                <span className="font-black text-red-600 text-lg flex items-center"><IndianRupee className="w-4 h-4 mr-1"/>{partner.outstandingDues || 0}</span>
+              </div>
+              
+              {partner.bankDetails && (
+                <div className="pt-2 border-t border-gray-100 space-y-3">
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Account Holder</p>
+                    <p className="font-bold text-gray-900 text-sm">{partner.bankDetails.accountHolderName || "N/A"}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Account Number</p>
+                      <p className="font-mono font-bold text-gray-900 text-sm">{partner.bankDetails.accountNumber || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">IFSC Code</p>
+                      <p className="font-mono font-bold text-gray-900 text-sm">{partner.bankDetails.ifscCode || "N/A"}</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>

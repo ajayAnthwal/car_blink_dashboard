@@ -3,10 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Map, 
+import {
+  LayoutDashboard,
+  Users,
+  Map,
   Settings,
   Car,
   IndianRupee,
@@ -24,7 +24,7 @@ const navItems = [
   { name: "Helpdesk", href: "/admin/helpdesk", icon: LifeBuoy },
   { name: "Partners", href: "/admin/partners", icon: Store },
   { name: "Users", href: "/admin/users", icon: Users },
-  { name: "Staff", href: "/admin/staff", icon: UserCheck },
+  // { name: "Staff", href: "/admin/staff", icon: UserCheck },
   { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { name: "Website Leads", href: "/admin/marketing/leads", icon: Store },
   { name: "Notifications", href: "/admin/marketing/notifications", icon: Bell },
@@ -51,16 +51,15 @@ export function AdminSidebar() {
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
-          
+
           return (
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors group ${
-                isActive 
-                  ? "bg-primary-orange text-neutral-white font-medium shadow-sm" 
+              className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors group ${isActive
+                  ? "bg-primary-orange text-neutral-white font-medium shadow-sm"
                   : "text-neutral-muted hover:bg-primary-navy-light hover:text-neutral-white"
-              }`}
+                }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? "text-neutral-white" : "text-neutral-muted group-hover:text-primary-orange"}`} />
               <span>{item.name}</span>
@@ -72,11 +71,10 @@ export function AdminSidebar() {
       <div className="p-4 border-t border-primary-navy-light shrink-0">
         <Link
           href="/admin/settings"
-          className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors group ${
-            pathname === "/admin/settings"
-              ? "bg-primary-orange text-neutral-white font-medium shadow-sm" 
+          className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors group ${pathname === "/admin/settings"
+              ? "bg-primary-orange text-neutral-white font-medium shadow-sm"
               : "text-neutral-muted hover:bg-primary-navy-light hover:text-neutral-white"
-          }`}
+            }`}
         >
           <Settings className={`w-5 h-5 ${pathname === "/admin/settings" ? "text-neutral-white" : "text-neutral-muted group-hover:text-primary-orange"}`} />
           <span>Platform Settings</span>
