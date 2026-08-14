@@ -249,7 +249,7 @@ export default function ExecutiveLeadsPage() {
                     </TableCell>
 
                     {/* Service Details */}
-                    <TableCell className="min-w-[220px] align-top">
+                    <TableCell className="min-w-[220px] max-w-[280px] align-top whitespace-normal break-words">
                       <div className="flex flex-col space-y-1">
                         <span className="font-bold text-sm text-neutral-dark flex items-center gap-1.5">
                           <Wrench className="w-3.5 h-3.5 text-primary-orange" />
@@ -274,7 +274,7 @@ export default function ExecutiveLeadsPage() {
                             )}
                           </div>
                         )}
-                        <p className="text-[11px] text-neutral-muted line-clamp-2 mt-1.5" title={lead.description}>
+                        <p className="text-[11px] text-neutral-muted line-clamp-2 mt-1.5 whitespace-normal break-words" title={lead.description}>
                           {lead.description || "No description provided."}
                         </p>
                       </div>

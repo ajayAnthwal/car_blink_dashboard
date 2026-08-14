@@ -10,7 +10,7 @@ import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X
 import { format } from "date-fns";
 
 export default function MarketingLeadsPage() {
-  const [selectedLead, setSelectedLead] = useState<unknown | null>(null);
+  const [selectedLead, setSelectedLead] = useState<any | null>(null);
   
   // Pagination & Filters
   const [page, setPage] = useState(1);
@@ -19,18 +19,18 @@ export default function MarketingLeadsPage() {
   const limit = 20;
 
   const { data: leadsData, isLoading: isLoadingLeads } = useWebsiteLeads({ page, limit, search, status: sourceFilter });
-  const leads = (leadsData?.leads || []) as unknown[];
+  const leads = (leadsData?.leads || []) as any[];
   const totalPages = leadsData?.total ? Math.ceil(leadsData.total / limit) : 1;
   const convertMutation = useConvertWebsiteLead();
 
   const [showConvertModal, setShowConvertModal] = useState(false);
-  const [services, setServices] = useState<unknown[]>([]);
-  const [cities, setCities] = useState<unknown[]>([]);
-  const [brands, setBrands] = useState<unknown[]>([]);
-  const [models, setModels] = useState<unknown[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [models, setModels] = useState<any[]>([]);
 
   const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [selectedCityId, setSelectedCityId] = useState("");
+  const [selectedCityName, setSelectedCityName] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [convertMessage, setConvertMessage] = useState("");
@@ -42,20 +42,59 @@ export default function MarketingLeadsPage() {
 
   const openConvertModal = async () => {
     setShowConvertModal(true);
-    // Pre-fill if we have text from the lead, though user still needs to pick from master lists ideally,
-    // but the backend takes strings anyway. So we can just use strings, but let's offer dropdowns.
-    setSelectedBrand(selectedLead?.vehicleBrand || "");
+    // Pre-fill if we have text from the lead
+    const leadBrand = selectedLead?.vehicleBrand || "";
+    setSelectedBrand(leadBrand);
     setSelectedModel(selectedLead?.vehicleModel || "");
+    setSelectedCityName(selectedLead?.city || "");
 
-    if (services.length === 0 || cities.length === 0 || brands.length === 0) {
-      try {
-        const [servicesRes, citiesRes, brandsRes] = await Promise.all([getServices(), getCities(), getVehicleBrands()]);
-        setServices(Array.isArray(servicesRes?.docs) ? servicesRes.docs : (Array.isArray(servicesRes?.data) ? servicesRes.data : []));
-        setCities(Array.isArray(citiesRes?.docs) ? citiesRes.docs : (Array.isArray(citiesRes?.data) ? citiesRes.data : []));
-        setBrands(brandsRes?.data || []);
-      } catch (err) {
-        console.error("Failed to load master data", err);
+    // Extract services from the message text if present
+    // Format usually is: "Services: AC Repair, Battery | Fuel: Petrol ..."
+    const msg = selectedLead?.message || "";
+    let extractedServices = "";
+    const servicesMatch = msg.match(/Services:\s*([^|]+)/i);
+    if (servicesMatch && servicesMatch[1]) {
+      extractedServices = servicesMatch[1].trim();
+    }
+
+    try {
+      const [servicesRes, citiesRes, brandsRes] = await Promise.all([getServices(), getCities(), getVehicleBrands()]);
+      const fetchedServices = Array.isArray(servicesRes?.docs) ? servicesRes.docs : (Array.isArray(servicesRes?.data) ? servicesRes.data : []);
+      const fetchedCities = Array.isArray(citiesRes?.docs) ? citiesRes.docs : (Array.isArray(citiesRes?.data) ? citiesRes.data : []);
+      const fetchedBrands = brandsRes?.data || [];
+      
+      setServices(fetchedServices);
+      setCities(fetchedCities);
+      setBrands(fetchedBrands);
+
+      if (extractedServices && fetchedServices.length > 0) {
+        // Find the first service that matches the extracted string
+        const matchedService = fetchedServices.find(s => extractedServices.toLowerCase().includes(s.name.toLowerCase()));
+        if (matchedService) {
+          setSelectedServiceId(matchedService._id);
+        }
       }
+
+      const fullAddress = selectedLead?.city || "";
+      if (fullAddress && fetchedCities.length > 0) {
+        // Try to find a master city that matches the address string
+        const matchedCity = fetchedCities.find(c => fullAddress.toLowerCase().includes(c.name.toLowerCase()));
+        if (matchedCity) {
+          setSelectedCityName(matchedCity.name);
+        } else {
+          setSelectedCityName(fullAddress);
+        }
+      }
+
+      if (leadBrand) {
+        const brandObj = fetchedBrands.find(b => b.name === leadBrand);
+        if (brandObj) {
+          const modelsRes = await getVehicleModels(brandObj._id);
+          setModels(modelsRes?.data || []);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load master data", err);
     }
   };
 
@@ -71,7 +110,16 @@ export default function MarketingLeadsPage() {
   };
 
   const handleConvertLead = async () => {
-    if (!selectedServiceId || !selectedCityId || !selectedBrand || !selectedModel) {
+    // Try exact match first, then fallback to checking if the input contains the master city name
+    const validCity = cities.find(c => c.name.toLowerCase() === selectedCityName.toLowerCase()) 
+      || cities.find(c => selectedCityName.toLowerCase().includes(c.name.toLowerCase()));
+      
+    if (!validCity) {
+      setConvertMessage("Please type and select a valid city from the list.");
+      return;
+    }
+
+    if (!selectedServiceId || !selectedBrand || !selectedModel) {
       setConvertMessage("Please select service, city, brand, and model.");
       return;
     }
@@ -82,14 +130,14 @@ export default function MarketingLeadsPage() {
         id: selectedLead._id, 
         data: {
           serviceId: selectedServiceId,
-          cityId: selectedCityId,
+          cityId: validCity._id,
           vehicleBrand: selectedBrand,
           vehicleModel: selectedModel
         }
       });
       setShowConvertModal(false);
       setSelectedLead(null);
-    } catch (err: unknown) {
+    } catch (err: any) {
       setConvertMessage(err.response?.data?.message || err.message || "Failed to convert lead");
     }
   };
@@ -165,7 +213,7 @@ export default function MarketingLeadsPage() {
                       <td colSpan={5} className="text-center py-10 text-gray-400 font-medium">No leads generated yet.</td>
                     </tr>
                   ) : (
-                    leads.map((lead: unknown) => (
+                    leads.map((lead: any) => (
                       <tr 
                         key={lead._id} 
                         className="hover:bg-orange-50/30 transition-colors cursor-pointer"
@@ -388,22 +436,25 @@ export default function MarketingLeadsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
-                  <select 
+                  <input 
+                    type="text"
+                    list="cities-list"
+                    placeholder="Type city name..."
                     className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
-                    value={selectedCityId}
-                    onChange={e => setSelectedCityId(e.target.value)}
-                  >
-                    <option value="">-- Select City --</option>
+                    value={selectedCityName}
+                    onChange={e => setSelectedCityName(e.target.value)}
+                  />
+                  <datalist id="cities-list">
                     {cities.map(c => (
-                      <option key={c._id} value={c._id}>{c.name}</option>
+                      <option key={c._id} value={c.name} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Brand *</label>
                   <select 
                     className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
-                    value={brands.find(b => b.name === selectedBrand)?.id || ""}
+                    value={brands.find(b => b.name === selectedBrand)?._id || ""}
                     onChange={e => {
                       const selectedOption = e.target.options[e.target.selectedIndex];
                       handleBrandChange(e.target.value, selectedOption.text);
@@ -411,7 +462,7 @@ export default function MarketingLeadsPage() {
                   >
                     <option value="">-- Select Brand --</option>
                     {brands.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
+                      <option key={b._id} value={b._id}>{b.name}</option>
                     ))}
                   </select>
                 </div>
@@ -425,7 +476,7 @@ export default function MarketingLeadsPage() {
                   >
                     <option value="">-- Select Model --</option>
                     {models.map(m => (
-                      <option key={m.id} value={m.name}>{m.name}</option>
+                      <option key={m._id} value={m.name}>{m.name}</option>
                     ))}
                   </select>
                 </div>
@@ -442,7 +493,7 @@ export default function MarketingLeadsPage() {
                     variant="outline" 
                     className="flex-1" 
                     onClick={() => setShowConvertModal(false)}
-                    disabled={isConverting}
+                    disabled={convertMutation.isPending}
                   >
                     Cancel
                   </Button>
