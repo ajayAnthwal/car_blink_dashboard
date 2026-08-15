@@ -695,7 +695,7 @@ export const getInvoicesReport = async (fromDate: string, toDate: string, cityId
 
 export const getAllWebsiteLeads = async (page = 1, limit = 50, status = "", search = "", source = "") => {
   let url = `/leads?page=${page}&limit=${limit}`;
-  if (status) url += `&status=${status}`;
+  if (status && status !== 'all') url += `&status=${status}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
   if (source && source !== 'all') url += `&source=${source}`;
   const response = await apiClient.get(url);
