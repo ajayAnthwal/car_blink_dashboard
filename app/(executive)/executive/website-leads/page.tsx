@@ -54,11 +54,6 @@ export default function MarketingLeadsPage() {
     setIsMasterDataLoading(true);
     setConvertMessage("");
 
-    // Pre-fill if we have text from the lead
-    const leadBrand = selectedLead?.vehicleBrand || "";
-    setSelectedBrand(leadBrand);
-    setSelectedModel(selectedLead?.vehicleModel || "");
-
     // Extract services from the message text if present
     const msg = selectedLead?.message || "";
     let extractedServices = "";
@@ -71,14 +66,14 @@ export default function MarketingLeadsPage() {
       const [servicesRes, citiesRes, brandsRes] = await Promise.all([getServices(), getCities(), getVehicleBrands()]);
       const fetchedServices = Array.isArray(servicesRes?.docs) ? servicesRes.docs : (Array.isArray(servicesRes?.data) ? servicesRes.data : []);
       const fetchedCities = Array.isArray(citiesRes?.docs) ? citiesRes.docs : (Array.isArray(citiesRes?.data) ? citiesRes.data : []);
-      const fetchedBrands = brandsRes?.data || [];
+      const fetchedBrands = Array.isArray(brandsRes?.data) ? brandsRes.data : (Array.isArray(brandsRes) ? brandsRes : []);
       
       setServices(fetchedServices);
       setCities(fetchedCities);
       setBrands(fetchedBrands);
 
       if (extractedServices && fetchedServices.length > 0) {
-        const matchedService = fetchedServices.find(s => extractedServices.toLowerCase().includes(s.name.toLowerCase()));
+        const matchedService = fetchedServices.find(s => extractedServices.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(extractedServices.toLowerCase()));
         if (matchedService) {
           setSelectedServiceId(matchedService._id);
         } else {
@@ -94,16 +89,62 @@ export default function MarketingLeadsPage() {
         if (matchedCity) {
           setSelectedCityId(matchedCity._id);
         } else {
-          setSelectedCityId(fetchedCities[0]._id); // Fallback to first city if raw address string
+          setSelectedCityId(fetchedCities[0]._id);
         }
       }
 
-      if (leadBrand) {
-        const brandObj = fetchedBrands.find(b => b.name === leadBrand);
-        if (brandObj) {
-          const modelsRes = await getVehicleModels(brandObj._id);
-          setModels(modelsRes?.data || []);
+      // Smart Brand & Model Autofill
+      let rawBrand = (selectedLead?.vehicleBrand || "").trim();
+      let rawModel = (selectedLead?.vehicleModel || "").trim();
+
+      // If rawBrand is missing or combined in rawModel (e.g. "Tata Tiago")
+      if (!rawBrand && rawModel) {
+        const parts = rawModel.split(" ");
+        if (parts.length > 1) {
+          rawBrand = parts[0];
+          rawModel = parts.slice(1).join(" ");
         }
+      }
+
+      let matchedBrandObj = fetchedBrands.find((b: any) => 
+        b.name.toLowerCase() === rawBrand.toLowerCase() ||
+        rawBrand.toLowerCase().includes(b.name.toLowerCase()) ||
+        b.name.toLowerCase().includes(rawBrand.toLowerCase())
+      );
+
+      if (!matchedBrandObj && rawModel) {
+        matchedBrandObj = fetchedBrands.find((b: any) => rawModel.toLowerCase().includes(b.name.toLowerCase()));
+      }
+
+      if (matchedBrandObj) {
+        setSelectedBrand(matchedBrandObj.name);
+        const modelsRes = await getVehicleModels(matchedBrandObj._id);
+        const fetchedModels = Array.isArray(modelsRes?.data) ? modelsRes.data : (Array.isArray(modelsRes) ? modelsRes : []);
+        setModels(fetchedModels);
+
+        let matchedModelObj = null;
+        if (rawModel && fetchedModels.length > 0) {
+          matchedModelObj = fetchedModels.find((m: any) => 
+            m.name.toLowerCase() === rawModel.toLowerCase() ||
+            rawModel.toLowerCase().includes(m.name.toLowerCase()) ||
+            m.name.toLowerCase().includes(rawModel.toLowerCase())
+          );
+        }
+
+        if (matchedModelObj) {
+          setSelectedModel(matchedModelObj.name);
+        } else if (fetchedModels.length > 0) {
+          setSelectedModel(fetchedModels[0].name);
+        } else {
+          setSelectedModel(rawModel || "Standard");
+        }
+      } else if (fetchedBrands.length > 0) {
+        const defaultBrand = fetchedBrands[0];
+        setSelectedBrand(defaultBrand.name);
+        const modelsRes = await getVehicleModels(defaultBrand._id);
+        const fetchedModels = Array.isArray(modelsRes?.data) ? modelsRes.data : (Array.isArray(modelsRes) ? modelsRes : []);
+        setModels(fetchedModels);
+        if (fetchedModels.length > 0) setSelectedModel(fetchedModels[0].name);
       }
     } catch (err) {
       console.error("Failed to load master data", err);
