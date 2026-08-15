@@ -16,11 +16,19 @@ export default function MarketingLeadsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
-  const limit = 20;
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [limit, setLimit] = useState(10);
 
-  const { data: leadsData, isLoading: isLoadingLeads } = useWebsiteLeads({ page, limit, search, status: sourceFilter });
+  const { data: leadsData, isLoading: isLoadingLeads } = useWebsiteLeads({ 
+    page, 
+    limit, 
+    search, 
+    source: sourceFilter, 
+    status: statusFilter 
+  });
   const leads = (leadsData?.leads || []) as any[];
-  const totalPages = leadsData?.total ? Math.ceil(leadsData.total / limit) : 1;
+  const total = leadsData?.total || 0;
+  const totalPages = total ? Math.ceil(total / limit) : 1;
   const convertMutation = useConvertWebsiteLead();
 
   const [showConvertModal, setShowConvertModal] = useState(false);
@@ -49,7 +57,6 @@ export default function MarketingLeadsPage() {
     setSelectedCityName(selectedLead?.city || "");
 
     // Extract services from the message text if present
-    // Format usually is: "Services: AC Repair, Battery | Fuel: Petrol ..."
     const msg = selectedLead?.message || "";
     let extractedServices = "";
     const servicesMatch = msg.match(/Services:\s*([^|]+)/i);
@@ -68,7 +75,6 @@ export default function MarketingLeadsPage() {
       setBrands(fetchedBrands);
 
       if (extractedServices && fetchedServices.length > 0) {
-        // Find the first service that matches the extracted string
         const matchedService = fetchedServices.find(s => extractedServices.toLowerCase().includes(s.name.toLowerCase()));
         if (matchedService) {
           setSelectedServiceId(matchedService._id);
@@ -77,7 +83,6 @@ export default function MarketingLeadsPage() {
 
       const fullAddress = selectedLead?.city || "";
       if (fullAddress && fetchedCities.length > 0) {
-        // Try to find a master city that matches the address string
         const matchedCity = fetchedCities.find(c => fullAddress.toLowerCase().includes(c.name.toLowerCase()));
         if (matchedCity) {
           setSelectedCityName(matchedCity.name);
@@ -110,7 +115,6 @@ export default function MarketingLeadsPage() {
   };
 
   const handleConvertLead = async () => {
-    // Try exact match first, then fallback to checking if the input contains the master city name
     const validCity = cities.find(c => c.name.toLowerCase() === selectedCityName.toLowerCase()) 
       || cities.find(c => selectedCityName.toLowerCase().includes(c.name.toLowerCase()));
       
@@ -160,25 +164,30 @@ export default function MarketingLeadsPage() {
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <CardTitle className="text-lg text-primary-navy flex items-center gap-2">
             <ExternalLink className="w-5 h-5 text-primary-orange" /> Lead Submissions
+            {total > 0 && (
+              <span className="text-xs font-normal text-gray-500 bg-gray-200/60 px-2.5 py-0.5 rounded-full">
+                {total} total
+              </span>
+            )}
           </CardTitle>
           
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full sm:w-auto">
             <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-64">
               <input 
                 type="text" 
-                placeholder="Search by name, phone..." 
+                placeholder="Search name, phone, email..." 
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
               />
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </form>
             
-            <div className="relative w-full sm:w-48">
+            <div className="relative w-full sm:w-40">
               <select 
                 value={sourceFilter}
                 onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange appearance-none bg-white"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange appearance-none bg-white text-gray-700"
               >
                 <option value="all">All Sources</option>
                 <option value="WEBSITE_QUOTE">Website Quote</option>
@@ -187,13 +196,26 @@ export default function MarketingLeadsPage() {
               </select>
               <Filter className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
+
+            <div className="relative w-full sm:w-36">
+              <select 
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange bg-white text-gray-700 font-medium"
+              >
+                <option value="all">All Statuses</option>
+                <option value="NEW">NEW</option>
+                <option value="CONVERTED">CONVERTED</option>
+                <option value="CLOSED">CLOSED</option>
+              </select>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoadingLeads ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400">
               <Loader2 className="w-10 h-10 animate-spin mb-4 text-primary-orange" />
-              <p className="font-medium">Loading leads...</p>
+              <p className="font-medium">Loading website leads...</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -203,14 +225,14 @@ export default function MarketingLeadsPage() {
                     <th className="px-6 py-4 font-bold tracking-wider">Customer Details</th>
                     <th className="px-6 py-4 font-bold tracking-wider">Contact Info</th>
                     <th className="px-6 py-4 font-bold tracking-wider">Vehicle & Location</th>
-                    <th className="px-6 py-4 font-bold tracking-wider">Source</th>
+                    <th className="px-6 py-4 font-bold tracking-wider">Source & Status</th>
                     <th className="px-6 py-4 font-bold tracking-wider">Query / Message</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {leads.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-10 text-gray-400 font-medium">No leads generated yet.</td>
+                      <td colSpan={5} className="text-center py-12 text-gray-400 font-medium">No leads found matching current criteria.</td>
                     </tr>
                   ) : (
                     leads.map((lead: any) => (
@@ -248,14 +270,25 @@ export default function MarketingLeadsPage() {
                             {lead.city || 'Not provided'}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${
-                            lead.source === 'QUICK_CALLBACK' ? 'bg-blue-100 text-blue-700' :
-                            lead.source === 'WEBSITE_QUOTE' ? 'bg-purple-100 text-purple-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>
-                            {lead.source?.replace('_', ' ')}
-                          </span>
+                        <td className="px-6 py-4 space-y-1.5">
+                          <div>
+                            <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ${
+                              lead.source === 'QUICK_CALLBACK' ? 'bg-blue-100 text-blue-700' :
+                              lead.source === 'WEBSITE_QUOTE' ? 'bg-purple-100 text-purple-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {lead.source?.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <div>
+                            <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
+                              lead.status === 'CONVERTED' ? 'bg-green-100 text-green-700' :
+                              lead.status === 'CLOSED' ? 'bg-red-100 text-red-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>
+                              {lead.status || 'NEW'}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-gray-600 text-xs line-clamp-3 max-w-xs" title={lead.message}>
@@ -271,25 +304,48 @@ export default function MarketingLeadsPage() {
           )}
           
           {/* Pagination Controls */}
-          {!isLoadingLeads && totalPages > 1 && (
-            <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
-              <span className="text-sm text-gray-500">
-                Page <span className="font-bold text-gray-900">{page}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
-              </span>
-              <div className="flex gap-2">
+          {!isLoadingLeads && total > 0 && (
+            <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <span>
+                  Showing <span className="font-bold text-gray-900">{Math.min((page - 1) * limit + 1, total)}</span> to <span className="font-bold text-gray-900">{Math.min(page * limit, total)}</span> of <span className="font-bold text-gray-900">{total}</span> leads
+                </span>
+                
+                <div className="flex items-center gap-1.5 border-l border-gray-200 pl-4">
+                  <span>Per page:</span>
+                  <select 
+                    value={limit}
+                    onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                    className="border border-gray-200 rounded px-2 py-1 text-xs font-semibold bg-white text-gray-700 focus:outline-none"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm transition-all"
                 >
-                  <ChevronLeft className="w-4 h-4" /> Prev
+                  <ChevronLeft className="w-3.5 h-3.5" /> Previous
                 </button>
+
+                <div className="flex items-center gap-1 px-2">
+                  <span className="text-xs font-bold text-gray-900">{page}</span>
+                  <span className="text-xs text-gray-400">/</span>
+                  <span className="text-xs font-medium text-gray-500">{totalPages}</span>
+                </div>
+
                 <button 
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm transition-all"
                 >
-                  Next <ChevronRight className="w-4 h-4" />
+                  Next <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
