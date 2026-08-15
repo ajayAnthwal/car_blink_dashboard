@@ -3,9 +3,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-
-// We can use a simple UI element for the toast, or build a custom one.
-// For now we'll implement a custom lightweight fixed toast in this provider since we don't know the exact toast library used.
 import { Bell, X } from "lucide-react";
 
 interface SocketContextType {
@@ -15,11 +12,60 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType>({ socket: null, isConnected: false });
 
+// Helper to play a clean, crisp Web Audio chime notification sound
+const playNotificationSound = (type: 'lead' | 'alert' | 'info' = 'lead') => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    if (type === 'lead' || type === 'alert') {
+      // High double chime for new lead / alert
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(587.33, now); // D5
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(880, now + 0.12); // A5
+
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.5);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc1.stop(now + 0.12);
+      osc2.start(now + 0.12);
+      osc2.stop(now + 0.5);
+    } else {
+      // Standard notification tone
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(659.25, now); // E5
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+  } catch (err) {
+    console.log("[SOCKET] Audio playback prevented by browser:", err);
+  }
+};
+
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const { accessToken, isAuthenticated } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [toast, setToast] = useState<{ title: string; message: string; id: number } | null>(null);
+  const [toast, setToast] = useState<{ title: string; message: string; type?: string; id: number } | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
@@ -31,12 +77,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Connect to the backend
-    // Typically the API URL is process.env.NEXT_PUBLIC_API_BASE_URL or localhost:8000
     const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
-    
-    // The backend uses a base URL like /api usually, but socket is often at the root.
-    // We will connect to the root API_URL. If your backend socket path is different, adjust it here.
     const socketBaseUrl = API_URL.replace("/api", "");
 
     const newSocket = io(socketBaseUrl, {
@@ -44,7 +85,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         token: accessToken
       },
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
     });
 
@@ -62,45 +103,51 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       console.error("[SOCKET] Connection error:", error.message);
     });
 
-    // Listen to global notification events
+    const triggerToast = (title: string, message: string, type: string = 'info', duration: number = 7000) => {
+      const toastId = Date.now();
+      setToast({ title, message, type, id: toastId });
+      playNotificationSound(type as any);
+
+      setTimeout(() => {
+        setToast((current) => current?.id === toastId ? null : current);
+      }, duration);
+    };
+
+    // 1. Listen to new incoming leads (Website / Callbacks / Quotes)
+    newSocket.on("new_lead", (payload) => {
+      console.log("[SOCKET] Live New Lead Received:", payload);
+      const sourceName = payload?.source ? payload.source.replace(/_/g, ' ') : 'Website';
+      const title = "🔔 NEW LEAD RECEIVED!";
+      const message = payload?.message || `A new lead has arrived from ${sourceName}. Click or check dashboard to view.`;
+      triggerToast(title, message, 'lead', 8000);
+    });
+
+    // 2. Listen to generic system notifications
     newSocket.on("notification:new", (payload) => {
       console.log("[SOCKET] New Notification Received:", payload);
       const title = payload.title || "New Notification";
-      const message = payload.message || "You have a new update.";
-      
-      const toastId = Date.now();
-      setToast({ title, message, id: toastId });
-
-      // Play sound
-      try {
-        const audio = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(200).join("A"));
-        audio.src = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"; 
-        audio.play().catch(e => console.log("Audio play prevented:", e));
-      } catch (err) {
-        console.log("Audio error:", err);
-      }
-      
-      // Auto-hide toast after 5 seconds
-      setTimeout(() => {
-        setToast((current) => current?.id === toastId ? null : current);
-      }, 5000);
+      const message = payload.message || "You have a new system update.";
+      triggerToast(title, message, 'info');
     });
 
-    // Listen to payment updates
+    // 3. Listen to booking confirmed
+    newSocket.on("booking_confirmed", (payload) => {
+      console.log("[SOCKET] Booking Confirmed Received:", payload);
+      triggerToast("✅ Booking Confirmed", payload?.message || "A booking has been confirmed.", 'info');
+    });
+
+    // 4. Listen to new escalations
+    newSocket.on("new_escalation", (payload) => {
+      console.log("[SOCKET] New Escalation Received:", payload);
+      triggerToast("⚠️ New Escalation Created", payload?.message || "An urgent escalation requires attention.", 'alert', 9000);
+    });
+
+    // 5. Listen to payment updates
     newSocket.on("payment_status_update", (payload) => {
       console.log("[SOCKET] Payment Status Update Received:", payload);
-      const title = "Payment Update";
-      const message = `Payment of INR ${payload.amount} is now ${payload.status} (${payload.type})`;
-      
-      const toastId = Date.now() + 1;
-      setToast({ title, message, id: toastId });
-      
-      setTimeout(() => {
-        setToast((current) => current?.id === toastId ? null : current);
-      }, 5000);
-      
-      // We can also trigger a revalidation event or dispatch a custom event here
-      // so other components can fetch fresh data
+      const title = "💳 Payment Update";
+      const message = `Payment of ₹${payload.amount || ''} is now ${payload.status || 'processed'}.`;
+      triggerToast(title, message, 'info');
       window.dispatchEvent(new CustomEvent("refetch_payments"));
     });
 
@@ -115,20 +162,23 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     <SocketContext.Provider value={{ socket, isConnected }}>
       {children}
       
-      {/* Global Live Toast */}
+      {/* Global Live Toast Alert */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-right fade-in duration-300">
-          <div className="bg-neutral-white border border-neutral-muted/20 shadow-lg rounded-xl p-4 w-80 max-w-[calc(100vw-2rem)] flex items-start space-x-3">
-            <div className="bg-primary-orange/10 p-2 rounded-full flex-shrink-0">
-              <Bell className="w-5 h-5 text-primary-orange" />
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="bg-white border-2 border-orange-500/40 shadow-2xl rounded-2xl p-4 w-96 max-w-[calc(100vw-2rem)] flex items-start space-x-3.5 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-500"></div>
+            <div className="bg-orange-100 p-2.5 rounded-xl flex-shrink-0 text-orange-600 mt-0.5">
+              <Bell className="w-5 h-5 animate-bounce" />
             </div>
             <div className="flex-1 pr-2">
-              <h4 className="text-sm font-bold text-primary-navy">{toast.title}</h4>
-              <p className="text-xs text-neutral-muted mt-1 leading-relaxed">{toast.message}</p>
+              <h4 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                {toast.title}
+              </h4>
+              <p className="text-xs text-gray-600 mt-1 leading-relaxed font-medium">{toast.message}</p>
             </div>
             <button 
               onClick={() => setToast(null)}
-              className="text-neutral-muted hover:text-primary-navy transition-colors flex-shrink-0"
+              className="text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0 p-1 hover:bg-gray-100 rounded-lg"
             >
               <X className="w-4 h-4" />
             </button>
