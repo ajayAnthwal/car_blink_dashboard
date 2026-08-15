@@ -56,7 +56,7 @@ export default function ExecutiveDashboardPage() {
   const { data: leadsData, isLoading: loadingLeads } = useExecutiveLeads({ page: 1, limit: 100 });
   const { data: websiteLeadsData, isLoading: loadingWebsiteLeads } = useWebsiteLeads({ page: 1, limit: 100 });
 
-  // Real-time socket refresh + Live Lead Alert Trigger
+  // Real-time socket refresh + Live Lead & Bid Alert Triggers
   useEffect(() => {
     if (!socket) return;
     const refreshLeads = (payload?: any) => {
@@ -76,19 +76,46 @@ export default function ExecutiveDashboardPage() {
         });
       }
     };
+
+    const handleLiveBid = (payload?: any) => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+      if (payload) {
+        const partnerName = payload?.partnerName || payload?.businessName || "A partner";
+        const amountStr = payload?.amount ? `₹${payload.amount}` : "";
+        setLiveLeadAlert({
+          id: payload?.bidId || Date.now().toString(),
+          name: `${partnerName} ${amountStr ? `(Quoted ${amountStr})` : ""}`,
+          phone: "",
+          source: "PARTNER BID",
+          city: "",
+          message: payload?.message || `${partnerName} placed a new bid ${amountStr}! Review and assign now.`,
+          timestamp: new Date(),
+          isLive: true,
+          isBid: true,
+          bookingId: payload?.bookingId
+        });
+      }
+    };
+
     const refreshEscalations = () => {
       queryClient.invalidateQueries({ queryKey: ["executive", "escalations"] });
     };
     const refreshFollowUps = () => {
       queryClient.invalidateQueries({ queryKey: ["executive", "follow-ups"] });
     };
+
     socket.on("new_lead", refreshLeads);
+    socket.on("new_bid", handleLiveBid);
+    socket.on("quote_received", handleLiveBid);
     socket.on("booking_confirmed", refreshLeads);
     socket.on("new_escalation", refreshEscalations);
     socket.on("escalation_updated", refreshEscalations);
     socket.on("follow_up_due", refreshFollowUps);
+
     return () => {
       socket.off("new_lead", refreshLeads);
+      socket.off("new_bid", handleLiveBid);
+      socket.off("quote_received", handleLiveBid);
       socket.off("booking_confirmed", refreshLeads);
       socket.off("new_escalation", refreshEscalations);
       socket.off("escalation_updated", refreshEscalations);
@@ -260,9 +287,13 @@ export default function ExecutiveDashboardPage() {
         </div>
       </div>
 
-      {/* ⚡ Live Incoming Lead Alert Banner */}
+      {/* ⚡ Live Incoming Lead / Partner Bid Alert Banner */}
       {latestNewLead && (
-        <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white rounded-2xl p-5 shadow-xl shadow-orange-500/20 border border-orange-400/40 relative overflow-hidden animate-in slide-in-from-top-4 duration-500">
+        <div className={`rounded-2xl p-5 shadow-xl text-white relative overflow-hidden animate-in slide-in-from-top-4 duration-500 border ${
+          latestNewLead.isBid 
+            ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 shadow-teal-600/20 border-teal-400/40' 
+            : 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 shadow-orange-500/20 border-orange-400/40'
+        }`}>
           <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
           
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
@@ -272,27 +303,35 @@ export default function ExecutiveDashboardPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="bg-white text-orange-600 font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-orange-600 animate-ping"></span>
-                    {latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING"}
+                  <span className={`font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 bg-white ${
+                    latestNewLead.isBid ? 'text-teal-700' : 'text-orange-600'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full animate-ping ${latestNewLead.isBid ? 'bg-teal-600' : 'bg-orange-600'}`}></span>
+                    {latestNewLead.isBid ? "LIVE PARTNER BID PLACED" : (latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING")}
                   </span>
-                  <span className="text-xs text-orange-100 font-medium">
+                  <span className="text-xs text-white/80 font-medium">
                     {latestNewLead.timestamp ? new Date(latestNewLead.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
                   </span>
                 </div>
                 <h3 className="font-heading font-black text-lg md:text-xl text-white mt-1">
                   {latestNewLead.name} {latestNewLead.phone ? `(${latestNewLead.phone})` : ""}
                 </h3>
-                <p className="text-xs md:text-sm text-orange-50 font-medium mt-0.5 line-clamp-1">
-                  <strong className="text-white font-bold">Source:</strong> {latestNewLead.source} • <strong className="text-white font-bold">Location:</strong> {latestNewLead.city || "Not specified"} • {latestNewLead.message}
+                <p className="text-xs md:text-sm text-white/90 font-medium mt-0.5 line-clamp-1">
+                  {latestNewLead.isBid ? (
+                    latestNewLead.message
+                  ) : (
+                    <><strong className="text-white font-bold">Source:</strong> {latestNewLead.source} • <strong className="text-white font-bold">Location:</strong> {latestNewLead.city || "Not specified"} • {latestNewLead.message}</>
+                  )}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center space-x-3 self-end md:self-center shrink-0 w-full md:w-auto">
-              <Button asChild size="default" className="bg-white hover:bg-orange-50 text-orange-600 font-bold shadow-lg transition-all w-full md:w-auto">
-                <Link href={latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads"}>
-                  View Lead & Convert <ArrowRight className="w-4 h-4 ml-1.5" />
+              <Button asChild size="default" className={`font-bold shadow-lg transition-all w-full md:w-auto bg-white ${
+                latestNewLead.isBid ? 'text-teal-700 hover:bg-teal-50' : 'text-orange-600 hover:bg-orange-50'
+              }`}>
+                <Link href={latestNewLead.isBid ? "/executive/leads" : (latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads")}>
+                  {latestNewLead.isBid ? "Review Bids & Assign Partner" : "View Lead & Convert"} <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Link>
               </Button>
               {latestNewLead.isLive && (

@@ -122,6 +122,19 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       triggerToast(title, message, 'lead', 8000);
     });
 
+    // 1b. Listen to partner bid placed
+    const handlePartnerBid = (payload: any) => {
+      console.log("[SOCKET] Live Partner Bid Received:", payload);
+      const title = "🏷️ NEW PARTNER BID PLACED!";
+      const partnerName = payload?.partnerName || payload?.businessName || "A partner";
+      const amountStr = payload?.amount ? `₹${payload.amount}` : "";
+      const message = payload?.message || `${partnerName} has placed a bid ${amountStr} on a booking.`;
+      triggerToast(title, message, 'lead', 8000);
+    };
+
+    newSocket.on("new_bid", handlePartnerBid);
+    newSocket.on("quote_received", handlePartnerBid);
+
     // 2. Listen to generic system notifications
     newSocket.on("notification:new", (payload) => {
       console.log("[SOCKET] New Notification Received:", payload);
