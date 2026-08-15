@@ -27,7 +27,9 @@ import {
   User,
   Activity,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  X
 } from "lucide-react";
 import { 
   BarChart, 
@@ -47,18 +49,32 @@ export default function ExecutiveDashboardPage() {
   const { user } = useAuth();
   const { socket } = useSocket();
   const queryClient = useQueryClient();
+  const [liveLeadAlert, setLiveLeadAlert] = React.useState<any>(null);
   
   const { data: followUpsData, isLoading: loadingFollowUps } = usePendingFollowUps({ page: 1, limit: 100 });
   const { data: escalationsData, isLoading: loadingEscalations } = useEscalations({ page: 1, limit: 100 });
   const { data: leadsData, isLoading: loadingLeads } = useExecutiveLeads({ page: 1, limit: 100 });
   const { data: websiteLeadsData, isLoading: loadingWebsiteLeads } = useWebsiteLeads({ page: 1, limit: 100 });
 
-  // Real-time socket refresh — auto-update dashboard on new events
+  // Real-time socket refresh + Live Lead Alert Trigger
   useEffect(() => {
     if (!socket) return;
-    const refreshLeads = () => {
+    const refreshLeads = (payload?: any) => {
       queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
       queryClient.invalidateQueries({ queryKey: ["executive", "website-leads"] });
+
+      if (payload) {
+        setLiveLeadAlert({
+          id: payload?.leadId || Date.now().toString(),
+          name: payload?.name || payload?.title || "New Customer",
+          phone: payload?.phone || "",
+          source: payload?.source ? payload.source.replace(/_/g, " ") : "Website Lead",
+          city: payload?.city || payload?.location || "",
+          message: payload?.message || "A new lead has arrived and requires assignment.",
+          timestamp: new Date(),
+          isLive: true,
+        });
+      }
     };
     const refreshEscalations = () => {
       queryClient.invalidateQueries({ queryKey: ["executive", "escalations"] });
@@ -86,6 +102,50 @@ export default function ExecutiveDashboardPage() {
   const esc = escalationsData?.escalations || [];
   const lds = leadsData?.leads || [];
   const wLds = websiteLeadsData?.leads || [];
+
+  // Derived Latest Incoming Lead Banner
+  const latestNewLead = React.useMemo(() => {
+    if (liveLeadAlert) return liveLeadAlert;
+
+    const websiteLeadsList = Array.isArray(wLds?.docs) ? wLds.docs : (Array.isArray(wLds?.data) ? wLds.data : (Array.isArray(wLds) ? wLds : []));
+    const platformLeadsList = Array.isArray(lds?.docs) ? lds.docs : (Array.isArray(lds?.data) ? lds.data : (Array.isArray(lds) ? lds : []));
+
+    const unassignedWebsiteLeads = websiteLeadsList.filter((l: any) => l.status === "NEW" || l.status === "PENDING");
+    if (unassignedWebsiteLeads.length > 0) {
+      const latest = unassignedWebsiteLeads.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      return {
+        id: latest._id || latest.id,
+        name: latest.name || "New Customer",
+        phone: latest.phone || "",
+        source: latest.source ? latest.source.replace(/_/g, " ") : "Website Lead",
+        city: latest.city || "",
+        message: latest.message || "New enquiry received.",
+        timestamp: latest.createdAt ? new Date(latest.createdAt) : new Date(),
+        isLive: false,
+        isWebsiteLead: true,
+      };
+    }
+
+    const unassignedPlatformLeads = platformLeadsList.filter((l: any) => l.status === "PENDING" || l.status === "QUOTED");
+    if (unassignedPlatformLeads.length > 0) {
+      const latest = unassignedPlatformLeads.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      const customerObj = typeof latest.customerId === "object" ? latest.customerId : null;
+      const cityObj = typeof latest.cityId === "object" ? latest.cityId : null;
+      return {
+        id: latest._id || latest.id,
+        name: customerObj?.fullName || "New Customer",
+        phone: customerObj?.phone || "",
+        source: "Platform Booking",
+        city: cityObj?.name || "",
+        message: latest.description || "Booking requested.",
+        timestamp: latest.createdAt ? new Date(latest.createdAt) : new Date(),
+        isLive: false,
+        isWebsiteLead: false,
+      };
+    }
+
+    return null;
+  }, [liveLeadAlert, wLds, lds]);
 
   // Compute Stats
   const stats = React.useMemo(() => {
@@ -199,6 +259,55 @@ export default function ExecutiveDashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* ⚡ Live Incoming Lead Alert Banner */}
+      {latestNewLead && (
+        <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white rounded-2xl p-5 shadow-xl shadow-orange-500/20 border border-orange-400/40 relative overflow-hidden animate-in slide-in-from-top-4 duration-500">
+          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+            <div className="flex items-start space-x-3.5">
+              <div className="bg-white/20 backdrop-blur-md p-3 rounded-xl shrink-0 text-white mt-0.5 shadow-inner">
+                <Sparkles className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="bg-white text-orange-600 font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-orange-600 animate-ping"></span>
+                    {latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING"}
+                  </span>
+                  <span className="text-xs text-orange-100 font-medium">
+                    {latestNewLead.timestamp ? new Date(latestNewLead.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                  </span>
+                </div>
+                <h3 className="font-heading font-black text-lg md:text-xl text-white mt-1">
+                  {latestNewLead.name} {latestNewLead.phone ? `(${latestNewLead.phone})` : ""}
+                </h3>
+                <p className="text-xs md:text-sm text-orange-50 font-medium mt-0.5 line-clamp-1">
+                  <strong className="text-white font-bold">Source:</strong> {latestNewLead.source} • <strong className="text-white font-bold">Location:</strong> {latestNewLead.city || "Not specified"} • {latestNewLead.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3 self-end md:self-center shrink-0 w-full md:w-auto">
+              <Button asChild size="default" className="bg-white hover:bg-orange-50 text-orange-600 font-bold shadow-lg transition-all w-full md:w-auto">
+                <Link href={latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads"}>
+                  View Lead & Convert <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Link>
+              </Button>
+              {latestNewLead.isLive && (
+                <button 
+                  onClick={() => setLiveLeadAlert(null)}
+                  className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+                  title="Dismiss alert"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Urgent Attention Callout */}
       {urgentEscalations.length > 0 && (
