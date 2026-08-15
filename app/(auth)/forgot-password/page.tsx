@@ -25,14 +25,14 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      await forgotPassword({ identifier });
-      
-      setSuccess("If an account exists, a reset code has been sent.");
+      const res = await forgotPassword({ identifier });
+      const serverMsg = res?.data?.message || res?.message || "Reset code has been sent.";
+      setSuccess(serverMsg);
       
       // Navigate to reset password after brief delay
       setTimeout(() => {
         router.push(`/reset-password?identifier=${encodeURIComponent(identifier)}`);
-      }, 2000);
+      }, 2500);
     } catch (err: unknown) {
       setError((err as { message?: string })?.message || "Something went wrong. Please try again.");
     } finally {
