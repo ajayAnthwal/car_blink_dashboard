@@ -1249,3 +1249,45 @@ export const respondToExtension = async (bookingId: string, extId: string, statu
   const response = await apiClient.patch(`/customer/bookings/${bookingId}/extensions/${extId}`, { status });
   return response.data;
 };
+
+// ==========================================
+// ITEMIZE INVOICE APIs (Partner & Executive)
+// ==========================================
+
+export const submitPartnerInvoice = async (jobId: string, invoiceData: any) => {
+  const response = await apiClient.post(`/jobs/${jobId}/invoice`, invoiceData);
+  return response.data;
+};
+
+export const getAllExecutiveInvoices = async (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
+  let url = `/executive/invoices?page=${params?.page || 1}&limit=${params?.limit || 50}`;
+  if (params?.status && params.status !== 'all') url += `&status=${params.status}`;
+  if (params?.search) url += `&search=${encodeURIComponent(params.search)}`;
+  const response = await apiClient.get(url);
+  return response.data;
+};
+
+export const updateInvoiceByExecutive = async (invoiceId: string, updateData: any) => {
+  const response = await apiClient.put(`/executive/invoices/${invoiceId}`, updateData);
+  return response.data;
+};
+
+export const approveAndForwardInvoice = async (invoiceId: string, executiveNotes?: string) => {
+  const response = await apiClient.post(`/executive/invoices/${invoiceId}/approve`, { executiveNotes });
+  return response.data;
+};
+
+export const getCustomerBookingInvoice = async (bookingId: string) => {
+  const response = await apiClient.get(`/customer/bookings/${bookingId}/invoice`);
+  return response.data;
+};
+
+export const sendSatisfactionTemplate = async (bookingId: string) => {
+  const response = await apiClient.post(`/customer/bookings/${bookingId}/satisfaction/send`);
+  return response.data;
+};
+
+export const respondSatisfactionTemplate = async (bookingId: string, data: { isSatisfied: boolean; rating?: number; feedback?: string }) => {
+  const response = await apiClient.post(`/customer/bookings/${bookingId}/satisfaction/respond`, data);
+  return response.data;
+};

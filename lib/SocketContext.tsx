@@ -135,6 +135,17 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     newSocket.on("new_bid", handlePartnerBid);
     newSocket.on("quote_received", handlePartnerBid);
 
+    // 1c. Listen to customer satisfaction response
+    newSocket.on("satisfaction_response", (payload: any) => {
+      console.log("[SOCKET] Satisfaction Response Received:", payload);
+      const isSatisfied = payload?.isSatisfied;
+      const title = isSatisfied ? "💚 CUSTOMER SATISFIED!" : "🔴 CUSTOMER REPORTED ISSUES!";
+      const customerName = payload?.customerName || "Customer";
+      const ratingStr = payload?.rating ? `(${payload.rating}/5 Stars)` : "";
+      const message = `${customerName} responded ${isSatisfied ? "Satisfied" : "Dissatisfied"} ${ratingStr}. ${payload?.feedback || ""}`;
+      triggerToast(title, message, isSatisfied ? 'lead' : 'info', 10000);
+    });
+
     // 2. Listen to generic system notifications
     newSocket.on("notification:new", (payload) => {
       console.log("[SOCKET] New Notification Received:", payload);

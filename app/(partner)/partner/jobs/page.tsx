@@ -52,6 +52,58 @@ export default function PartnerJobsPage() {
   const [extCost, setExtCost] = useState("");
   const [extReason, setExtReason] = useState("");
 
+  const [invoiceType, setInvoiceType] = useState<"PDF" | "ITEMIZED">("ITEMIZED");
+  const [invoiceItems, setInvoiceItems] = useState<{ description: string; quantity: number; unitPrice: number }[]>([
+    { description: "Car Service & Maintenance", quantity: 1, unitPrice: 1500 }
+  ]);
+  const [invoiceDiscount, setInvoiceDiscount] = useState<number>(0);
+  const [invoiceTax, setInvoiceTax] = useState<number>(0);
+  const [invoiceNotes, setInvoiceNotes] = useState<string>("");
+  const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
+
+  const handleAddInvoiceItem = () => {
+    setInvoiceItems(prev => [...prev, { description: "", quantity: 1, unitPrice: 0 }]);
+  };
+
+  const handleRemoveInvoiceItem = (index: number) => {
+    if (invoiceItems.length <= 1) return;
+    setInvoiceItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleInvoiceItemChange = (index: number, field: string, value: any) => {
+    setInvoiceItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleSubmitItemizedInvoice = async (jobId: string) => {
+    setIsSubmittingInvoice(true);
+    try {
+      const { submitPartnerInvoice } = await import("@/lib/services");
+      const subtotal = invoiceItems.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
+      const grandTotal = Math.max(0, subtotal + Number(invoiceTax || 0) - Number(invoiceDiscount || 0));
+
+      await submitPartnerInvoice(jobId, {
+        invoiceType,
+        pdfUrl: invoiceUrl || undefined,
+        items: invoiceItems,
+        subtotal,
+        taxAmount: invoiceTax,
+        discount: invoiceDiscount,
+        grandTotal,
+        notes: invoiceNotes
+      });
+
+      setMessage({ type: "success", text: "Invoice submitted to Executive for review and customer approval!" });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message || "Failed to submit invoice." });
+    } finally {
+      setIsSubmittingInvoice(false);
+    }
+  };
+
   const handleStartJob = async (id: string) => {
     setMessage({ type: "", text: "" });
     try {
@@ -364,25 +416,143 @@ export default function PartnerJobsPage() {
                           </Button>
                         </div>
 
+                        {/* Invoice Submission & Review Section */}
                         <div className="grid grid-cols-1 mt-6">
-                          <div className="space-y-3 border border-neutral-muted/20 p-4 rounded-xl">
-                            <h4 className="font-semibold text-primary-navy flex items-center">
-                              <FileText className="w-4 h-4 mr-2 text-primary-navy" /> Upload Invoice
-                            </h4>
-                            <FileUpload
-                              folder="invoices"
-                              onUploadSuccess={(url) => setInvoiceUrl(url)}
-                              currentValue={invoiceUrl || job.invoiceUrl}
-                            />
-                            <Button
-                              variant="outline"
-                              className="w-full"
-                              disabled={!invoiceUrl}
-                              isLoading={uploadInvoiceMutation.isPending}
-                              onClick={() => handleUploadInvoice(jobId)}
-                            >
-                              {invoiceUrl ? "Save Invoice to Job" : job.invoiceUrl ? "✓ Invoice Saved" : "Save Invoice to Job"}
-                            </Button>
+                          <div className="space-y-4 border border-neutral-muted/20 p-5 rounded-2xl bg-white shadow-sm">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                              <h4 className="font-bold text-primary-navy flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-primary-orange" /> Invoice & Bill Submission
+                              </h4>
+                              {/* Option Toggle */}
+                              <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+                                <button
+                                  onClick={() => setInvoiceType("ITEMIZED")}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    invoiceType === "ITEMIZED" ? "bg-white text-primary-orange shadow-sm" : "text-gray-600 hover:text-gray-900"
+                                  }`}
+                                >
+                                  Itemized Bill Form
+                                </button>
+                                <button
+                                  onClick={() => setInvoiceType("PDF")}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    invoiceType === "PDF" ? "bg-white text-primary-orange shadow-sm" : "text-gray-600 hover:text-gray-900"
+                                  }`}
+                                >
+                                  Upload PDF Document
+                                </button>
+                              </div>
+                            </div>
+
+                            {invoiceType === "ITEMIZED" ? (
+                              <div className="space-y-4">
+                                <p className="text-xs text-gray-500">
+                                  Fill out the line items for parts and labor. Your invoice will be sent to the Executive for review before customer forwarding.
+                                </p>
+
+                                {/* Line Items Table */}
+                                <div className="space-y-2">
+                                  {invoiceItems.map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                                      <input
+                                        type="text"
+                                        placeholder="Item / Service Description"
+                                        value={item.description}
+                                        onChange={(e) => handleInvoiceItemChange(idx, "description", e.target.value)}
+                                        className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-orange bg-white font-medium"
+                                      />
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        placeholder="Qty"
+                                        value={item.quantity}
+                                        onChange={(e) => handleInvoiceItemChange(idx, "quantity", e.target.value)}
+                                        className="w-16 px-2 py-2 text-xs text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-orange bg-white font-medium"
+                                      />
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="Unit Price (₹)"
+                                        value={item.unitPrice}
+                                        onChange={(e) => handleInvoiceItemChange(idx, "unitPrice", e.target.value)}
+                                        className="w-24 px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-orange bg-white font-medium"
+                                      />
+                                      <span className="text-xs font-bold text-gray-900 w-20 text-right pr-2">
+                                        ₹{(Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)}
+                                      </span>
+                                      {invoiceItems.length > 1 && (
+                                        <button
+                                          onClick={() => handleRemoveInvoiceItem(idx)}
+                                          className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                                        >
+                                          ×
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+
+                                  <Button onClick={handleAddInvoiceItem} size="sm" variant="outline" className="text-xs font-bold text-primary-orange border-primary-orange/30 mt-1">
+                                    + Add Item Line
+                                  </Button>
+                                </div>
+
+                                {/* Financial Summary */}
+                                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                                  <div>
+                                    <label className="block text-[11px] font-bold text-gray-600 mb-1">Discount (₹)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={invoiceDiscount}
+                                      onChange={(e) => setInvoiceDiscount(Number(e.target.value) || 0)}
+                                      className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-emerald-700 bg-white"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-bold text-gray-600 mb-1">Tax / GST (₹)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={invoiceTax}
+                                      onChange={(e) => setInvoiceTax(Number(e.target.value) || 0)}
+                                      className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 bg-white"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-between items-center bg-orange-50 p-3 rounded-xl border border-orange-100 text-sm font-black text-gray-900">
+                                  <span>Total Itemized Amount:</span>
+                                  <span className="text-primary-orange text-lg">
+                                    ₹{Math.max(0, invoiceItems.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0) + Number(invoiceTax || 0) - Number(invoiceDiscount || 0))}
+                                  </span>
+                                </div>
+
+                                <Button
+                                  onClick={() => handleSubmitItemizedInvoice(jobId)}
+                                  isLoading={isSubmittingInvoice}
+                                  className="w-full bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-3"
+                                >
+                                  Submit Itemized Invoice for Executive Review
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <FileUpload
+                                  folder="invoices"
+                                  onUploadSuccess={(url) => setInvoiceUrl(url)}
+                                  currentValue={invoiceUrl || job.invoiceUrl}
+                                />
+                                <Button
+                                  variant="outline"
+                                  className="w-full text-xs font-bold"
+                                  disabled={!invoiceUrl}
+                                  isLoading={uploadInvoiceMutation.isPending}
+                                  onClick={() => handleUploadInvoice(jobId)}
+                                >
+                                  {invoiceUrl ? "Save & Submit PDF Invoice" : job.invoiceUrl ? "✓ PDF Invoice Uploaded" : "Save PDF Invoice"}
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </>

@@ -12,6 +12,8 @@ import {
   generateSettlement,
   getGstReport,
   getInvoicesReport,
+  getPlatformRevenueStats,
+  getNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
   getActivityLogs

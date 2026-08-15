@@ -1,15 +1,15 @@
 // @ts-nocheck
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNotifications, useMarkNotificationReadMutation, useMarkAllNotificationsReadMutation } from "@/features/customer/hooks/useCustomerQueries";
 import { useSocket } from "@/lib/SocketContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, Loader2, CheckCircle2, Info, CalendarClock, Zap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-
 import { useQueryClient } from "@tanstack/react-query";
+import { NotificationDetailsModal } from "@/components/notifications/NotificationDetailsModal";
 
 export default function NotificationsPage() {
   const { socket } = useSocket();
@@ -19,11 +19,11 @@ export default function NotificationsPage() {
   const markReadMutation = useMarkNotificationReadMutation();
   const markAllReadMutation = useMarkAllNotificationsReadMutation();
 
+  const [selectedNotification, setSelectedNotification] = useState<any | null>(null);
+
   useEffect(() => {
     if (!socket) return;
     
-    // Listen for new notifications
-    // In a real app we&apos;d also invalidate the queries here
     const handleNewNotification = () => {
       queryClient.invalidateQueries({ queryKey: ["customer", "notifications"] });
     };
@@ -45,6 +45,13 @@ export default function NotificationsPage() {
       await markReadMutation.mutateAsync(id);
     } catch (err) {
       console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    setSelectedNotification(notification);
+    if (!notification.isRead) {
+      handleMarkAsRead(notification._id, false);
     }
   };
 
@@ -107,12 +114,12 @@ export default function NotificationsPage() {
           {notifications.map((notification) => (
             <Card 
               key={notification._id} 
-              className={`transition-colors cursor-pointer border-l-4 hover:shadow-md ${
+              className={`transition-all cursor-pointer border-l-4 hover:shadow-md hover:scale-[1.005] ${
                 notification.isRead 
                   ? 'bg-neutral-white border-l-transparent border-neutral-muted/20' 
                   : 'bg-primary-navy/5 border-l-primary-orange border-neutral-muted/10'
               }`}
-              onClick={() => handleMarkAsRead(notification._id, notification.isRead)}
+              onClick={() => handleNotificationClick(notification)}
             >
               <CardContent className="p-4 sm:p-5 flex gap-4">
                 <div className={`mt-1 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
@@ -138,6 +145,15 @@ export default function NotificationsPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Notification Details Modal */}
+      {selectedNotification && (
+        <NotificationDetailsModal
+          notification={selectedNotification}
+          userRole="EXECUTIVE"
+          onClose={() => setSelectedNotification(null)}
+        />
       )}
     </div>
   );

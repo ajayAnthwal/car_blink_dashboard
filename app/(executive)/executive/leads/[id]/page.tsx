@@ -24,7 +24,8 @@ import {
   Image as ImageIcon,
   CheckCircle,
   Share,
-  ClipboardList
+  ClipboardList,
+  ExternalLink
 } from "lucide-react";
 
 export default function LeadDetailsPage() {
@@ -247,6 +248,52 @@ export default function LeadDetailsPage() {
               <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Description / Notes</span>
               <span className="text-gray-700 italic">&quot;{lead.description || "No description provided."}&quot;</span>
             </div>
+
+            {/* Interactive Live Customer Location Map */}
+            {(hasCoordinates || lead.address || cityObj?.name) && (
+              <div className="pt-4 border-t border-gray-100 space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
+                    <MapPin className="w-4 h-4 mr-1.5 text-primary-orange" />
+                    Customer Live Geolocation Map
+                  </h4>
+                  {(hasCoordinates || lead.address || cityObj?.name) && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${hasCoordinates ? `${lead.location.coordinates[1]},${lead.location.coordinates[0]}` : encodeURIComponent(`${lead.address || ''} ${cityObj?.name || ''}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-semibold text-primary-orange hover:text-orange-600 flex items-center bg-orange-50 px-2.5 py-1 rounded-md border border-orange-100 hover:bg-orange-100 transition-colors"
+                    >
+                      Open Google Maps Navigation <ExternalLink className="w-3 h-3 ml-1" />
+                    </a>
+                  )}
+                </div>
+
+                <div className="rounded-2xl overflow-hidden border border-gray-200 h-64 bg-slate-100 shadow-inner relative group">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    scrolling="no"
+                    marginHeight={0}
+                    marginWidth={0}
+                    src={`https://maps.google.com/maps?q=${hasCoordinates ? `${lead.location.coordinates[1]},${lead.location.coordinates[0]}` : encodeURIComponent(`${lead.address || ''} ${cityObj?.name || ''}`)}&z=15&output=embed`}
+                    className="w-full h-full"
+                  ></iframe>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
+                  <span className="font-mono text-gray-700">
+                    <strong>Coordinates:</strong> {coordinatesStr || "Not recorded"}
+                  </span>
+                  {lead.address && (
+                    <span className="truncate max-w-md">
+                      <strong>Address:</strong> {lead.address} {lead.landmark ? `(Landmark: ${lead.landmark})` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Photos Section */}
             {(lead.beforePhotos?.length > 0 || lead.afterPhotos?.length > 0) && (

@@ -93,11 +93,18 @@ export const useCustomerStatsQuery = () => {
   return useQuery({
     queryKey: ["customer", "stats"],
     queryFn: async () => {
-      const res = await getCustomerStats();
-      return {
-        totalSavings: res?.data?.totalSavings || 0,
-        rewardPoints: res?.data?.rewardPoints || 0,
-      };
+      try {
+        if (typeof getCustomerStats === 'function') {
+          const res = await getCustomerStats();
+          return {
+            totalSavings: res?.data?.totalSavings || res?.totalSavings || 0,
+            rewardPoints: res?.data?.rewardPoints || res?.rewardPoints || 0,
+          };
+        }
+      } catch (e) {
+        console.warn("getCustomerStats error:", e);
+      }
+      return { totalSavings: 0, rewardPoints: 0 };
     },
   });
 };

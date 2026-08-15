@@ -176,13 +176,13 @@ export default function ExecutiveHistoryPage() {
                     {/* Action */}
                     <TableCell className="align-top text-right pr-4">
                        <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
+                         <DropdownMenuTrigger>
                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-primary-navy hover:bg-gray-100/80 rounded-full">
                              <MoreHorizontal className="h-5 w-5" />
                            </Button>
                          </DropdownMenuTrigger>
                          <DropdownMenuContent align="end" className="w-40">
-                           <DropdownMenuItem asChild className="cursor-pointer text-gray-700 font-medium">
+                           <DropdownMenuItem className="cursor-pointer text-gray-700 font-medium">
                              <Link href={`/executive/leads/${lead._id}`} className="flex items-center w-full">
                                <Eye className="w-4 h-4 mr-2 text-gray-400" />
                                View Details

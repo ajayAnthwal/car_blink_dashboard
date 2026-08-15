@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Store, Truck, CreditCard, Banknote, MapPin, PenLine, Navigation, Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 const bookingSchema = z.object({
   vehicleId: z.string().min(1, "Vehicle is required"),
   serviceId: z.string().min(1, "Service is required"),
   state: z.string().optional(),
-  cityId: z.string().min(1, "City is required"),
+  cityId: z.string().optional(),
   preferredDate: z.string().min(1, "Preferred date is required"),
   preferredTime: z.string().min(1, "Preferred time is required"),
   description: z.string().min(10, "Please provide a description (min 10 chars)"),
@@ -83,21 +84,46 @@ export function BookingForm({
     },
   });
 
+  const { user } = useAuth();
+  const [hasAutoFilled, setHasAutoFilled] = React.useState(false);
+
   const selectedState = watch("state");
   const selectedServiceMode = watch("serviceMode");
   const selectedPaymentMode = watch("paymentMode");
 
+  // Auto-prefill State, City, and Address from saved profile
+  useEffect(() => {
+    if (user && !hasAutoFilled) {
+      const userState = (user as any).state;
+      const userCityId = (user as any).cityId;
+      const userAddress = (user as any).address;
+
+      if (userState) {
+        setValue("state", userState);
+        onStateChange(userState);
+      }
+      if (userCityId) {
+        setValue("cityId", userCityId);
+      }
+      if (userAddress) {
+        setValue("address", userAddress);
+      }
+      setHasAutoFilled(true);
+    }
+  }, [user, hasAutoFilled, setValue, onStateChange]);
+
   useEffect(() => {
     if (selectedState) {
       onStateChange(selectedState);
-      setValue("cityId", "");
     }
-  }, [selectedState, onStateChange, setValue]);
+  }, [selectedState, onStateChange]);
 
   const handleFormSubmit = (data: BookingFormValues) => {
     const dateTime = new Date(`${data.preferredDate}T${data.preferredTime}`);
+    const resolvedCityId = data.cityId || (user as any)?.cityId || (cities.length > 0 ? cities[0]._id : "6a56fe37cd289f213b596a00");
     const submitData = {
       ...data,
+      cityId: resolvedCityId,
       preferredDate: dateTime.toISOString(),
     };
     onSubmit(submitData);
@@ -186,29 +212,6 @@ export function BookingForm({
                 <p className="text-xs text-neutral-muted mt-0.5">Mechanic visits your location</p>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-          <div>
-            <Select
-              label="State"
-              value={watch("state")}
-              onChange={(e) => setValue("state", e.target.value)}
-              options={states.map(s => ({ value: s.value || s.name || "", label: s.name || "" }))}
-              required
-            />
-          </div>
-          <div>
-            <Select
-              label="City"
-              value={watch("cityId")}
-              onChange={(e) => setValue("cityId", e.target.value)}
-              options={cities.map(c => ({ value: c._id || "", label: c.name || "" }))}
-              disabled={!selectedState || cities.length === 0}
-              required
-            />
-            {errors.cityId && <p className="text-red-500 text-xs mt-1">{errors.cityId.message}</p>}
           </div>
         </div>
 

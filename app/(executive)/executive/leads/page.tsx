@@ -123,9 +123,10 @@ export default function ExecutiveLeadsPage() {
   }, [selectedLead, radiusKm, selectedServiceFilter, useCityFilter]);
   
   const { data: partnersData, isLoading: isFetchingPartners } = usePartnerStatus(1, 100, partnerFilterStr);
-  const partners = Array.isArray(partnersData?.partners) 
-    ? partnersData.partners 
-    : (Array.isArray(partnersData?.docs) ? partnersData.docs : (Array.isArray(partnersData) ? partnersData : []));
+  const pData = partnersData as any;
+  const partners = Array.isArray(pData?.partners) 
+    ? pData.partners 
+    : (Array.isArray(pData?.docs) ? pData.docs : (Array.isArray(pData) ? pData : []));
 
   const openAssignModal = (lead: any) => {
     setSelectedLead(lead);
@@ -412,6 +413,25 @@ export default function ExecutiveLeadsPage() {
                           </Button>
                         )}
                         
+                        {/* Send Satisfaction Template Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full text-[10px] h-7 text-primary-orange border-primary-orange/30 hover:bg-orange-50 font-bold"
+                          onClick={async () => {
+                            try {
+                              const { sendSatisfactionTemplate } = await import("@/lib/services");
+                              await sendSatisfactionTemplate(lead._id);
+                              toast.success("Satisfaction Form template sent to customer!");
+                              refetchLeads();
+                            } catch (err: any) {
+                              toast.error(err.message || "Failed to send satisfaction form");
+                            }
+                          }}
+                        >
+                          Send Satisfaction Form
+                        </Button>
+
                         <Button variant="ghost" size="sm" asChild className="w-full text-xs h-7 text-neutral-500 hover:text-primary-navy">
                           <Link href={`/executive/leads/${lead._id || lead.id}`}>
                             View Full Details
@@ -506,7 +526,7 @@ export default function ExecutiveLeadsPage() {
                             <option value={selectedLead.serviceId._id}>Match Lead Service ({selectedLead.serviceId.name})</option>
                           )}
                           <optgroup label="All Services">
-                            {allServices.map(s => (
+                            {allServices.map((s: any) => (
                               <option key={s._id} value={s._id}>{s.name} {s.category ? `(${s.category})` : ''}</option>
                             ))}
                           </optgroup>
@@ -590,7 +610,7 @@ export default function ExecutiveLeadsPage() {
                         control={assignForm.control}
                         render={({ field }) => (
                           <>
-                            {partners.map(p => {
+                            {partners.map((p: any) => {
                               const isSelected = field.value.includes(p._id);
                               return (
                                 <div 
