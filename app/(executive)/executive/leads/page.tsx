@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -91,23 +91,32 @@ export default function ExecutiveLeadsPage() {
     defaultValues: { partnerIds: [], notes: "" }
   });
 
-  // Construct query string for usePartnerStatus based on filters
-  const getPartnerFilterStr = () => {
+  // Bug Fix 1: useMemo so React Query queryKey updates when filters change → triggers re-fetch
+  // Bug Fix 3: also pass cityId for city-level filtering even without exact coordinates
+  const partnerFilterStr = useMemo(() => {
     if (!selectedLead) return "verificationStatus=APPROVED";
     let query = "verificationStatus=APPROVED";
-    if (radiusKm !== "all" && selectedLead?.location?.coordinates) {
-      const lng = selectedLead.location.coordinates[0];
-      const lat = selectedLead.location.coordinates[1];
+    // Always filter by city of the lead
+    const cityId = typeof selectedLead.cityId === 'object' 
+      ? selectedLead.cityId?._id 
+      : selectedLead.cityId;
+    if (cityId) query += `&cityId=${cityId}`;
+    // Geo distance filter — only when coordinates exist AND user selected a specific radius
+    if (radiusKm !== "all" && selectedLead?.location?.coordinates?.length === 2) {
+      const [lng, lat] = selectedLead.location.coordinates;
       query += `&lat=${lat}&lng=${lng}&radius=${radiusKm}`;
     }
     if (selectedServiceFilter !== "all") {
       query += `&serviceId=${selectedServiceFilter}`;
     }
     return query;
-  };
+  }, [selectedLead, radiusKm, selectedServiceFilter]);
   
-  const { data: partnersData, isLoading: isFetchingPartners } = usePartnerStatus(1, 100, getPartnerFilterStr());
-  const partners = Array.isArray(partnersData?.docs) ? partnersData.docs : (Array.isArray(partnersData) ? partnersData : []);
+  const { data: partnersData, isLoading: isFetchingPartners } = usePartnerStatus(1, 100, partnerFilterStr);
+  // Bug Fix 2: backend returns { partners: [...] } not { docs: [...] }
+  const partners = Array.isArray(partnersData?.partners) 
+    ? partnersData.partners 
+    : (Array.isArray(partnersData?.docs) ? partnersData.docs : (Array.isArray(partnersData) ? partnersData : []));
 
   const openAssignModal = (lead: any) => {
     setSelectedLead(lead);

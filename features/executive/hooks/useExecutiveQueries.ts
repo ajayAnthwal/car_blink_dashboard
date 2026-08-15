@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  getExecutiveLeads, 
-  getAllWebsiteLeads, 
-  getEscalations, 
-  getPendingFollowUps, 
+import {
+  getExecutiveLeads,
+  getAllWebsiteLeads,
+  getEscalations,
+  getPendingFollowUps,
   updateExecutiveLead,
   convertWebsiteLeadToBooking,
   resolveEscalation,
@@ -37,6 +37,8 @@ const extractArray = (res: any, key: string) => {
 export const useExecutiveLeads = (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
   return useQuery({
     queryKey: ["executive", "leads", params],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       let filter = "";
       if (params?.status) filter += `status=${params.status}&`;
@@ -54,12 +56,24 @@ export const useExecutiveLeads = (params?: { page?: number; limit?: number; sear
 export const useWebsiteLeads = (params?: { page?: number; limit?: number; search?: string }) => {
   return useQuery({
     queryKey: ["executive", "website-leads", params],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const res = await getAllWebsiteLeads(params?.page, params?.limit, "", params?.search, "");
-      return {
-        leads: extractArray(res, "leads") as any[],
-        total: res?.total || res?.data?.total || extractArray(res, "leads").length
-      };
+      let leads: any[] = [];
+      if (Array.isArray(res)) {
+        leads = res;
+      } else if (res?.data?.data && Array.isArray(res.data.data)) {
+        leads = res.data.data;
+      } else if (res?.data && Array.isArray(res.data)) {
+        leads = res.data;
+      } else if (res?.docs && Array.isArray(res.docs)) {
+        leads = res.docs;
+      } else {
+        leads = extractArray(res, "data");
+      }
+      const total = res?.total || res?.data?.total || res?.data?.data?.length || leads.length;
+      return { leads, total };
     },
   });
 };
@@ -86,7 +100,7 @@ export const useExecutiveLeadById = (id: string | null) => {
       // We dynamically import getExecutiveLeadById if it's not exported at the top
       const m = await import("@/lib/services");
       const response = await m.getExecutiveLeadById(id);
-      
+
       // Due to a global axios interceptor that aliases arrays to .data, response.data might be corrupted 
       // if the lead object contains arrays (like bids). We check if response._id exists to ensure we have the lead.
       let leadData = response;
@@ -95,7 +109,7 @@ export const useExecutiveLeadById = (id: string | null) => {
       } else if (response && !response._id && response.lead) {
         leadData = response.lead;
       }
-      
+
       if (!leadData || !leadData._id) {
         throw new Error("Lead not found or invalid format");
       }
@@ -120,6 +134,8 @@ export const useExecutiveTicketDetails = (id: string | null) => {
 export const useEscalations = (params?: { page?: number; limit?: number; status?: string }) => {
   return useQuery({
     queryKey: ["executive", "escalations", params],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       let filter = "";
       if (params?.status) filter += `status=${params.status}&`;
@@ -135,6 +151,8 @@ export const useEscalations = (params?: { page?: number; limit?: number; status?
 export const usePendingFollowUps = (params?: { page?: number; limit?: number; isCompleted?: boolean }) => {
   return useQuery({
     queryKey: ["executive", "follow-ups", params],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const res = await getPendingFollowUps(params?.page, params?.limit);
       return {
@@ -209,7 +227,19 @@ export const usePartnerStatus = (page?: number, limit?: number, filterStr?: stri
   return useQuery({
     queryKey: ["executive", "partners", page, limit, filterStr],
     queryFn: async () => {
-      return await getPartnerStatus(page, limit, filterStr);
+      const res = await getPartnerStatus(page, limit, filterStr);
+      // Axios interceptor unwraps { success, message, data: { partners, docs, total } }
+      // So res = { success, message, data: { partners: [...], docs: [...], total, page, limit } }
+      const payload = res?.data || res;
+      return {
+        partners: Array.isArray(payload?.partners) ? payload.partners
+          : Array.isArray(payload?.docs) ? payload.docs
+            : Array.isArray(payload) ? payload
+              : [],
+        total: payload?.total || 0,
+        page: payload?.page || 1,
+        limit: payload?.limit || 10,
+      };
     },
   });
 };
@@ -237,10 +267,17 @@ export const useForwardQuoteMutation = () => {
 export const useExecutiveTickets = (statusFilter?: string) => {
   return useQuery({
     queryKey: ["executive", "tickets", statusFilter],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const query = statusFilter ? `status=${statusFilter}` : "";
       const res = await getExecutiveTickets(query);
-      return res.docs || [];
+      // Axios interceptor wraps response → res = { success, message, data: { docs/tickets: [...] } }
+      const payload = res?.data || res;
+      return Array.isArray(payload?.docs) ? payload.docs
+        : Array.isArray(payload?.tickets) ? payload.tickets
+          : Array.isArray(payload) ? payload
+            : [];
     },
   });
 };
@@ -248,9 +285,16 @@ export const useExecutiveTickets = (statusFilter?: string) => {
 export const useFollowUps = (page: number, limit: number) => {
   return useQuery({
     queryKey: ["executive", "follow-ups-all", page, limit],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const res = await getFollowUps(page, limit);
-      return Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.followUps) ? res.followUps : (Array.isArray(res?.data?.followUps) ? res.data.followUps : (Array.isArray(res) ? res : [])));
+      const payload = res?.data || res;
+      return Array.isArray(payload?.docs) ? payload.docs
+        : Array.isArray(payload?.followUps) ? payload.followUps
+          : Array.isArray(payload?.data?.followUps) ? payload.data.followUps
+            : Array.isArray(payload) ? payload
+              : [];
     },
   });
 };
@@ -276,13 +320,19 @@ export const usePushLocationMutation = () => {
 export const useCustomerStatus = (page: number, limit: number, search?: string) => {
   return useQuery({
     queryKey: ["executive", "customer-status", page, limit, search],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const res = await getCustomerStatus(page, limit, search);
+      const payload = res?.data || res;
       return {
-        customers: Array.isArray(res?.docs) ? res.docs : (Array.isArray(res?.customers) ? res.customers : (Array.isArray(res?.data?.customers) ? res.data.customers : (Array.isArray(res) ? res : []))),
-        total: res?.total || res?.data?.total || 0,
-        page: res?.page || res?.data?.page || 1,
-        limit: res?.limit || res?.data?.limit || 50
+        customers: Array.isArray(payload?.customers) ? payload.customers
+          : Array.isArray(payload?.docs) ? payload.docs
+            : Array.isArray(payload) ? payload
+              : [],
+        total: payload?.total || res?.data?.total || 0,
+        page: payload?.page || res?.data?.page || 1,
+        limit: payload?.limit || res?.data?.limit || 50
       };
     },
   });

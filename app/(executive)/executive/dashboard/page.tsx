@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { 
@@ -10,6 +10,8 @@ import {
   useExecutiveLeads, 
   useWebsiteLeads 
 } from "@/features/executive/hooks/useExecutiveQueries";
+import { useSocket } from "@/lib/SocketContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { Escalation, Lead } from "@/lib/types";
 import { getStatusColorTheme, StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -43,11 +45,40 @@ import {
 
 export default function ExecutiveDashboardPage() {
   const { user } = useAuth();
+  const { socket } = useSocket();
+  const queryClient = useQueryClient();
   
   const { data: followUpsData, isLoading: loadingFollowUps } = usePendingFollowUps({ page: 1, limit: 100 });
   const { data: escalationsData, isLoading: loadingEscalations } = useEscalations({ page: 1, limit: 100 });
   const { data: leadsData, isLoading: loadingLeads } = useExecutiveLeads({ page: 1, limit: 100 });
   const { data: websiteLeadsData, isLoading: loadingWebsiteLeads } = useWebsiteLeads({ page: 1, limit: 100 });
+
+  // Real-time socket refresh — auto-update dashboard on new events
+  useEffect(() => {
+    if (!socket) return;
+    const refreshLeads = () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+      queryClient.invalidateQueries({ queryKey: ["executive", "website-leads"] });
+    };
+    const refreshEscalations = () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "escalations"] });
+    };
+    const refreshFollowUps = () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "follow-ups"] });
+    };
+    socket.on("new_lead", refreshLeads);
+    socket.on("booking_confirmed", refreshLeads);
+    socket.on("new_escalation", refreshEscalations);
+    socket.on("escalation_updated", refreshEscalations);
+    socket.on("follow_up_due", refreshFollowUps);
+    return () => {
+      socket.off("new_lead", refreshLeads);
+      socket.off("booking_confirmed", refreshLeads);
+      socket.off("new_escalation", refreshEscalations);
+      socket.off("escalation_updated", refreshEscalations);
+      socket.off("follow_up_due", refreshFollowUps);
+    };
+  }, [socket, queryClient]);
 
   const loading = loadingFollowUps || loadingEscalations || loadingLeads || loadingWebsiteLeads;
 

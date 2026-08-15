@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Briefcase,
@@ -36,15 +36,43 @@ import {
   usePartnerProfile,
   usePartnerLeads
 } from "@/features/partner/hooks/usePartnerQueries";
+import { useSocket } from "@/lib/SocketContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function PartnerDashboardPage() {
   const { user } = useAuth();
+  const { socket } = useSocket();
+  const queryClient = useQueryClient();
 
-  const { data: jobsData, isLoading: isLoadingJobs } = usePartnerJobs();
-  const { data: bidsData, isLoading: isLoadingBids } = usePartnerBids();
-  const { data: earnings, isLoading: isLoadingEarnings } = usePartnerEarnings();
+  const { data: jobsData, isLoading: isLoadingJobs, refetch: refetchJobs } = usePartnerJobs();
+  const { data: bidsData, isLoading: isLoadingBids, refetch: refetchBids } = usePartnerBids();
+  const { data: earnings, isLoading: isLoadingEarnings, refetch: refetchEarnings } = usePartnerEarnings();
   const { data: profile, isLoading: isLoadingProfile } = usePartnerProfile();
-  const { data: leadsData, isLoading: isLoadingLeads } = usePartnerLeads();
+  const { data: leadsData, isLoading: isLoadingLeads, refetch: refetchLeads } = usePartnerLeads();
+
+  // Real-time socket refresh — auto-update dashboard when jobs/leads change
+  useEffect(() => {
+    if (!socket) return;
+    const refreshAll = () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "earnings"] });
+    };
+    const refreshLeads = () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "leads"] });
+    };
+    socket.on("new_lead", refreshLeads);
+    socket.on("job_started", refreshAll);
+    socket.on("job_completed", refreshAll);
+    socket.on("booking_confirmed", refreshAll);
+    socket.on("job_updated", refreshAll);
+    return () => {
+      socket.off("new_lead", refreshLeads);
+      socket.off("job_started", refreshAll);
+      socket.off("job_completed", refreshAll);
+      socket.off("booking_confirmed", refreshAll);
+      socket.off("job_updated", refreshAll);
+    };
+  }, [socket, queryClient]);
 
   const loading = isLoadingJobs || isLoadingBids || isLoadingEarnings || isLoadingProfile || isLoadingLeads;
 

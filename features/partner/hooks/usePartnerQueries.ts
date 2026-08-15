@@ -16,9 +16,15 @@ const extractArray = (res: any, key: string) => {
 export const usePartnerJobs = (params?: { page?: number; limit?: number; status?: string }) => {
   return useQuery({
     queryKey: ["partner", "jobs", params],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
-      const queryStr = params?.status ? `status=${params.status}` : undefined;
-      const res = await getPartnerJobs(params?.page ? Number(params.page) : undefined, params?.limit ? Number(params.limit) : undefined, queryStr);
+      // FIXED: getPartnerJobs(status, page, limit) — status is first param
+      const res = await getPartnerJobs(
+        params?.status,
+        params?.page ? Number(params.page) : undefined,
+        params?.limit ? Number(params.limit) : undefined
+      );
       return {
         jobs: extractArray(res, "jobs") as Job[],
         total: res?.total || res?.data?.total || extractArray(res, "jobs").length
@@ -27,11 +33,18 @@ export const usePartnerJobs = (params?: { page?: number; limit?: number; status?
   });
 };
 
-export const usePartnerBids = (params?: { page?: number; limit?: number }) => {
+export const usePartnerBids = (params?: { page?: number; limit?: number; status?: string }) => {
   return useQuery({
     queryKey: ["partner", "bids", params],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
-      const res = await getPartnerBids(params?.page ? Number(params.page) : undefined, params?.limit ? Number(params.limit) : undefined);
+      // FIXED: getPartnerBids(status, page, limit) — status is first param
+      const res = await getPartnerBids(
+        params?.status,
+        params?.page ? Number(params.page) : undefined,
+        params?.limit ? Number(params.limit) : undefined
+      );
       return {
         bids: extractArray(res, "bids") as Bid[],
         total: res?.total || res?.data?.total || extractArray(res, "bids").length
@@ -40,9 +53,12 @@ export const usePartnerBids = (params?: { page?: number; limit?: number }) => {
   });
 };
 
+
 export const usePartnerEarnings = () => {
   return useQuery({
     queryKey: ["partner", "earnings"],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const res: any = await getEarningsSummary();
       const earningsData: EarningsSummary = res?.lifetimeEarnings !== undefined ? res : res?.data;
@@ -54,6 +70,8 @@ export const usePartnerEarnings = () => {
 export const usePartnerProfile = () => {
   return useQuery({
     queryKey: ["partner", "profile"],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const res: any = await getPartnerProfile();
       const profileData: PartnerProfile = res?.rating !== undefined || res?._id ? res : res?.data;
@@ -75,6 +93,8 @@ export const useWalletStatement = () => {
 export const usePartnerLeads = () => {
   return useQuery({
     queryKey: ["partner", "leads"],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const res = await getLeads();
       return {
