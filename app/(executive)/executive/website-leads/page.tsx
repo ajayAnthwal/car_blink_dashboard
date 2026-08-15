@@ -38,10 +38,11 @@ export default function MarketingLeadsPage() {
   const [models, setModels] = useState<any[]>([]);
 
   const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [selectedCityName, setSelectedCityName] = useState("");
+  const [selectedCityId, setSelectedCityId] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [convertMessage, setConvertMessage] = useState("");
+  const [isMasterDataLoading, setIsMasterDataLoading] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,11 +51,13 @@ export default function MarketingLeadsPage() {
 
   const openConvertModal = async () => {
     setShowConvertModal(true);
+    setIsMasterDataLoading(true);
+    setConvertMessage("");
+
     // Pre-fill if we have text from the lead
     const leadBrand = selectedLead?.vehicleBrand || "";
     setSelectedBrand(leadBrand);
     setSelectedModel(selectedLead?.vehicleModel || "");
-    setSelectedCityName(selectedLead?.city || "");
 
     // Extract services from the message text if present
     const msg = selectedLead?.message || "";
@@ -78,16 +81,20 @@ export default function MarketingLeadsPage() {
         const matchedService = fetchedServices.find(s => extractedServices.toLowerCase().includes(s.name.toLowerCase()));
         if (matchedService) {
           setSelectedServiceId(matchedService._id);
+        } else {
+          setSelectedServiceId(fetchedServices[0]._id);
         }
+      } else if (fetchedServices.length > 0) {
+        setSelectedServiceId(fetchedServices[0]._id);
       }
 
-      const fullAddress = selectedLead?.city || "";
-      if (fullAddress && fetchedCities.length > 0) {
-        const matchedCity = fetchedCities.find(c => fullAddress.toLowerCase().includes(c.name.toLowerCase()));
+      const fullAddress = (selectedLead?.city || "").toLowerCase();
+      if (fetchedCities.length > 0) {
+        const matchedCity = fetchedCities.find(c => fullAddress.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(fullAddress));
         if (matchedCity) {
-          setSelectedCityName(matchedCity.name);
+          setSelectedCityId(matchedCity._id);
         } else {
-          setSelectedCityName(fullAddress);
+          setSelectedCityId(fetchedCities[0]._id); // Fallback to first city if raw address string
         }
       }
 
@@ -100,6 +107,8 @@ export default function MarketingLeadsPage() {
       }
     } catch (err) {
       console.error("Failed to load master data", err);
+    } finally {
+      setIsMasterDataLoading(false);
     }
   };
 
@@ -115,15 +124,7 @@ export default function MarketingLeadsPage() {
   };
 
   const handleConvertLead = async () => {
-    const validCity = cities.find(c => c.name.toLowerCase() === selectedCityName.toLowerCase()) 
-      || cities.find(c => selectedCityName.toLowerCase().includes(c.name.toLowerCase()));
-      
-    if (!validCity) {
-      setConvertMessage("Please type and select a valid city from the list.");
-      return;
-    }
-
-    if (!selectedServiceId || !selectedBrand || !selectedModel) {
+    if (!selectedServiceId || !selectedCityId || !selectedBrand || !selectedModel) {
       setConvertMessage("Please select service, city, brand, and model.");
       return;
     }
@@ -134,7 +135,7 @@ export default function MarketingLeadsPage() {
         id: selectedLead._id, 
         data: {
           serviceId: selectedServiceId,
-          cityId: validCity._id,
+          cityId: selectedCityId,
           vehicleBrand: selectedBrand,
           vehicleModel: selectedModel
         }
@@ -473,69 +474,76 @@ export default function MarketingLeadsPage() {
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
                 {convertMessage && (
-                  <div className="p-2 bg-red-50 text-red-600 text-xs rounded border border-red-200">
+                  <div className="p-2.5 bg-red-50 text-red-600 text-xs rounded-lg border border-red-200 font-medium">
                     {convertMessage}
                   </div>
                 )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Service Type *</label>
-                  <select 
-                    className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
-                    value={selectedServiceId}
-                    onChange={e => setSelectedServiceId(e.target.value)}
-                  >
-                    <option value="">-- Select Service --</option>
-                    {services.map(s => (
-                      <option key={s._id} value={s._id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
-                  <input 
-                    type="text"
-                    list="cities-list"
-                    placeholder="Type city name..."
-                    className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
-                    value={selectedCityName}
-                    onChange={e => setSelectedCityName(e.target.value)}
-                  />
-                  <datalist id="cities-list">
-                    {cities.map(c => (
-                      <option key={c._id} value={c.name} />
-                    ))}
-                  </datalist>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Brand *</label>
-                  <select 
-                    className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
-                    value={brands.find(b => b.name === selectedBrand)?._id || ""}
-                    onChange={e => {
-                      const selectedOption = e.target.options[e.target.selectedIndex];
-                      handleBrandChange(e.target.value, selectedOption.text);
-                    }}
-                  >
-                    <option value="">-- Select Brand --</option>
-                    {brands.map(b => (
-                      <option key={b._id} value={b._id}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model *</label>
-                  <select 
-                    className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
-                    value={selectedModel}
-                    onChange={e => setSelectedModel(e.target.value)}
-                    disabled={!selectedBrand || models.length === 0}
-                  >
-                    <option value="">-- Select Model --</option>
-                    {models.map(m => (
-                      <option key={m._id} value={m.name}>{m.name}</option>
-                    ))}
-                  </select>
-                </div>
+
+                {isMasterDataLoading ? (
+                  <div className="py-12 flex flex-col items-center justify-center space-y-3 text-gray-500">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary-orange" />
+                    <p className="text-sm font-medium">Autofilling details & loading master data...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Service Type *</label>
+                      <select 
+                        className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+                        value={selectedServiceId}
+                        onChange={e => setSelectedServiceId(e.target.value)}
+                      >
+                        <option value="">-- Select Service --</option>
+                        {services.map(s => (
+                          <option key={s._id} value={s._id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                      <select 
+                        className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange font-medium"
+                        value={selectedCityId}
+                        onChange={e => setSelectedCityId(e.target.value)}
+                      >
+                        <option value="">-- Select City --</option>
+                        {cities.map(c => (
+                          <option key={c._id} value={c._id}>{c.name} {c.state ? `(${c.state})` : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Brand *</label>
+                      <select 
+                        className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+                        value={brands.find(b => b.name === selectedBrand)?._id || ""}
+                        onChange={e => {
+                          const selectedOption = e.target.options[e.target.selectedIndex];
+                          handleBrandChange(e.target.value, selectedOption.text);
+                        }}
+                      >
+                        <option value="">-- Select Brand --</option>
+                        {brands.map(b => (
+                          <option key={b._id} value={b._id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model *</label>
+                      <select 
+                        className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+                        value={selectedModel}
+                        onChange={e => setSelectedModel(e.target.value)}
+                        disabled={!selectedBrand || models.length === 0}
+                      >
+                        <option value="">-- Select Model --</option>
+                        {models.map(m => (
+                          <option key={m._id} value={m.name}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
                 
                 <div className="flex space-x-3 pt-4">
                   <Button 
