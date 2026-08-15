@@ -85,35 +85,44 @@ export default function ExecutiveLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [radiusKm, setRadiusKm] = useState<string>("all");
   const [selectedServiceFilter, setSelectedServiceFilter] = useState<string>("all");
+  const [useCityFilter, setUseCityFilter] = useState<boolean>(false);
 
   const assignForm = useForm<AssignLeadFormValues>({
     resolver: zodResolver(assignLeadSchema),
     defaultValues: { partnerIds: [], notes: "" }
   });
 
-  // Bug Fix 1: useMemo so React Query queryKey updates when filters change → triggers re-fetch
-  // Bug Fix 3: also pass cityId for city-level filtering even without exact coordinates
+  // Construct query string for usePartnerStatus based on filters
   const partnerFilterStr = useMemo(() => {
     if (!selectedLead) return "verificationStatus=APPROVED";
     let query = "verificationStatus=APPROVED";
-    // Always filter by city of the lead
-    const cityId = typeof selectedLead.cityId === 'object' 
-      ? selectedLead.cityId?._id 
-      : selectedLead.cityId;
-    if (cityId) query += `&cityId=${cityId}`;
-    // Geo distance filter — only when coordinates exist AND user selected a specific radius
-    if (radiusKm !== "all" && selectedLead?.location?.coordinates?.length === 2) {
-      const [lng, lat] = selectedLead.location.coordinates;
-      query += `&lat=${lat}&lng=${lng}&radius=${radiusKm}`;
+    
+    // Filter by city of the lead if useCityFilter is enabled
+    if (useCityFilter) {
+      const cityId = typeof selectedLead.cityId === 'object' 
+        ? selectedLead.cityId?._id 
+        : selectedLead.cityId;
+      if (cityId) query += `&cityId=${cityId}`;
+    }
+
+    // Geo distance filter — check lead location OR customer saved profile location
+    if (radiusKm !== "all") {
+      const coords = selectedLead?.location?.coordinates?.length === 2 
+        ? selectedLead.location.coordinates 
+        : (selectedLead?.customerId?.location?.coordinates?.length === 2 ? selectedLead.customerId.location.coordinates : null);
+      
+      if (coords) {
+        const [lng, lat] = coords;
+        query += `&lat=${lat}&lng=${lng}&radius=${radiusKm}`;
+      }
     }
     if (selectedServiceFilter !== "all") {
       query += `&serviceId=${selectedServiceFilter}`;
     }
     return query;
-  }, [selectedLead, radiusKm, selectedServiceFilter]);
+  }, [selectedLead, radiusKm, selectedServiceFilter, useCityFilter]);
   
   const { data: partnersData, isLoading: isFetchingPartners } = usePartnerStatus(1, 100, partnerFilterStr);
-  // Bug Fix 2: backend returns { partners: [...] } not { docs: [...] }
   const partners = Array.isArray(partnersData?.partners) 
     ? partnersData.partners 
     : (Array.isArray(partnersData?.docs) ? partnersData.docs : (Array.isArray(partnersData) ? partnersData : []));
@@ -122,6 +131,7 @@ export default function ExecutiveLeadsPage() {
     setSelectedLead(lead);
     setRadiusKm("all");
     setSelectedServiceFilter("all");
+    setUseCityFilter(false);
     assignForm.reset({ partnerIds: [], notes: "" });
   };
 
@@ -472,7 +482,18 @@ export default function ExecutiveLeadsPage() {
               </div>
 
               <form id="assignForm" onSubmit={assignForm.handleSubmit(handleAssignSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">City Filter</label>
+                        <select 
+                          value={useCityFilter ? "city" : "all"}
+                          onChange={(e) => setUseCityFilter(e.target.value === "city")}
+                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 hover:bg-gray-100/50 transition-colors focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy outline-none"
+                        >
+                          <option value="all">All Cities</option>
+                          <option value="city">Lead's City ({selectedLead?.cityId?.name || selectedLead?.city || "Local"})</option>
+                        </select>
+                      </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Service Filter</label>
                         <select 
@@ -496,10 +517,9 @@ export default function ExecutiveLeadsPage() {
                         <select 
                           value={radiusKm} 
                           onChange={(e) => setRadiusKm(e.target.value)}
-                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 hover:bg-gray-100/50 transition-colors focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy outline-none disabled:opacity-50"
-                          disabled={!selectedLead?.location?.coordinates}
+                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 hover:bg-gray-100/50 transition-colors focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy outline-none"
                         >
-                          <option value="all">Anywhere in city</option>
+                          <option value="all">Any Distance</option>
                           <option value="5">Within 5 km</option>
                           <option value="10">Within 10 km</option>
                           <option value="15">Within 15 km</option>
@@ -508,12 +528,18 @@ export default function ExecutiveLeadsPage() {
                       </div>
                   </div>
                   
-                  {!selectedLead?.location?.coordinates && (
-                    <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200/50">
-                      <MapPin className="w-4 h-4 shrink-0" />
-                      Lead does not have exact coordinates. Showing all partners in city.
-                    </div>
-                  )}
+                  {(() => {
+                    const hasCoords = selectedLead?.location?.coordinates?.length === 2 || selectedLead?.customerId?.location?.coordinates?.length === 2;
+                    if (!hasCoords && radiusKm !== "all") {
+                      return (
+                        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200/50">
+                          <MapPin className="w-4 h-4 shrink-0" />
+                          Exact map coordinates not saved for this lead. Distance search is showing all available partners.
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   
                   <div className="space-y-3">
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider flex justify-between">
@@ -533,8 +559,29 @@ export default function ExecutiveLeadsPage() {
                       {partners.length === 0 && !isFetchingPartners && (
                         <div className="flex flex-col items-center justify-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                            <Target className="w-10 h-10 text-gray-300 mb-3" />
-                           <p className="text-sm font-medium text-gray-500">No partners found matching criteria.</p>
-                           <button type="button" onClick={() => { setSelectedServiceFilter("all"); setRadiusKm("all"); }} className="text-xs text-primary-orange font-semibold mt-2 hover:underline">Clear Filters</button>
+                           <p className="text-sm font-medium text-gray-500 text-center px-4">
+                             {useCityFilter 
+                               ? `No partners registered in ${selectedLead?.cityId?.name || selectedLead?.city || "this city"}.` 
+                               : "No partners found matching criteria."}
+                           </p>
+                           <div className="flex gap-3 mt-3">
+                             {useCityFilter && (
+                               <button 
+                                 type="button" 
+                                 onClick={() => setUseCityFilter(false)} 
+                                 className="text-xs text-primary-navy font-bold hover:underline bg-primary-navy/10 px-3 py-1.5 rounded-lg"
+                               >
+                                 Show All Cities
+                               </button>
+                             )}
+                             <button 
+                               type="button" 
+                               onClick={() => { setSelectedServiceFilter("all"); setRadiusKm("all"); setUseCityFilter(false); }} 
+                               className="text-xs text-primary-orange font-semibold hover:underline px-3 py-1.5"
+                             >
+                               Clear All Filters
+                             </button>
+                           </div>
                         </div>
                       )}
                       

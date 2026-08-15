@@ -53,26 +53,34 @@ export const useExecutiveLeads = (params?: { page?: number; limit?: number; sear
   });
 };
 
-export const useWebsiteLeads = (params?: { page?: number; limit?: number; search?: string }) => {
+export const useWebsiteLeads = (params?: { page?: number; limit?: number; search?: string; status?: string; source?: string }) => {
   return useQuery({
     queryKey: ["executive", "website-leads", params],
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const res = await getAllWebsiteLeads(params?.page, params?.limit, "", params?.search, "");
+      const res = await getAllWebsiteLeads(
+        params?.page, 
+        params?.limit, 
+        params?.status || "", 
+        params?.search || "", 
+        params?.source || ""
+      );
       let leads: any[] = [];
-      if (Array.isArray(res)) {
-        leads = res;
-      } else if (res?.data?.data && Array.isArray(res.data.data)) {
-        leads = res.data.data;
-      } else if (res?.data && Array.isArray(res.data)) {
-        leads = res.data;
-      } else if (res?.docs && Array.isArray(res.docs)) {
-        leads = res.docs;
+      let total = 0;
+      
+      const payload = res?.data || res;
+      if (Array.isArray(payload?.data)) {
+        leads = payload.data;
+      } else if (Array.isArray(payload?.docs)) {
+        leads = payload.docs;
+      } else if (Array.isArray(payload)) {
+        leads = payload;
       } else {
         leads = extractArray(res, "data");
       }
-      const total = res?.total || res?.data?.total || res?.data?.data?.length || leads.length;
+      
+      total = payload?.total || res?.total || res?.data?.total || leads.length;
       return { leads, total };
     },
   });
