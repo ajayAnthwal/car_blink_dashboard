@@ -57,9 +57,13 @@ function LoginContent() {
       const { user, tokens } = data;
       await login(user, tokens.accessToken, tokens.refreshToken);
 
-      // Redirect based on role
-      const route = ROLE_ROUTES[user.role] || "/";
-      router.push(route);
+      // Redirect strictly based on newly authenticated user.role
+      const targetRoute = ROLE_ROUTES[user.role] || "/";
+      if (typeof window !== "undefined") {
+        window.location.href = targetRoute;
+      } else {
+        router.push(targetRoute);
+      }
     } catch (err: unknown) {
       setError((err as { message?: string })?.message || "Invalid credentials. Please try again.");
     } finally {

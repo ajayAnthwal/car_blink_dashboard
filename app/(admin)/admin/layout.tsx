@@ -7,6 +7,8 @@ import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { Header } from "@/components/layout/Header";
 import { useRouter } from "next/navigation";
 
+import { ROLE_ROUTES } from "@/lib/constants";
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -14,9 +16,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push("/login");
+        router.replace("/login");
       } else if (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
-        router.push("/");
+        const correctRoute = ROLE_ROUTES[user.role] || "/login";
+        router.replace(correctRoute);
       }
     }
   }, [user, isLoading, router]);

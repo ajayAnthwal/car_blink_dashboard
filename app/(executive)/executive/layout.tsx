@@ -7,6 +7,7 @@ import { registerDeviceToken } from "@/lib/services";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { useRouter } from "next/navigation";
+import { ROLE_ROUTES } from "@/lib/constants";
 
 export default function ExecutiveLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, isLoading } = useAuth();
@@ -16,9 +17,10 @@ export default function ExecutiveLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push("/login");
+        router.replace("/login");
       } else if (user.role !== "EXECUTIVE") {
-        router.push("/");
+        const correctRoute = ROLE_ROUTES[user.role] || "/login";
+        router.replace(correctRoute);
       }
     }
   }, [user, isLoading, router]);

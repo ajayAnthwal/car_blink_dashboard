@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { setApiAccessToken, setTokenRefreshProvider, setLogoutCallback } from "@/lib/axios";
 import { ROLE_ROUTES, Role } from "@/lib/constants";
 import { logoutUser, refreshToken, getCurrentUserProfile } from "@/lib/services";
-import { setSessionCookie, clearSessionCookie } from "@/app/actions/auth";
+import { setSessionCookie } from "@/app/actions/auth";
+import { sanitizeSession } from "@/lib/auth-sanitizer";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface User {
   id?: string;
@@ -22,7 +24,7 @@ interface AuthContextType {
   accessToken: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (user: User, accessToken: string, refreshToken: string) => void;
+  login: (user: User, accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -34,28 +36,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleLogout = async (force: boolean = false) => {
     if (!force) {
       try {
         await logoutUser();
       } catch (error) {
-        console.error("Logout failed", error);
+        console.error("Logout API call error:", error);
       }
     }
-    
-    try {
-      await clearSessionCookie();
-    } catch (error) {
-      console.error("Clear session cookie failed", error);
-    }
+
+    // Thorough Session Sanitization
+    await sanitizeSession(queryClient);
 
     setUser(null);
     setAccessToken(null);
-    setApiAccessToken(null);
-    localStorage.removeItem("car_blink_refresh_token");
-    
-    if (window.location.pathname !== "/login") {
+
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
       window.location.href = "/login";
     }
   };
@@ -71,12 +69,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleLogin = async (newUser: User, newAccessToken: string, newRefreshToken: string) => {
-    setUser(newUser);
+    // 1. Sanitize any existing session state or tokens first
+    await sanitizeSession(queryClient);
+
+    // 2. Hydrate new session tokens
     setAccessToken(newAccessToken);
     setApiAccessToken(newAccessToken);
+    setUser(newUser);
+
     if (newRefreshToken) {
       localStorage.setItem("car_blink_refresh_token", newRefreshToken);
     }
+    
+    // Store in cookie for server-side verification
+    Cookies.set("role", newUser.role, { path: "/", expires: 7 });
     await setSessionCookie(newAccessToken);
   };
 
@@ -84,29 +90,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initAuth = async () => {
       try {
         const storedRefreshToken = localStorage.getItem("car_blink_refresh_token") || "";
+        if (!storedRefreshToken) {
+          setIsLoading(false);
+          return;
+        }
+
         const refreshData = await refreshToken({ refreshToken: storedRefreshToken });
         if (refreshData?.accessToken) {
           const newAccessToken = refreshData.accessToken;
           setApiAccessToken(newAccessToken);
           
-          // Hydrate user profile
+          // Hydrate fresh user profile from backend with active token
           const userProfile = await getCurrentUserProfile();
-          await handleLogin(userProfile, newAccessToken, "");
+          setUser(userProfile);
+          setAccessToken(newAccessToken);
+          Cookies.set("role", userProfile.role, { path: "/", expires: 7 });
+          await setSessionCookie(newAccessToken);
         } else {
-          setIsLoading(false);
+          await sanitizeSession(queryClient);
         }
       } catch (error) {
         console.error("Failed to restore session", error);
+        await sanitizeSession(queryClient);
         setUser(null);
         setAccessToken(null);
-        setApiAccessToken(null);
-        localStorage.removeItem("car_blink_refresh_token");
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Setup API client callbacks for Axios interceptors
     setLogoutCallback(handleLogout);
     setTokenRefreshProvider(async () => {
       try {

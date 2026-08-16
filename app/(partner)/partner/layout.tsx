@@ -8,6 +8,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { useRouter } from "next/navigation";
 
+import { ROLE_ROUTES } from "@/lib/constants";
+
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, isLoading } = useAuth();
   const router = useRouter();
@@ -16,9 +18,10 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push("/login");
+        router.replace("/login");
       } else if (user.role !== "PARTNER") {
-        router.push("/");
+        const correctRoute = ROLE_ROUTES[user.role] || "/login";
+        router.replace(correctRoute);
       }
     }
   }, [user, isLoading, router]);

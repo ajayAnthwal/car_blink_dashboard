@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { ROLE_ROUTES } from "@/lib/constants";
 import { registerDeviceToken } from "@/lib/services";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -16,9 +17,10 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push("/login");
+        router.replace("/login");
       } else if (user.role !== "CUSTOMER") {
-        router.push("/");
+        const correctRoute = ROLE_ROUTES[user.role] || "/login";
+        router.replace(correctRoute);
       }
     }
   }, [user, isLoading, router]);
