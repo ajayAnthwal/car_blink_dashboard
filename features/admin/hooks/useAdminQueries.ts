@@ -6,6 +6,8 @@ import {
   getAdminRevenue,
   getCommissionReport,
   updateAdminUserStatus,
+  updateAdminUserPassword,
+  updateAdminUser,
   updateAdminUserStats,
   getAllAdminVehicles,
   getSuperAdminStaff,
@@ -122,6 +124,26 @@ export const useUpdateAdminUserStatusMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, isBlocked }: { id: string, isBlocked: boolean }) => updateAdminUserStatus(id, isBlocked),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    }
+  });
+};
+
+export const useUpdateAdminUserPasswordMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string, password: string }) => updateAdminUserPassword(id, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    }
+  });
+};
+
+export const useUpdateAdminUserMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => updateAdminUser(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     }

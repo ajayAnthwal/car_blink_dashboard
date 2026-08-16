@@ -734,7 +734,18 @@ export const getAllAdminVehicles = async (page = 1, limit = 50) => {
 };
 
 export const updateAdminUserStatus = async (id: string, data: any) => {
-  const response = await apiClient.patch(`/super-admin/users/${id}/status`, data);
+  const payload = typeof data === 'boolean' ? { isActive: !data } : data;
+  const response = await apiClient.patch(`/super-admin/users/${id}/status`, payload);
+  return response.data;
+};
+
+export const updateAdminUserPassword = async (id: string, password: string) => {
+  const response = await apiClient.patch(`/super-admin/users/${id}/password`, { password });
+  return response.data;
+};
+
+export const updateAdminUser = async (id: string, data: { isActive?: boolean; role?: string; password?: string; fullName?: string; email?: string; phone?: string }) => {
+  const response = await apiClient.patch(`/super-admin/users/${id}`, data);
   return response.data;
 };
 

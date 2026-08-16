@@ -5,12 +5,13 @@ import React, { useState } from "react";
 import { 
   useAdminUsers, 
   useUpdateAdminUserStatusMutation, 
-  useUpdateAdminUserStatsMutation 
+  useUpdateAdminUserStatsMutation,
+  useUpdateAdminUserPasswordMutation
 } from "@/features/admin/hooks/useAdminQueries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Users, Loader2, Search, PowerOff, Power, UserCheck, UserX, ShieldAlert, Edit2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Loader2, Search, PowerOff, Power, UserCheck, UserX, ShieldAlert, Edit2, ChevronLeft, ChevronRight, KeyRound, Eye, EyeOff } from "lucide-react";
 
 export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("");
@@ -29,8 +30,34 @@ export default function AdminUsersPage() {
   const [editSavings, setEditSavings] = useState("");
   const [editRewards, setEditRewards] = useState("");
 
+  const [editingPasswordUser, setEditingPasswordUser] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const updateStatusMutation = useUpdateAdminUserStatusMutation();
   const updateStatsMutation = useUpdateAdminUserStatsMutation();
+  const updatePasswordMutation = useUpdateAdminUserPasswordMutation();
+
+  const handleResetPassword = async () => {
+    if (!editingPasswordUser || !newPassword.trim()) return;
+    if (newPassword.trim().length < 6) {
+      setMessage({ type: "error", text: "New password must be at least 6 characters long." });
+      return;
+    }
+
+    setMessage({ type: "", text: "" });
+    try {
+      await updatePasswordMutation.mutateAsync({
+        id: editingPasswordUser._id,
+        password: newPassword.trim(),
+      });
+      setMessage({ type: "success", text: `Password for ${editingPasswordUser.fullName} updated successfully.` });
+      setEditingPasswordUser(null);
+      setNewPassword("");
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to update user password." });
+    }
+  };
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     setActionId(id);
@@ -226,6 +253,19 @@ export default function AdminUsersPage() {
                             <Button 
                               size="sm"
                               variant="outline"
+                              className="rounded-xl shadow-sm border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 transition-all"
+                              onClick={() => {
+                                setEditingPasswordUser(user);
+                                setNewPassword("");
+                              }}
+                              title="Change User Password"
+                            >
+                              <KeyRound className="w-4 h-4 mr-1" />
+                              Password
+                            </Button>
+                            <Button 
+                              size="sm"
+                              variant="outline"
                               className="rounded-xl shadow-sm border-gray-200 hover:bg-gray-50 hover:text-primary-navy transition-all"
                               onClick={() => {
                                 setEditingStatsUser(user);
@@ -349,6 +389,79 @@ export default function AdminUsersPage() {
                 isLoading={updateStatsMutation.isPending}
               >
                 Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {editingPasswordUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 font-heading">
+                    Reset User Password
+                  </h3>
+                  <p className="text-xs text-gray-500">Super Admin Direct Password Reset</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setEditingPasswordUser(null)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <UserX className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">Target Account</p>
+                <p className="font-bold text-gray-900 text-base">{editingPasswordUser.fullName}</p>
+                <p className="text-xs text-gray-500">{editingPasswordUser.email || editingPasswordUser.phone}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">New Password</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter new password (min 6 characters)"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="h-11 bg-gray-50 border-gray-200 focus:bg-white pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setEditingPasswordUser(null)}
+                className="rounded-xl border-gray-200"
+                disabled={updatePasswordMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm font-bold"
+                onClick={handleResetPassword}
+                isLoading={updatePasswordMutation.isPending}
+                disabled={!newPassword.trim() || newPassword.trim().length < 6}
+              >
+                Update Password
               </Button>
             </div>
           </div>
