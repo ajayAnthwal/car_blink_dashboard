@@ -25,8 +25,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (isAuthenticated && token) {
       // Connect to the backend socket endpoint
-      // Adjust backend URL if necessary
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
+      const backendUrl = apiUrl.replace(/\/api\/?$/, "");
       
       const socketInstance = io(backendUrl, {
         auth: { token },
