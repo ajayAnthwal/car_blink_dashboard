@@ -41,7 +41,7 @@ export const resetPassword = async (data: { identifier: string; token: string; n
 
 export const getCurrentUserProfile = async () => {
   const response = await apiClient.get("/auth/me");
-  return response.data;
+  return response.data?.data || response.data;
 };
 
 export const updateAuthUserProfile = async (data: { fullName?: string; phone?: string; profilePicture?: string }) => {

@@ -32,13 +32,17 @@ function LoginContent() {
       setApiAccessToken(ssoToken);
       
       getCurrentUserProfile()
-        .then(async (user) => {
-          // Use ssoToken as refresh token temporarily or just pass it twice
+        .then(async (res) => {
+          const user = res?.data || res?.user || res;
+          if (!user || !user.role) {
+            throw new Error("Invalid user profile response");
+          }
           await login(user, ssoToken, ssoToken);
-          const route = ROLE_ROUTES[user.role] || "/";
+          const route = ROLE_ROUTES[user.role] || "/customer/dashboard";
           router.push(route);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("SSO Login Error:", err);
           setApiAccessToken(null);
           setIsLoading(false);
           setError("Session expired or invalid. Please login again.");
