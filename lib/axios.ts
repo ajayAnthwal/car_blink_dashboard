@@ -14,7 +14,11 @@ export interface ApiResponse<T = unknown> {
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8000/api";
+  "";
+
+if (!API_BASE_URL && typeof window !== "undefined") {
+  console.warn("⚠️ NEXT_PUBLIC_API_URL environment variable is not set!");
+}
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

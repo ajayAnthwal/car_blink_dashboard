@@ -14,6 +14,7 @@ const SocketContext = createContext<SocketContextType>({
   isConnected: false,
 });
 
+
 export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
@@ -25,8 +26,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (isAuthenticated && token) {
       // Connect to the backend socket endpoint
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
-      const backendUrl = apiUrl.replace(/\/api\/?$/, "");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "";
+      const backendUrl = apiUrl ? apiUrl.replace(/\/api\/?$/, "") : undefined;
       
       const socketInstance = io(backendUrl, {
         auth: { token },

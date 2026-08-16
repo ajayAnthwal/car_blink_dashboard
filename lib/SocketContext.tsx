@@ -77,8 +77,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
-    const socketBaseUrl = API_URL.replace(/\/api\/?$/, "");
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    const socketBaseUrl = API_URL ? API_URL.replace(/\/api\/?$/, "") : undefined;
 
     const newSocket = io(socketBaseUrl, {
       auth: {
