@@ -20,8 +20,16 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Carblink Dashboard",
-  description: "Internal and customer dashboard",
+  title: "CarBlink Dashboard — Operations & Customer Portal",
+  description: "Official CarBlink Dashboard for Operations, Management, Partners, and Customers",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/car_blink.jpg", type: "image/jpeg" },
+    ],
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 
