@@ -77,6 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setApiAccessToken(newAccessToken);
     setUser(newUser);
 
+    if (newAccessToken) {
+      localStorage.setItem("car_blink_access_token", newAccessToken);
+      Cookies.set("accessToken", newAccessToken, { path: "/", expires: 7 });
+    }
+
     if (newRefreshToken) {
       localStorage.setItem("car_blink_refresh_token", newRefreshToken);
     }
@@ -89,26 +94,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        const storedAccessToken = localStorage.getItem("car_blink_access_token") || Cookies.get("accessToken") || "";
         const storedRefreshToken = localStorage.getItem("car_blink_refresh_token") || "";
-        if (!storedRefreshToken) {
-          setIsLoading(false);
-          return;
+
+        if (storedAccessToken) {
+          setApiAccessToken(storedAccessToken);
+          try {
+            const userProfile = await getCurrentUserProfile();
+            const resolvedUser = userProfile?.data || userProfile?.user || userProfile;
+            if (resolvedUser && resolvedUser.role) {
+              setUser(resolvedUser);
+              setAccessToken(storedAccessToken);
+              Cookies.set("role", resolvedUser.role, { path: "/", expires: 7 });
+              setIsLoading(false);
+              return;
+            }
+          } catch (err) {
+            console.log("Access token invalid or expired, trying refresh token...");
+          }
         }
 
-        const refreshData = await refreshToken({ refreshToken: storedRefreshToken });
-        if (refreshData?.accessToken) {
-          const newAccessToken = refreshData.accessToken;
-          setApiAccessToken(newAccessToken);
-          
-          // Hydrate fresh user profile from backend with active token
-          const userProfile = await getCurrentUserProfile();
-          setUser(userProfile);
-          setAccessToken(newAccessToken);
-          Cookies.set("role", userProfile.role, { path: "/", expires: 7 });
-          await setSessionCookie(newAccessToken);
-        } else {
-          await sanitizeSession(queryClient);
+        if (storedRefreshToken) {
+          const refreshData = await refreshToken({ refreshToken: storedRefreshToken });
+          if (refreshData?.accessToken) {
+            const newAccessToken = refreshData.accessToken;
+            setApiAccessToken(newAccessToken);
+            localStorage.setItem("car_blink_access_token", newAccessToken);
+            Cookies.set("accessToken", newAccessToken, { path: "/", expires: 7 });
+
+            if (refreshData.refreshToken) {
+              localStorage.setItem("car_blink_refresh_token", refreshData.refreshToken);
+            }
+
+            const userProfile = await getCurrentUserProfile();
+            const resolvedUser = userProfile?.data || userProfile?.user || userProfile;
+            if (resolvedUser && resolvedUser.role) {
+              setUser(resolvedUser);
+              setAccessToken(newAccessToken);
+              Cookies.set("role", resolvedUser.role, { path: "/", expires: 7 });
+              await setSessionCookie(newAccessToken);
+              setIsLoading(false);
+              return;
+            }
+          }
         }
+
+        // If both tokens fail or missing
+        await sanitizeSession(queryClient);
+        setUser(null);
+        setAccessToken(null);
       } catch (error) {
         console.error("Failed to restore session", error);
         await sanitizeSession(queryClient);

@@ -16,6 +16,7 @@ export async function sanitizeSession(queryClient?: any): Promise<void> {
   if (typeof window !== "undefined") {
     try {
       const keysToRemove = [
+        "car_blink_access_token",
         "car_blink_refresh_token",
         "carBlink_token",
         "carBlink_user",
