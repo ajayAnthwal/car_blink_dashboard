@@ -90,9 +90,9 @@ apiClient.interceptors.response.use(
       // MAGIC FIX for UI components:
       // If payload is an object (e.g. { bookings: [] }), alias the array to .docs and .data
       // This prevents the UI from failing when it does res?.data?.docs or res?.docs
-      if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      if (payload && typeof payload === 'object' && !Array.isArray(payload) && !('role' in payload) && !('email' in payload)) {
         const arrayKey = Object.keys(payload).find(key => Array.isArray(payload[key]));
-        if (arrayKey) {
+        if (arrayKey && arrayKey !== 'deviceTokens') {
           payload.docs = payload[arrayKey];
           payload.data = payload[arrayKey];
         }

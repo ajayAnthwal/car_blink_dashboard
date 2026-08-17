@@ -36,8 +36,9 @@ function LoginContent() {
       
       getCurrentUserProfile()
         .then(async (res) => {
-          const user = res?.data || res?.user || res;
+          const user = res?.role ? res : (res?.data?.role ? res.data : (res?.data || res));
           if (!user || !user.role) {
+            console.error("SSO User resolution failed. Received payload:", JSON.stringify(res));
             throw new Error("Invalid user profile response");
           }
           await login(user, ssoToken, ssoToken);
