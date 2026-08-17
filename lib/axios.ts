@@ -111,9 +111,14 @@ apiClient.interceptors.response.use(
         errorData = (errorData as ApiResponse).error;
     }
 
-    // Prevent infinite loop if the refresh token endpoint itself returns 401
-    if (error.response?.status === 401 && originalRequest.url?.includes("/auth/refresh-token")) {
-      return Promise.reject(error);
+    // Prevent infinite loop if the auth request itself returns 401
+    if (
+      error.response?.status === 401 &&
+      (originalRequest.url?.includes("/auth/refresh-token") ||
+        originalRequest.url?.includes("/auth/login") ||
+        originalRequest.url?.includes("/auth/verify-otp"))
+    ) {
+      return Promise.reject(errorData || error);
     }
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
@@ -147,12 +152,16 @@ apiClient.interceptors.response.use(
             return apiClient(originalRequest);
           }
         }
-        // If refresh fails, execute logout callback
-        if (logoutCallback) logoutCallback(true);
+        // If refresh fails, execute logout callback ONLY if user is not already on login page
+        if (logoutCallback && typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+          logoutCallback(true);
+        }
         onRefreshed("");
         return Promise.reject(errorData || error);
       } catch (refreshError) {
-        if (logoutCallback) logoutCallback(true);
+        if (logoutCallback && typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+          logoutCallback(true);
+        }
         onRefreshed("");
         return Promise.reject(errorData || refreshError);
       } finally {

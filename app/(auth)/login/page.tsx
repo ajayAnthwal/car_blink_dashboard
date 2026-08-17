@@ -30,6 +30,9 @@ function LoginContent() {
     if (ssoToken) {
       setIsLoading(true);
       setApiAccessToken(ssoToken);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("car_blink_access_token", ssoToken);
+      }
       
       getCurrentUserProfile()
         .then(async (res) => {
