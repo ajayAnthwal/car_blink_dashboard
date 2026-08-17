@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Store in cookie for server-side verification
     Cookies.set("role", newUser.role, { path: "/", expires: 7 });
-    await setSessionCookie(newAccessToken);
+    await setSessionCookie(newAccessToken, newUser.role);
   };
 
   useEffect(() => {

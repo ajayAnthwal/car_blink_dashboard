@@ -39,7 +39,11 @@ function LoginContent() {
           }
           await login(user, ssoToken, ssoToken);
           const route = ROLE_ROUTES[user.role] || "/customer/dashboard";
-          router.push(route);
+          if (typeof window !== "undefined") {
+            window.location.href = route;
+          } else {
+            router.push(route);
+          }
         })
         .catch((err) => {
           console.error("SSO Login Error:", err);
