@@ -24,7 +24,7 @@ export default function FollowUpsPage() {
   const [callMessage, setCallMessage] = useState({ type: "", text: "" });
 
   const { data: customersData } = useCustomerStatus(1, 100);
-  const customers = (customersData?.customers || []) as any[];
+  const customers = (Array.isArray(customersData?.customers) ? customersData.customers : Array.isArray(customersData?.docs) ? customersData.docs : Array.isArray(customersData?.data) ? customersData.data : Array.isArray(customersData) ? customersData : []) as any[];
 
   const { data: partnersData } = usePartnerStatus(1, 100);
   const partners = (Array.isArray(partnersData?.docs) ? partnersData.docs : Array.isArray(partnersData?.data?.partners) ? partnersData.data.partners : Array.isArray(partnersData?.data) ? partnersData.data : Array.isArray(partnersData) ? partnersData : []) as any[];
@@ -41,8 +41,6 @@ export default function FollowUpsPage() {
     followUpDate: ""
   });
 
-
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -53,10 +51,17 @@ export default function FollowUpsPage() {
     setMessage({ type: "", text: "" });
 
     try {
-      await createMutation.mutateAsync({
-        ...formData,
-        followUpDate: formData.followUpDate ? new Date(formData.followUpDate).toISOString() : undefined
-      });
+      const payload: any = {
+        relatedTo: formData.relatedTo,
+        relatedUserId: formData.relatedUserId,
+        callOutcome: formData.callOutcome,
+        notes: formData.notes,
+      };
+
+      if (formData.bookingId) payload.bookingId = formData.bookingId;
+      if (formData.followUpDate) payload.followUpDate = new Date(formData.followUpDate).toISOString();
+
+      await createMutation.mutateAsync(payload);
 
       setMessage({ type: "success", text: "Follow-up logged successfully!" });
       setShowCreateModal(false);
@@ -251,8 +256,8 @@ export default function FollowUpsPage() {
                     options={[
                       { value: "", label: "-- Select User --" },
                       ...(formData.relatedTo === "CUSTOMER" 
-                        ? customers.map(c => ({ value: c._id, label: c.fullName || c.email || c.phone }))
-                        : partners.map(p => ({ value: p._id, label: p.companyName || p.fullName || p.email || p.phone }))
+                        ? customers.map(c => ({ value: c._id, label: c.fullName || c.name || (c.firstName ? `${c.firstName} ${c.lastName || ''}` : '') || c.email || c.phone || c._id }))
+                        : partners.map(p => ({ value: p._id, label: p.companyName || p.fullName || p.name || (p.firstName ? `${p.firstName} ${p.lastName || ''}` : '') || p.email || p.phone || p._id }))
                       )
                     ]}
                     required

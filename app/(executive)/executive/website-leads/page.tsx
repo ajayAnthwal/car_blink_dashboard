@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { getCities, getServices, getVehicleBrands, getVehicleModels } from "@/lib/services";
 import { useWebsiteLeads, useConvertWebsiteLead } from "@/features/executive/hooks/useExecutiveQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X
 import { format } from "date-fns";
 
 export default function MarketingLeadsPage() {
+  const router = useRouter();
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   
   // Pagination & Filters
@@ -183,6 +185,7 @@ export default function MarketingLeadsPage() {
       });
       setShowConvertModal(false);
       setSelectedLead(null);
+      router.push("/executive/leads");
     } catch (err: any) {
       setConvertMessage(err.response?.data?.message || err.message || "Failed to convert lead");
     }

@@ -153,7 +153,6 @@ export const roleConfig: Record<Role, RoleConfigData> = {
           { name: "Invoices & Bills", href: "/executive/invoices", icon: Receipt },
           { name: "Helpdesk", href: "/executive/helpdesk", icon: HelpCircle },
           { name: "Follow-Ups", href: "/executive/follow-ups", icon: PhoneCall },
-          { name: "Escalations", href: "/executive/escalations", icon: AlertTriangle },
           { name: "Logistics", href: "/executive/logistics", icon: Car },
           { name: "History", href: "/executive/history", icon: Clock },
         ],
