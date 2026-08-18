@@ -94,18 +94,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const storedAccessToken = localStorage.getItem("car_blink_access_token") || Cookies.get("accessToken") || "";
-        const storedRefreshToken = localStorage.getItem("car_blink_refresh_token") || "";
+        const storedAccessToken = 
+          localStorage.getItem("car_blink_access_token") || 
+          Cookies.get("accessToken") || 
+          Cookies.get("car_blink_access_token") || 
+          Cookies.get("carBlink_token") || 
+          "";
+        const storedRefreshToken = localStorage.getItem("car_blink_refresh_token") || Cookies.get("refreshToken") || "";
 
         if (storedAccessToken) {
           setApiAccessToken(storedAccessToken);
           try {
             const userProfile = await getCurrentUserProfile();
-            const resolvedUser = userProfile?.data || userProfile?.user || userProfile;
+            const resolvedUser = userProfile?.role ? userProfile : (userProfile?.data?.role ? userProfile.data : (userProfile?.data || userProfile?.user || userProfile));
             if (resolvedUser && resolvedUser.role) {
               setUser(resolvedUser);
               setAccessToken(storedAccessToken);
               Cookies.set("role", resolvedUser.role, { path: "/", expires: 7 });
+              Cookies.set("accessToken", storedAccessToken, { path: "/", expires: 7 });
+              localStorage.setItem("car_blink_access_token", storedAccessToken);
               setIsLoading(false);
               return;
             }
