@@ -15,34 +15,49 @@ import { ArrowRight, LogIn, Eye, EyeOff } from "lucide-react";
 import { Suspense } from "react";
 
 function LoginContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const ssoToken = searchParams.get('token');
+
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!ssoToken);
 
-  const { login } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const { login, user } = useAuth();
 
   useEffect(() => {
-    const ssoToken = searchParams.get('token');
+    if (user && !ssoToken) {
+      const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
+      if (typeof window !== "undefined") {
+        window.location.href = targetRoute;
+      } else {
+        router.push(targetRoute);
+      }
+    }
+  }, [user, ssoToken, router]);
+
+  useEffect(() => {
     if (ssoToken) {
       setIsLoading(true);
       setApiAccessToken(ssoToken);
       if (typeof window !== "undefined") {
+        const expires = new Date(Date.now() + 7 * 864e5).toUTCString();
         window.localStorage.setItem("car_blink_access_token", ssoToken);
+        document.cookie = `car_blink_access_token=${encodeURIComponent(ssoToken)}; path=/; expires=${expires}`;
+        document.cookie = `accessToken=${encodeURIComponent(ssoToken)}; path=/; expires=${expires}`;
       }
       
       getCurrentUserProfile()
         .then(async (res) => {
-          const user = res?.role ? res : (res?.data?.role ? res.data : (res?.data || res));
-          if (!user || !user.role) {
+          const resolvedUser = res?.role ? res : (res?.data?.role ? res.data : (res?.data || res?.user || res));
+          if (!resolvedUser || !resolvedUser.role) {
             console.error("SSO User resolution failed. Received payload:", JSON.stringify(res));
             throw new Error("Invalid user profile response");
           }
-          await login(user, ssoToken, ssoToken);
-          const route = ROLE_ROUTES[user.role] || "/customer/dashboard";
+          await login(resolvedUser, ssoToken, ssoToken);
+          const route = ROLE_ROUTES[resolvedUser.role] || "/customer/dashboard";
           if (typeof window !== "undefined") {
             window.location.href = route;
           } else {
@@ -56,7 +71,7 @@ function LoginContent() {
           setError("Session expired or invalid. Please login again.");
         });
     }
-  }, [searchParams, login, router]);
+  }, [ssoToken, login, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +97,18 @@ function LoginContent() {
       setIsLoading(false);
     }
   };
+
+  if (ssoToken && !error) {
+    return (
+      <AuthLayout>
+        <div className="flex flex-col items-center justify-center py-16 space-y-4 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-orange"></div>
+          <h3 className="text-lg font-bold text-gray-900 font-heading">Logging you in...</h3>
+          <p className="text-gray-500 text-sm font-medium">Authenticating & redirecting to your dashboard...</p>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout>
