@@ -39,14 +39,20 @@ function LoginContent() {
   }, [user, ssoToken, router]);
 
   useEffect(() => {
-    if (ssoToken) {
+    let tokenToUse = ssoToken;
+    if (!tokenToUse && typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      tokenToUse = urlParams.get('token');
+    }
+
+    if (tokenToUse) {
       setIsLoading(true);
-      setApiAccessToken(ssoToken);
+      setApiAccessToken(tokenToUse);
       if (typeof window !== "undefined") {
         const expires = new Date(Date.now() + 7 * 864e5).toUTCString();
-        window.localStorage.setItem("car_blink_access_token", ssoToken);
-        document.cookie = `car_blink_access_token=${encodeURIComponent(ssoToken)}; path=/; expires=${expires}`;
-        document.cookie = `accessToken=${encodeURIComponent(ssoToken)}; path=/; expires=${expires}`;
+        window.localStorage.setItem("car_blink_access_token", tokenToUse);
+        document.cookie = `car_blink_access_token=${encodeURIComponent(tokenToUse)}; path=/; expires=${expires}`;
+        document.cookie = `accessToken=${encodeURIComponent(tokenToUse)}; path=/; expires=${expires}`;
       }
       
       getCurrentUserProfile()
@@ -56,7 +62,7 @@ function LoginContent() {
             console.error("SSO User resolution failed. Received payload:", JSON.stringify(res));
             throw new Error("Invalid user profile response");
           }
-          await login(resolvedUser, ssoToken, ssoToken);
+          await login(resolvedUser, tokenToUse, tokenToUse);
           const route = ROLE_ROUTES[resolvedUser.role] || "/customer/dashboard";
           if (typeof window !== "undefined") {
             window.location.href = route;
