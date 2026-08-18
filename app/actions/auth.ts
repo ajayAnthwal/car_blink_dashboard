@@ -24,5 +24,8 @@ export async function setSessionCookie(token: string, role?: string) {
 
 export async function clearSessionCookie() {
   cookies().delete("accessToken");
+  cookies().delete("car_blink_access_token");
+  cookies().delete("car_blink_refresh_token");
   cookies().delete("role");
+  cookies().delete("user_role");
 }

@@ -34,11 +34,22 @@ export async function sanitizeSession(queryClient?: any): Promise<void> {
 
   // 3. Clear all browser cookies across root and subdomain paths
   try {
-    const cookiesToClear = ["accessToken", "refreshToken", "role", "user_role", "session", "token"];
+    const cookiesToClear = [
+      "accessToken",
+      "refreshToken",
+      "role",
+      "user_role",
+      "session",
+      "token",
+      "car_blink_access_token",
+      "car_blink_refresh_token",
+      "carBlink_token",
+    ];
     cookiesToClear.forEach((cookieName) => {
       Cookies.remove(cookieName, { path: "/" });
       if (typeof document !== "undefined") {
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
       }
     });
     
