@@ -114,21 +114,26 @@ export default function PartnerJobsPage() {
     }
   };
 
-  const handleCompleteJob = async (job: unknown) => {
-    if (!job.invoiceUrl && !invoiceUrl) {
-      setMessage({ type: "error", text: "Please upload an invoice document before completing the job." });
-      return;
-    }
+  const handleCompleteJob = async (job: any) => {
     setMessage({ type: "", text: "" });
     try {
-      const payload: unknown = {};
+      const hasInvoice = job.invoiceUrl || job.invoice || job.hasInvoice || invoiceUrl;
+
+      if (!hasInvoice && invoiceItems.length > 0 && invoiceItems.some(i => i.description && Number(i.unitPrice) > 0)) {
+        await handleSubmitItemizedInvoice(job._id || job.id);
+      } else if (!hasInvoice) {
+        setMessage({ type: "error", text: "Please submit an itemized bill form or upload an invoice document before completing the job." });
+        return;
+      }
+
+      const payload: any = {};
       if (finalAmount) payload.finalAmount = parseFloat(finalAmount);
       if (invoiceUrl) payload.invoiceUrl = invoiceUrl;
 
       await completeJobMutation.mutateAsync({ jobId: job._id || job.id, payload });
       setMessage({ type: "success", text: "Job marked as complete!" });
       setFinalAmount("");
-    } catch (err: unknown) {
+    } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to complete job." });
     }
   };

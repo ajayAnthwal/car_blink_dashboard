@@ -475,13 +475,15 @@ export default function CustomerDashboardPage() {
                       >
                         View & Print Invoice
                       </Button>
-                      {inv.pdfUrl && (
+                      {(inv.pdfUrl || inv.pdf || inv.pdfDocument || inv.invoiceUrl) && (
                         <Button
                           asChild
                           variant="outline"
-                          className="border-gray-200 text-gray-700 hover:bg-gray-50 text-xs py-2 rounded-xl"
+                          className="border-gray-200 text-gray-700 hover:bg-gray-50 text-xs py-2 rounded-xl flex items-center gap-1 font-bold"
                         >
-                          <a href={inv.pdfUrl} target="_blank" rel="noopener noreferrer">PDF</a>
+                          <a href={inv.pdfUrl || inv.pdf || inv.pdfDocument || inv.invoiceUrl} target="_blank" rel="noopener noreferrer">
+                            <FileText className="w-3.5 h-3.5 text-primary-orange" /> Open PDF
+                          </a>
                         </Button>
                       )}
                     </div>

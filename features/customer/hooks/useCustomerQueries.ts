@@ -31,6 +31,21 @@ export const useCustomerInvoicesQuery = () => {
   });
 };
 
+export const useCustomerBookingInvoiceQuery = (bookingId: string) => {
+  return useQuery({
+    queryKey: ["customer", "bookings", bookingId, "invoice"],
+    queryFn: async () => {
+      if (!bookingId) return null;
+      const { getCustomerBookingInvoice } = await import("@/lib/services");
+      const res = await getCustomerBookingInvoice(bookingId);
+      return res?.data?.invoice || res?.invoice || res?.data || null;
+    },
+    enabled: !!bookingId,
+    refetchOnMount: true,
+    staleTime: 0
+  });
+};
+
 export const useCustomerBookings = (params?: { page?: number; limit?: number; search?: string }) => {
   return useQuery({
     queryKey: ["customer", "bookings", params],

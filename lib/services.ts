@@ -1053,8 +1053,9 @@ export const addPartnerStaff = async (data: { name: string; phone: string; role:
   return response.data;
 };
 
-export const assignStaffToJob = async (jobId: string, data: { staffId: string }) => {
-  const response = await apiClient.patch(`/partner/jobs/${jobId}/assign-staff`, data);
+export const assignStaffToJob = async (jobId: string, data: { staffId: string } | string) => {
+  const payload = typeof data === "string" ? { staffId: data, mechanicId: data } : { staffId: data.staffId || (data as any).mechanicId, mechanicId: (data as any).mechanicId || data.staffId };
+  const response = await apiClient.patch(`/partner/jobs/${jobId}/assign-staff`, payload);
   return response.data;
 };
 
