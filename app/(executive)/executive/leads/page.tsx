@@ -564,24 +564,40 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           </Button>
                         )}
 
-                        {/* Send Satisfaction Template Button */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full text-[10px] h-7 text-primary-orange border-primary-orange/30 hover:bg-orange-50 font-bold"
-                          onClick={async () => {
-                            try {
-                              const { sendSatisfactionTemplate } = await import("@/lib/services");
-                              await sendSatisfactionTemplate(lead._id);
-                              toast.success("Satisfaction Form template sent to customer!");
-                              refetchLeads();
-                            } catch (err: any) {
-                              toast.error(err.message || "Failed to send satisfaction form");
-                            }
-                          }}
-                        >
-                          Send Satisfaction Form
-                        </Button>
+                        {/* Send Satisfaction Template Button (Only when job is COMPLETED) */}
+                        {lead.status === "COMPLETED" ? (
+                          lead.satisfactionStatus === "PENDING_CUSTOMER" ? (
+                            <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-bold text-center">
+                              ⏳ Form Sent (Pending)
+                            </span>
+                          ) : lead.satisfactionStatus === "SATISFIED" ? (
+                            <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full font-bold text-center">
+                              💚 Customer Satisfied
+                            </span>
+                          ) : lead.satisfactionStatus === "DISSATISFIED" ? (
+                            <span className="text-[10px] text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full font-bold text-center">
+                              🔴 Customer Dissatisfied
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full text-[10px] h-7 text-primary-orange border-primary-orange/30 hover:bg-orange-50 font-bold shadow-2xs"
+                              onClick={async () => {
+                                try {
+                                  const { sendSatisfactionTemplate } = await import("@/lib/services");
+                                  await sendSatisfactionTemplate(lead._id);
+                                  toast.success("Satisfaction Form template sent to customer!");
+                                  refetchLeads();
+                                } catch (err: any) {
+                                  toast.error(err?.response?.data?.message || err.message || "Failed to send satisfaction form");
+                                }
+                              }}
+                            >
+                              Send Satisfaction Form
+                            </Button>
+                          )
+                        ) : null}
 
                         <Button variant="ghost" size="sm" asChild className="w-full text-xs h-7 text-neutral-500 hover:text-primary-navy">
                           <Link href={`/executive/leads/${lead._id || lead.id}`}>

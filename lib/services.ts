@@ -1306,8 +1306,13 @@ export const getCustomerBookingInvoice = async (bookingId: string) => {
 };
 
 export const sendSatisfactionTemplate = async (bookingId: string) => {
-  const response = await apiClient.post(`/customer/bookings/${bookingId}/satisfaction/send`);
-  return response.data;
+  try {
+    const response = await apiClient.post(`/executive/leads/${bookingId}/satisfaction/send`);
+    return response.data;
+  } catch (err: any) {
+    const response = await apiClient.post(`/customer/bookings/${bookingId}/satisfaction/send`);
+    return response.data;
+  }
 };
 
 export const respondSatisfactionTemplate = async (bookingId: string, data: { isSatisfied: boolean; rating?: number; feedback?: string }) => {
