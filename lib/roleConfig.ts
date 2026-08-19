@@ -9,6 +9,7 @@ import {
   Settings,
   Camera,
   GitCompare,
+  Image,
   Home,
   FileText,
   MessageSquareQuote,
@@ -150,6 +151,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         items: [
           { name: "Website Leads", href: "/executive/website-leads", icon: Target },
           { name: "Leads / Assignments", href: "/executive/leads", icon: Target },
+          { name: "Website Ads & Banners", href: "/executive/ads", icon: Image },
           { name: "Invoices & Bills", href: "/executive/invoices", icon: Receipt },
           { name: "Helpdesk", href: "/executive/helpdesk", icon: HelpCircle },
           { name: "Follow-Ups", href: "/executive/follow-ups", icon: PhoneCall },

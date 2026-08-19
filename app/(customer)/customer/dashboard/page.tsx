@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, CartesianGrid, XAxis, YAxis, Bar } from "recharts";
+import WebsitePromotionalBanners from "@/components/home/WebsitePromotionalBanners";
 
 export default function CustomerDashboardPage() {
   const { user } = useAuth();
@@ -172,6 +173,8 @@ export default function CustomerDashboardPage() {
 
   return (
     <div className="space-y-6 md:space-y-8 pb-12 container px-4 sm:px-6 md:px-8 mx-auto">
+      {/* Dynamic Website Promotional Banners managed by Executive */}
+      <WebsitePromotionalBanners placement="HOME_HERO" />
       {isCompletelyEmpty && (
         <div className="bg-gradient-to-r from-orange-50 via-white to-orange-50/50 border border-orange-100/50 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
           <div className="flex items-center gap-5">

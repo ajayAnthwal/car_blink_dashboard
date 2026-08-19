@@ -1319,3 +1319,32 @@ export const respondSatisfactionTemplate = async (bookingId: string, data: { isS
   const response = await apiClient.post(`/customer/bookings/${bookingId}/satisfaction/respond`, data);
   return response.data;
 };
+
+// ==========================================
+// BANNER ADS APIs
+// ==========================================
+
+export const getExecutiveAds = async (params?: any) => {
+  const response = await apiClient.get("/executive/ads", { params });
+  return response.data;
+};
+
+export const createExecutiveAd = async (data: any) => {
+  const response = await apiClient.post("/executive/ads", data);
+  return response.data;
+};
+
+export const updateExecutiveAd = async (id: string, data: any) => {
+  const response = await apiClient.patch(`/executive/ads/${id}`, data);
+  return response.data;
+};
+
+export const deleteExecutiveAd = async (id: string) => {
+  const response = await apiClient.delete(`/executive/ads/${id}`);
+  return response.data;
+};
+
+export const getActiveWebsiteAds = async (placement?: string) => {
+  const response = await apiClient.get("/master-data/ads", { params: { placement } });
+  return response.data;
+};

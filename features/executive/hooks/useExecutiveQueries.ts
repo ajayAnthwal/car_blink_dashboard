@@ -20,7 +20,12 @@ import {
   pushDriverLocation,
   getCustomerStatus,
   verifyExecutiveCustomer,
-  verifyExecutivePartner
+  verifyExecutivePartner,
+  getExecutiveAds,
+  createExecutiveAd,
+  updateExecutiveAd,
+  deleteExecutiveAd,
+  getActiveWebsiteAds
 } from "@/lib/services";
 import { Lead, Escalation, FollowUp } from "@/lib/types";
 
@@ -362,6 +367,66 @@ export const useVerifyPartnerMutation = () => {
     mutationFn: ({ id, data }: { id: string; data: any }) => verifyExecutivePartner(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["executive", "partners"] });
+    },
+  });
+};
+
+export const useExecutiveAds = (params?: any) => {
+  return useQuery({
+    queryKey: ["executive", "ads", params],
+    queryFn: async () => {
+      const res = await getExecutiveAds(params);
+      const payload = res?.data || res;
+      return {
+        docs: Array.isArray(payload?.docs) ? payload.docs : (Array.isArray(payload) ? payload : []),
+        total: payload?.total || 0,
+        page: payload?.page || 1,
+        limit: payload?.limit || 20,
+      };
+    },
+  });
+};
+
+export const useCreateExecutiveAdMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => createExecutiveAd(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "ads"] });
+      queryClient.invalidateQueries({ queryKey: ["website", "ads"] });
+    },
+  });
+};
+
+export const useUpdateExecutiveAdMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateExecutiveAd(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "ads"] });
+      queryClient.invalidateQueries({ queryKey: ["website", "ads"] });
+    },
+  });
+};
+
+export const useDeleteExecutiveAdMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteExecutiveAd(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "ads"] });
+      queryClient.invalidateQueries({ queryKey: ["website", "ads"] });
+    },
+  });
+};
+
+export const useActiveWebsiteAds = (placement?: string) => {
+  return useQuery({
+    queryKey: ["website", "ads", placement],
+    queryFn: async () => {
+      const res = await getActiveWebsiteAds(placement);
+      const payload = res?.data || res;
+      return Array.isArray(payload) ? payload : (Array.isArray(payload?.docs) ? payload.docs : []);
     },
   });
 };
