@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBookings, getPaymentHistory, getWarranties, getCustomerStats, getGarageVehicles, getServices, getCities, getVehicleBrands, getVehicleModels, getCurrentUserProfile, getSupportTickets, createGarageVehicle, updateGarageVehicle, deleteGarageVehicle, createSupportTicket, replySupportTicket, createBooking, cancelBooking, selectBookingQuote, respondToJobExtension, getBookingQuotes, getMyReviews, createReview, checkSubscriptionValidity, purchaseSubscription, getWarrantyById, requestRSA, applyReferral, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, initiatePayment, getBookingById, canReviewBooking, applyCouponToBooking } from "@/lib/services";
+import { getBookings, getPaymentHistory, getWarranties, getCustomerStats, getGarageVehicles, getServices, getCities, getVehicleBrands, getVehicleModels, getCurrentUserProfile, getSupportTickets, createGarageVehicle, updateGarageVehicle, deleteGarageVehicle, createSupportTicket, replySupportTicket, createBooking, cancelBooking, selectBookingQuote, respondToJobExtension, getBookingQuotes, getMyReviews, createReview, checkSubscriptionValidity, purchaseSubscription, getWarrantyById, requestRSA, applyReferral, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, initiatePayment, getBookingById, canReviewBooking, applyCouponToBooking, getCustomerInvoices } from "@/lib/services";
 import { Booking, Payment, Warranty } from "@/lib/types";
 
 // Helper to safely extract arrays from the API responses
@@ -8,9 +8,27 @@ const extractArray = (res: any, key: string) => {
   if (res?.data && Array.isArray(res.data)) return res.data;
   if (res?.data && Array.isArray(res.data[key])) return res.data[key];
   if (res?.data?.data && Array.isArray(res.data.data)) return res.data.data;
+  if (res?.data?.data && Array.isArray(res.data.data[key])) return res.data.data[key];
   if (res && Array.isArray(res[key])) return res[key];
   if (res?.docs && Array.isArray(res.docs)) return res.docs;
+  if (res?.data?.docs && Array.isArray(res.data.docs)) return res.data.docs;
   return [];
+};
+
+export const useCustomerInvoicesQuery = () => {
+  return useQuery({
+    queryKey: ["customer", "invoices"],
+    queryFn: async () => {
+      const res = await getCustomerInvoices();
+      return {
+        invoices: extractArray(res, "invoices"),
+        total: res?.total || res?.data?.total || extractArray(res, "invoices").length
+      };
+    },
+    refetchOnMount: true,
+    staleTime: 0,
+    refetchInterval: 5000
+  });
 };
 
 export const useCustomerBookings = (params?: { page?: number; limit?: number; search?: string }) => {
@@ -34,6 +52,9 @@ export const useCustomerBookings = (params?: { page?: number; limit?: number; se
         total: totalCount
       };
     },
+    refetchOnMount: true,
+    staleTime: 0,
+    refetchInterval: 5000
   });
 };
 

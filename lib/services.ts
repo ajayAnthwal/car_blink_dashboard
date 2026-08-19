@@ -250,6 +250,16 @@ export const applyCouponToBooking = async (id: string, data: { couponCode: strin
   return response.data;
 };
 
+export const getCustomerInvoices = async () => {
+  const response = await apiClient.get("/customer/invoices");
+  return response.data;
+};
+
+export const getCustomerInvoiceByBooking = async (bookingId: string) => {
+  const response = await apiClient.get(`/customer/invoices/${bookingId}`);
+  return response.data;
+};
+
 // ==========================================
 // CUSTOMER WARRANTY APIs
 // ==========================================
