@@ -28,6 +28,84 @@ interface NotificationDetailsModalProps {
   userRole?: string;
 }
 
+export const getNotificationTargetLink = (notification: any, userRole: string = "CUSTOMER") => {
+  if (!notification) return null;
+  const payload = notification.data || notification.payload || {};
+  const category = (notification.category || notification.type || "").toUpperCase();
+  const titleLower = (notification.title || "").toLowerCase();
+  const msgLower = (notification.message || "").toLowerCase();
+
+  // 1. Extra Parts / Additional Parts Approval / Job Extensions
+  if (
+    titleLower.includes("part") ||
+    msgLower.includes("part") ||
+    titleLower.includes("extra") ||
+    msgLower.includes("extra") ||
+    titleLower.includes("extension") ||
+    msgLower.includes("extension")
+  ) {
+    if (userRole === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
+    if (userRole === "CUSTOMER") return { label: "Review Extra Parts", href: payload.bookingId ? `/customer/bookings/${payload.bookingId}` : "/customer/bookings" };
+    return { label: "View Booking Details", href: payload.bookingId ? `/executive/leads` : "/executive/leads" };
+  }
+
+  // 2. Invoice Notifications
+  if (payload.invoiceId || titleLower.includes("invoice") || msgLower.includes("invoice")) {
+    if (userRole === "PARTNER") return { label: "View Active Jobs & Invoices", href: "/partner/jobs" };
+    if (userRole === "CUSTOMER") return { label: "View Booking & Invoice", href: payload.bookingId ? `/customer/bookings/${payload.bookingId}` : "/customer/dashboard" };
+    return { label: "Go to Executive Invoice Console", href: "/executive/invoices" };
+  }
+
+  // 3. Customer Query / Support Ticket / Helpdesk
+  if (
+    payload.ticketId ||
+    payload.queryId ||
+    titleLower.includes("query") ||
+    msgLower.includes("query") ||
+    titleLower.includes("ticket") ||
+    msgLower.includes("ticket") ||
+    titleLower.includes("support") ||
+    msgLower.includes("help")
+  ) {
+    if (userRole === "CUSTOMER") return { label: "View My Queries", href: "/customer/support" };
+    return { label: "View Helpdesk Tickets", href: "/executive/helpdesk" };
+  }
+
+  // 4. Booking / Quote / Lead Updates
+  if (
+    payload.bookingId ||
+    titleLower.includes("booking") ||
+    msgLower.includes("booking") ||
+    titleLower.includes("quote") ||
+    msgLower.includes("quote")
+  ) {
+    if (userRole === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
+    if (userRole === "CUSTOMER") return { label: "View Booking Details", href: payload.bookingId ? `/customer/bookings/${payload.bookingId}` : "/customer/bookings" };
+    return { label: "View Leads & Bookings", href: "/executive/leads" };
+  }
+
+  // 5. Website Leads & Callbacks
+  if (titleLower.includes("website lead") || titleLower.includes("callback")) {
+    return { label: "View Website Leads", href: "/executive/website-leads" };
+  }
+
+  // 6. Warranties
+  if (payload.warrantyId || titleLower.includes("warranty") || msgLower.includes("warranty")) {
+    if (userRole === "CUSTOMER") return { label: "View Warranties", href: payload.warrantyId ? `/customer/warranty/${payload.warrantyId}` : "/customer/warranty" };
+  }
+
+  // 7. Settlements / Payouts
+  if (payload.settlementId || titleLower.includes("payment") || titleLower.includes("payout")) {
+    if (userRole === "ACCOUNTS") return { label: "View Settlements", href: "/accounts/settlements" };
+    if (userRole === "PARTNER") return { label: "View My Wallet", href: "/partner/wallet" };
+  }
+
+  // Fallback defaults
+  if (userRole === "CUSTOMER") return { label: "View Dashboard", href: "/customer/dashboard" };
+  if (userRole === "PARTNER") return { label: "View Dashboard", href: "/partner/dashboard" };
+  return { label: "View Notifications", href: "/executive/notifications" };
+};
+
 export function NotificationDetailsModal({
   notification,
   onClose,
@@ -37,42 +115,7 @@ export function NotificationDetailsModal({
 
   const payload = notification.data || notification.payload || {};
   const category = notification.category || notification.type || "SYSTEM";
-
-  // Determine smart navigation link based on payload & title
-  const getSmartLink = () => {
-    const titleLower = (notification.title || "").toLowerCase();
-    const msgLower = (notification.message || "").toLowerCase();
-
-    if (payload.invoiceId || titleLower.includes("invoice") || msgLower.includes("invoice")) {
-      if (userRole === "PARTNER") return { label: "View Active Jobs & Invoices", href: "/partner/jobs" };
-      if (userRole === "CUSTOMER") return { label: "View Booking & Invoice", href: "/customer/bookings" };
-      return { label: "Go to Executive Invoice Console", href: "/executive/invoices" };
-    }
-
-    if (payload.bookingId || titleLower.includes("booking") || msgLower.includes("booking")) {
-      if (userRole === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
-      if (userRole === "CUSTOMER") return { label: "View My Bookings", href: "/customer/bookings" };
-      return { label: "View Leads & Bookings", href: "/executive/leads" };
-    }
-
-    if (titleLower.includes("website lead") || titleLower.includes("callback")) {
-      return { label: "View Website Leads", href: "/executive/website-leads" };
-    }
-
-    if (payload.ticketId || titleLower.includes("ticket") || titleLower.includes("support")) {
-      if (userRole === "CUSTOMER") return { label: "View Support Tickets", href: "/customer/support" };
-      return { label: "View Helpdesk Tickets", href: "/executive/helpdesk" };
-    }
-
-    if (payload.settlementId || titleLower.includes("payment") || titleLower.includes("payout")) {
-      if (userRole === "ACCOUNTS") return { label: "View Settlements", href: "/accounts/settlements" };
-      if (userRole === "PARTNER") return { label: "View My Wallet", href: "/partner/wallet" };
-    }
-
-    return null;
-  };
-
-  const actionLink = getSmartLink();
+  const actionLink = getNotificationTargetLink(notification, userRole);
 
   const getCategoryIcon = () => {
     switch (category) {

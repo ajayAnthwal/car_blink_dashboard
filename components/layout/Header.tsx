@@ -22,6 +22,7 @@ import { usePathname } from "next/navigation";
 import { getNotifications, markAllNotificationsAsRead } from "@/lib/services";
 import { useSocket } from "@/lib/SocketContext";
 import { formatDistanceToNow } from "date-fns";
+import { getNotificationTargetLink } from "@/components/notifications/NotificationDetailsModal";
 
 export function Header() {
   const { logout, user } = useAuth();
@@ -202,17 +203,29 @@ export function Header() {
                     <p className="text-sm">No new notifications</p>
                   </div>
                 ) : (
-                  notifications.map((notif: any) => (
-                    <div key={notif._id || notif.id || Math.random()} className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors duration-200 cursor-pointer ${notif.isRead ? 'opacity-70' : `${config.accentBgColor}/5`}`}>
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="text-sm font-semibold text-gray-900">{notif.title}</h4>
-                        <span className="text-[10px] font-medium text-gray-500">
-                          {notif.createdAt ? formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true }) : "Just now"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-600 line-clamp-2">{notif.message}</p>
-                    </div>
-                  ))
+                  notifications.map((notif: any) => {
+                    const targetLink = getNotificationTargetLink(notif, currentRole);
+                    return (
+                      <Link
+                        key={notif._id || notif.id || Math.random()}
+                        href={targetLink?.href || (currentRole === 'SUPER_ADMIN' ? '/admin/notifications' : `/${currentRole.toLowerCase()}/notifications`)}
+                        className={`p-4 border-b border-gray-50 hover:bg-gray-50/80 transition-colors duration-200 block group ${notif.isRead ? 'opacity-70' : `${config.accentBgColor}/5`}`}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="text-sm font-semibold text-gray-900 group-hover:text-primary-orange transition-colors">{notif.title}</h4>
+                          <span className="text-[10px] font-medium text-gray-500 shrink-0 ml-2">
+                            {notif.createdAt ? formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true }) : "Just now"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 line-clamp-2">{notif.message}</p>
+                        {targetLink && (
+                          <span className="text-[10px] font-bold text-primary-orange flex items-center gap-1 mt-1.5 opacity-90 group-hover:opacity-100">
+                            {targetLink.label} &rarr;
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })
                 )}
               </div>
               <div className="p-3 border-t border-gray-50 bg-gray-50/50 flex justify-between items-center rounded-b-xl">

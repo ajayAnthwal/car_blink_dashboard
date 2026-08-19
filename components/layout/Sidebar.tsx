@@ -17,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useCustomerBookings } from "@/features/customer/hooks/useCustomerQueries";
+
 export function Sidebar({
   isCollapsed = false,
   toggleCollapse,
@@ -30,6 +32,14 @@ export function Sidebar({
   // Default to CUSTOMER config if user/role is not available yet to avoid crashes
   const currentRole = user?.role || "CUSTOMER";
   const config = roleConfig[currentRole];
+
+  const { data: bookingsData } = useCustomerBookings();
+  const customerBookings = bookingsData?.bookings || [];
+
+  const activeBooking = React.useMemo(() => {
+    if (currentRole !== "CUSTOMER") return null;
+    return customerBookings.find((b: any) => ['PENDING', 'QUOTED', 'ACCEPTED', 'IN_PROGRESS'].includes(b.status));
+  }, [customerBookings, currentRole]);
 
   return (
     <aside
@@ -99,6 +109,35 @@ export function Sidebar({
             })}
           </div>
         ))}
+
+        {/* Active Booking Card for Customers */}
+        {!isCollapsed && currentRole === "CUSTOMER" && activeBooking && (
+          <div className="px-1 my-3">
+            <Link href={`/customer/bookings/${activeBooking._id}`} className="block group">
+              <div className="p-3.5 bg-gradient-to-br from-orange-500/20 via-purple-500/20 to-orange-500/10 border border-orange-500/40 hover:border-orange-500/80 rounded-xl transition-all shadow-md">
+                <div className="flex items-center justify-between text-[11px] mb-1.5">
+                  <span className="font-bold text-orange-400 flex items-center">
+                    <span className="w-2 h-2 rounded-full bg-orange-400 animate-ping mr-1.5 inline-block" />
+                    ACTIVE BOOKING
+                  </span>
+                  <span className="bg-orange-500/20 text-orange-300 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase">
+                    {activeBooking.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <p className="text-white font-bold text-xs truncate">
+                  {typeof activeBooking.serviceId === 'object' ? activeBooking.serviceId.name : 'Car Service'}
+                </p>
+                <p className="text-gray-300 text-[11px] truncate mt-0.5">
+                  {typeof activeBooking.vehicleId === 'object' ? `${activeBooking.vehicleId.brand} ${activeBooking.vehicleId.model}` : 'Vehicle Details'}
+                </p>
+                <div className="mt-2.5 pt-2 border-t border-white/10 text-[10px] font-semibold text-orange-300 group-hover:text-orange-200 flex items-center justify-between">
+                  <span>View Details</span>
+                  <span>&rarr;</span>
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
       </nav>
 
       <div className="p-3 shrink-0 mt-auto border-t border-white/5 bg-black/10">
