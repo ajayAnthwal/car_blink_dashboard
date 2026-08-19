@@ -608,8 +608,10 @@ export const useAdminBookingDetails = (id: string) => {
     queryKey: ["admin", "bookings", id],
     queryFn: async () => {
       const res = await getSuperAdminBookingDetails(id);
-      if (res && res._id) return res;
-      return res?.data || res;
+      if (res?.data?._id) return res.data;
+      if (res?._id) return res;
+      if (res?.data) return res.data;
+      return res;
     },
     enabled: !!id
   });

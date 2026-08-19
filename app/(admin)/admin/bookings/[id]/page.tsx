@@ -15,10 +15,12 @@ import toast from "react-hot-toast";
 export default function AdminBookingDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { data: booking, isLoading } = useAdminBookingDetails(id as string);
+  const { data: bookingRes, isLoading } = useAdminBookingDetails(id as string);
   const cancelMutation = useCancelAdminBookingMutation();
   
   const [cancelReason, setCancelReason] = useState("");
+
+  const booking = bookingRes?.data?._id ? bookingRes.data : (bookingRes?._id ? bookingRes : (bookingRes?.data || bookingRes));
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) {
@@ -46,7 +48,7 @@ export default function AdminBookingDetailsPage() {
     );
   }
 
-  if (!booking || Array.isArray(booking)) {
+  if (!booking || !booking._id || Array.isArray(booking)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-8 text-center bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 mt-6 mx-4">
         <Info className="w-16 h-16 text-gray-300 mb-4" />
@@ -189,25 +191,114 @@ export default function AdminBookingDetailsPage() {
             </CardContent>
           </Card>
 
-          {/* Order Details */}
+          {/* Comprehensive Financial & Invoice Breakdown */}
           <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200">
-            <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 flex flex-row items-center justify-between">
               <CardTitle className="text-lg text-primary-navy flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary-orange" /> Order Details
+                <IndianRupee className="w-5 h-5 text-emerald-600" /> Complete Financial & Invoice Breakdown
               </CardTitle>
+              {booking.invoice?.pdfUrl && (
+                <a
+                  href={booking.invoice.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-primary-orange hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5" /> View PDF Invoice
+                </a>
+              )}
             </CardHeader>
-            <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="space-y-1">
-                <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-2">Service Mode</p>
-                <p className="font-bold text-gray-900">{booking.serviceMode?.replace('_', ' ') || "N/A"}</p>
+            <CardContent className="p-6 space-y-6">
+              {/* Itemized Line Items (if available) */}
+              {booking.invoice?.items?.length > 0 ? (
+                <div>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Itemized Spare Parts & Services</h4>
+                  <div className="border border-gray-100 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-gray-50 border-b border-gray-100 font-bold text-gray-700">
+                        <tr>
+                          <th className="p-3">Item Name</th>
+                          <th className="p-3 text-center">Qty</th>
+                          <th className="p-3 text-right">Price</th>
+                          <th className="p-3 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 font-medium">
+                        {booking.invoice.items.map((item: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-gray-50/50">
+                            <td className="p-3 font-semibold text-gray-900">{item.name || item.description || "Service Item"}</td>
+                            <td className="p-3 text-center font-mono">{item.quantity || 1}</td>
+                            <td className="p-3 text-right font-mono">₹{item.unitPrice || item.price || 0}</td>
+                            <td className="p-3 text-right font-bold font-mono text-gray-900">₹{(item.quantity || 1) * (item.unitPrice || item.price || 0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Financial Calculation Grid */}
+              <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-2.5">
+                <div className="flex justify-between text-xs font-semibold text-gray-600">
+                  <span>Initial Accepted Bid Amount:</span>
+                  <span className="font-mono text-gray-900">₹{booking.acceptedBidId?.quotedAmount || booking.serviceId?.basePrice || 0}</span>
+                </div>
+
+                {booking.invoice?.subtotal && (booking.acceptedBidId?.quotedAmount || booking.serviceId?.basePrice) > booking.invoice.subtotal ? (
+                  <div className="flex justify-between text-xs font-bold text-emerald-600">
+                    <span>Negotiated / Service Adjustment Discount:</span>
+                    <span className="font-mono">- ₹{(booking.acceptedBidId?.quotedAmount || booking.serviceId?.basePrice) - booking.invoice.subtotal}</span>
+                  </div>
+                ) : null}
+
+                {booking.invoice?.subtotal ? (
+                  <div className="flex justify-between text-xs font-semibold text-gray-600">
+                    <span>Invoice Subtotal:</span>
+                    <span className="font-mono text-gray-900">₹{booking.invoice.subtotal}</span>
+                  </div>
+                ) : null}
+
+                {booking.invoice?.taxAmount ? (
+                  <div className="flex justify-between text-xs font-semibold text-gray-600">
+                    <span>GST / Taxes:</span>
+                    <span className="font-mono text-gray-900">+ ₹{booking.invoice.taxAmount}</span>
+                  </div>
+                ) : null}
+
+                {booking.couponDiscountAmount > 0 || booking.invoice?.discount > 0 ? (
+                  <div className="flex justify-between text-xs font-bold text-emerald-600">
+                    <span>Coupon / Promo Discount:</span>
+                    <span className="font-mono">- ₹{booking.couponDiscountAmount || booking.invoice?.discount || 0}</span>
+                  </div>
+                ) : null}
+
+                <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+                  <span className="text-sm font-extrabold text-primary-navy">Grand Total Final Amount:</span>
+                  <span className="text-2xl font-black text-emerald-600 font-mono">
+                    ₹{booking.invoice?.grandTotal || booking.finalInvoiceAmount || booking.acceptedBidId?.quotedAmount || booking.serviceId?.basePrice || 0}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-2">Payment Mode</p>
-                <p className="font-bold text-gray-900">{booking.paymentMode || "N/A"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-2">Coupon Discount</p>
-                <p className="font-bold text-green-600">₹{booking.couponDiscountAmount || 0}</p>
+
+              {/* Order Meta Info */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-2">
+                <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Service Mode</p>
+                  <p className="text-xs font-bold text-gray-800 mt-0.5">{booking.serviceMode?.replace('_', ' ') || "ONLINE"}</p>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Payment Mode</p>
+                  <p className="text-xs font-bold text-gray-800 mt-0.5">{booking.paymentMode || "Razorpay / Online"}</p>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-2xs col-span-2 sm:col-span-1">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Invoice Status</p>
+                  <span className={`text-xs font-bold mt-0.5 inline-block px-2 py-0.5 rounded ${
+                    booking.invoice?.status === 'PAID' || booking.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {booking.invoice?.status || (booking.status === 'COMPLETED' ? 'PAID' : 'PENDING')}
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>

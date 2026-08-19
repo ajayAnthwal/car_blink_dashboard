@@ -170,10 +170,11 @@ export default function AdminBookingsPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <Link href={`/admin/bookings/${booking._id}`}>
-                              <button className="text-white bg-primary-navy hover:bg-blue-900 px-3 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 text-xs ml-auto transition-colors shadow-sm">
-                                View <ChevronRight className="w-3 h-3" />
-                              </button>
+                            <Link
+                              href={`/admin/bookings/${booking._id}`}
+                              className="text-white bg-primary-navy hover:bg-blue-900 px-3 py-1.5 rounded-lg font-medium inline-flex items-center justify-center gap-1 text-xs ml-auto transition-colors shadow-sm"
+                            >
+                              View <ChevronRight className="w-3 h-3" />
                             </Link>
                           </td>
                         </tr>
