@@ -1009,7 +1009,7 @@ export const markAllNotificationsAsRead = async () => {
 // ==========================================
 
 export const assignDriverToBooking = async (data: { bookingId: string; executiveId: string; driverName: string; driverPhone: string; status?: string }) => {
-  const response = await apiClient.post("/logistics/assign", data);
+  const response = await apiClient.post("/executive/logistics/assign", data);
   return response.data;
 };
 
