@@ -73,16 +73,6 @@ export default function WebsitePromotionalBanners({ placement = "HOME_HERO" }: {
             </p>
           )}
 
-          <div className="pt-2">
-            <a
-              href={targetLink}
-              target={isExternal ? "_blank" : "_self"}
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary-orange hover:bg-orange-600 text-white font-bold text-sm transition-all shadow-lg hover:shadow-orange-500/40 hover:-translate-y-0.5"
-            >
-              Claim Offer / Explore <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
         </div>
 
         {/* Carousel Slider Controls */}
