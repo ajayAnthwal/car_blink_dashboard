@@ -32,7 +32,7 @@ export async function sanitizeSession(queryClient?: any): Promise<void> {
     }
   }
 
-  // 3. Clear all browser cookies across root and subdomain paths
+  // 3. Clear all browser cookies across root, subdomain, and .carblink.in paths
   try {
     const cookiesToClear = [
       "accessToken",
@@ -44,15 +44,36 @@ export async function sanitizeSession(queryClient?: any): Promise<void> {
       "car_blink_access_token",
       "car_blink_refresh_token",
       "carBlink_token",
+      "carBlink_user",
     ];
+
+    const domainsToClear = [
+      "",
+      typeof window !== "undefined" ? window.location.hostname : "",
+      typeof window !== "undefined" ? `.${window.location.hostname}` : "",
+      ".carblink.in",
+      "carblink.in",
+      "dashboard.carblink.in",
+      "api.carblink.in",
+    ];
+
     cookiesToClear.forEach((cookieName) => {
       Cookies.remove(cookieName, { path: "/" });
       if (typeof document !== "undefined") {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+        domainsToClear.forEach((dom) => {
+          const domainStr = dom ? `; domain=${dom}` : "";
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/${domainStr};`;
+        });
       }
     });
-    
+
+    // Broadcast Logout event to sync website tabs
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("carblink_logout_event", Date.now().toString());
+      } catch (e) {}
+    }
+
     // Clear Next.js server cookie
     await clearSessionCookie();
   } catch (err) {

@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from "react";
 import { useActiveWebsiteAds } from "@/features/executive/hooks/useExecutiveQueries";
 import { ChevronLeft, ChevronRight, Sparkles, ExternalLink } from "lucide-react";
-import Link from "next/link";
 
 export default function WebsitePromotionalBanners({ placement = "HOME_HERO" }: { placement?: string }) {
   const { data: ads = [], isLoading } = useActiveWebsiteAds(placement);
@@ -20,10 +19,26 @@ export default function WebsitePromotionalBanners({ placement = "HOME_HERO" }: {
   }, [ads]);
 
   if (isLoading || !ads || ads.length === 0) {
-    return null; // Don't render empty container if no active ads
+    return null;
   }
 
   const currentAd = ads[currentIndex];
+
+  // Helper to format redirect URL safely without causing 404s
+  const getSafeRedirectUrl = (url?: string) => {
+    if (!url || url.trim() === "" || url.trim() === "#") {
+      return process.env.NEXT_PUBLIC_WEBSITE_URL || "https://carblink.in";
+    }
+    const trimmed = url.trim();
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return trimmed;
+    }
+    const websiteDomain = process.env.NEXT_PUBLIC_WEBSITE_URL || "https://carblink.in";
+    return `${websiteDomain.replace(/\/+$/, "")}/${trimmed.replace(/^\/+/, "")}`;
+  };
+
+  const targetLink = getSafeRedirectUrl(currentAd.redirectUrl);
+  const isExternal = targetLink.startsWith("http://") || targetLink.startsWith("https://");
 
   return (
     <div className="w-full my-6 max-w-7xl mx-auto px-4">
@@ -45,7 +60,7 @@ export default function WebsitePromotionalBanners({ placement = "HOME_HERO" }: {
         {/* Banner Content Layer */}
         <div className="relative z-10 p-6 sm:p-10 md:p-12 max-w-2xl text-white space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-orange/20 border border-primary-orange/40 text-primary-orange text-xs font-extrabold uppercase tracking-wider backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5" /> Special Offer / Ad
+            <Sparkles className="w-3.5 h-3.5 text-primary-orange" /> Special Offer / Ad
           </div>
 
           <h2 className="text-2xl sm:text-4xl md:text-5xl font-black font-heading leading-tight drop-shadow-md text-white">
@@ -58,19 +73,19 @@ export default function WebsitePromotionalBanners({ placement = "HOME_HERO" }: {
             </p>
           )}
 
-          {currentAd.redirectUrl && (
-            <div className="pt-2">
-              <Link
-                href={currentAd.redirectUrl}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary-orange hover:bg-orange-600 text-white font-bold text-sm transition-all shadow-lg hover:shadow-orange-500/40 hover:-translate-y-0.5"
-              >
-                Claim Offer / Explore <ExternalLink className="w-4 h-4" />
-              </Link>
-            </div>
-          )}
+          <div className="pt-2">
+            <a
+              href={targetLink}
+              target={isExternal ? "_blank" : "_self"}
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary-orange hover:bg-orange-600 text-white font-bold text-sm transition-all shadow-lg hover:shadow-orange-500/40 hover:-translate-y-0.5"
+            >
+              Claim Offer / Explore <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
         </div>
 
-        {/* Carousel Slider Controls (Only if multiple ads exist) */}
+        {/* Carousel Slider Controls */}
         {ads.length > 1 && (
           <>
             <button
