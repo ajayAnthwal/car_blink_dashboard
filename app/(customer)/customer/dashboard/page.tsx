@@ -172,18 +172,18 @@ export default function CustomerDashboardPage() {
   const isCompletelyEmpty = bookings.length === 0;
 
   return (
-    <div className="space-y-4 sm:space-y-6 md:space-y-8 pb-12 container px-3 sm:px-6 md:px-8 mx-auto w-full max-w-full overflow-x-hidden">
+    <div className="space-y-3 sm:space-y-6 md:space-y-8 pb-12 w-full max-w-full px-1 sm:px-6 md:px-8 mx-auto overflow-x-hidden min-w-0">
       {/* Dynamic Website Promotional Banners managed by Executive */}
       <WebsitePromotionalBanners placement="HOME_HERO" />
       {isCompletelyEmpty && (
-        <div className="bg-gradient-to-r from-orange-50 via-white to-orange-50/50 border border-orange-100/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 shadow-sm w-full">
-          <div className="flex items-start sm:items-center gap-3 sm:gap-5">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-xl sm:rounded-2xl shadow-sm flex items-center justify-center shrink-0 border border-orange-100 rotate-3">
-              <Car className="w-6 h-6 sm:w-8 sm:h-8 text-primary-orange -rotate-3" />
+        <div className="bg-gradient-to-r from-orange-50 via-white to-orange-50/50 border border-orange-100/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-6 shadow-sm w-full min-w-0">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-5 min-w-0 w-full">
+            <div className="w-10 h-10 sm:w-16 sm:h-16 bg-white rounded-xl sm:rounded-2xl shadow-sm flex items-center justify-center shrink-0 border border-orange-100 rotate-3">
+              <Car className="w-5 h-5 sm:w-8 sm:h-8 text-primary-orange -rotate-3" />
             </div>
-            <div>
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 font-heading tracking-tight">Welcome to CarBlink Dashboard!</h2>
-              <p className="text-gray-600 mt-1 text-xs sm:text-sm font-medium leading-relaxed">Your premium dashboard is ready. Start by adding a vehicle to unlock full insights.</p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 font-heading tracking-tight break-words">Welcome to CarBlink Dashboard!</h2>
+              <p className="text-gray-600 mt-0.5 text-xs sm:text-sm font-medium leading-relaxed break-words">Your premium dashboard is ready. Start by adding a vehicle to unlock full insights.</p>
             </div>
           </div>
          
@@ -192,14 +192,14 @@ export default function CustomerDashboardPage() {
 
       {/* Action Center Alerts: Pending Quotes */}
       {quotesWaiting.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm w-full">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-blue-600">
-              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm w-full min-w-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-blue-600">
+              <AlertCircle className="w-4 h-4 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h3 className="font-bold text-gray-900 text-base sm:text-lg">Action Required: Pending Quote</h3>
-              <p className="text-gray-600 text-xs sm:text-sm font-medium">You have {quotesWaiting.length} booking(s) waiting for quote approval.</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-gray-900 text-sm sm:text-lg break-words">Action Required: Pending Quote</h3>
+              <p className="text-gray-600 text-xs sm:text-sm font-medium break-words">You have {quotesWaiting.length} booking(s) waiting for quote approval.</p>
             </div>
           </div>
           <Button asChild className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm">
@@ -210,14 +210,14 @@ export default function CustomerDashboardPage() {
 
       {/* Action Center Alerts: Additional Parts Request */}
       {additionalPartsPending.length > 0 && (
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm w-full">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-purple-600">
-              <Wrench className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm w-full min-w-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-purple-600">
+              <Wrench className="w-4 h-4 sm:w-6 sm:h-6 animate-pulse" />
             </div>
-            <div>
-              <h3 className="font-bold text-gray-900 text-base sm:text-lg">Action Required: Extra Parts / Charges Approval</h3>
-              <p className="text-gray-600 text-xs sm:text-sm font-medium">Partner has requested approval for additional service parts for {additionalPartsPending.length} booking(s).</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-gray-900 text-sm sm:text-lg break-words">Action Required: Extra Parts / Charges Approval</h3>
+              <p className="text-gray-600 text-xs sm:text-sm font-medium break-words">Partner has requested approval for additional service parts for {additionalPartsPending.length} booking(s).</p>
             </div>
           </div>
           <Button asChild className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm">
@@ -226,10 +226,10 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 w-full">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">Overview</h1>
-          <p className="text-gray-500 mt-1 text-xs sm:text-sm font-body break-words">Welcome back, {user?.fullName || "Customer"}! <span className="hidden sm:inline">•</span> <br className="sm:hidden" />{todayStr}</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 w-full min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">Overview</h1>
+          <p className="text-gray-500 mt-0.5 text-xs sm:text-sm font-body break-words">Welcome back, {user?.fullName || "Customer"}! <span className="hidden sm:inline">•</span> <br className="sm:hidden" />{todayStr}</p>
         </div>
         <div className="flex space-x-3 w-full sm:w-auto">
           <Button asChild className="w-full sm:w-auto font-semibold bg-primary-orange hover:bg-primary-orange-dark text-white">

@@ -74,10 +74,10 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
       </div>
 
       {/* Main Content Area (offset by sidebar width) */}
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 z-10 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 z-10 min-w-0 max-w-full overflow-x-hidden ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         <Header />
 
-        <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
+        <main className="flex-1 p-2.5 sm:p-6 md:p-8 overflow-x-hidden w-full max-w-full min-w-0">
           {children}
         </main>
       </div>
