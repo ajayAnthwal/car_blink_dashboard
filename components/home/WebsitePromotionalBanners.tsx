@@ -41,8 +41,8 @@ export default function WebsitePromotionalBanners({ placement = "HOME_HERO" }: {
   const isExternal = targetLink.startsWith("http://") || targetLink.startsWith("https://");
 
   return (
-    <div className="w-full my-6 max-w-7xl mx-auto px-4">
-      <div className="relative overflow-hidden rounded-3xl bg-gray-900 shadow-2xl border border-white/10 group min-h-[220px] sm:min-h-[280px] md:min-h-[320px] flex items-center">
+    <div className="w-full my-4 sm:my-6 max-w-7xl mx-auto px-0 sm:px-4">
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gray-900 shadow-xl sm:shadow-2xl border border-white/10 group min-h-[180px] sm:min-h-[260px] md:min-h-[300px] flex items-center w-full">
         {/* Background Image with Smooth Fade Transition */}
         <div className="absolute inset-0 z-0">
           <img
@@ -54,21 +54,21 @@ export default function WebsitePromotionalBanners({ placement = "HOME_HERO" }: {
                 "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?q=80&w=1000&auto=format&fit=crop";
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/75 to-transparent" />
         </div>
 
         {/* Banner Content Layer */}
-        <div className="relative z-10 p-6 sm:p-10 md:p-12 max-w-2xl text-white space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-orange/20 border border-primary-orange/40 text-primary-orange text-xs font-extrabold uppercase tracking-wider backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-primary-orange" /> Special Offer / Ad
+        <div className="relative z-10 p-4 sm:p-8 md:p-12 max-w-xl text-white space-y-2 sm:space-y-4">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-primary-orange/20 border border-primary-orange/40 text-primary-orange text-[10px] sm:text-xs font-extrabold uppercase tracking-wider backdrop-blur-md">
+            <Sparkles className="w-3 h-3 text-primary-orange" /> Special Offer / Ad
           </div>
 
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black font-heading leading-tight drop-shadow-md text-white">
+          <h2 className="text-lg sm:text-3xl md:text-5xl font-black font-heading leading-tight drop-shadow-md text-white line-clamp-2">
             {currentAd.title}
           </h2>
 
           {currentAd.subtitle && (
-            <p className="text-white/80 text-sm sm:text-base font-medium max-w-lg leading-relaxed line-clamp-2">
+            <p className="text-white/80 text-xs sm:text-base font-medium max-w-lg leading-relaxed line-clamp-2">
               {currentAd.subtitle}
             </p>
           )}

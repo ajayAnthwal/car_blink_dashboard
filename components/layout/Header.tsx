@@ -31,8 +31,12 @@ export function Header() {
   const currentRole = user?.role || "CUSTOMER";
   const config = roleConfig[currentRole];
 
-  const getGreeting = () => {
-    return user?.fullName || "User";
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Good Morning";
+    if (hour >= 12 && hour < 17) return "Good Afternoon";
+    if (hour >= 17 && hour < 22) return "Good Evening";
+    return "Good Night";
   };
 
   const { socket } = useSocket();
@@ -80,8 +84,8 @@ export function Header() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 shadow-subtle transition-all duration-200">
-      <div className="flex items-center space-x-4">
+    <header className="h-16 sm:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-3 sm:px-4 md:px-6 sticky top-0 z-30 shadow-subtle transition-all duration-200 w-full max-w-full overflow-x-hidden">
+      <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
         {/* Mobile Sidebar Trigger */}
         <Sheet>
           <SheetTrigger className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-900 transition-colors focus:outline-none rounded-lg hover:bg-gray-50">
@@ -147,7 +151,7 @@ export function Header() {
         <div className="hidden md:flex flex-col justify-center">
           <div className="flex items-center space-x-3">
             <h2 className="text-lg font-bold text-gray-900 flex items-center font-heading">
-              Good Morning, {getGreeting()} <span className="ml-2 text-xl">👋</span>
+              {getTimeBasedGreeting()}, {user?.fullName || "User"} <span className="ml-2 text-xl">👋</span>
             </h2>
           </div>
           <div className="flex items-center space-x-2 mt-0.5">
@@ -160,7 +164,7 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center space-x-3 md:space-x-5">
+      <div className="flex items-center space-x-1.5 sm:space-x-3 md:space-x-5 shrink-0">
         {user?.role === "PARTNER" && (
           <button className="hidden md:flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors duration-200 font-semibold text-sm">
             <Gift className="w-4 h-4" />
@@ -176,7 +180,7 @@ export function Header() {
           </Link>
         )}
 
-        <div className="flex items-center h-8 space-x-3 md:space-x-5 border-l border-gray-100 pl-3 md:pl-5">
+        <div className="flex items-center h-8 space-x-1 sm:space-x-3 md:space-x-5 border-l border-gray-100 pl-1.5 sm:pl-3 md:pl-5">
           {/* Notifications Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger className="relative p-2 text-gray-400 hover:text-gray-900 transition-colors duration-200 focus:outline-none rounded-full hover:bg-gray-50">

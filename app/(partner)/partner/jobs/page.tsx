@@ -126,19 +126,31 @@ export default function PartnerJobsPage() {
 
   const totalPages = Math.ceil(totalJobsCount / limit) || 1;
 
-  const handleAddInvoiceItem = () => {
-    setInvoiceItems(prev => [...prev, { description: "", quantity: 1, unitPrice: 0 }]);
-  };
-
-  const handleRemoveInvoiceItem = (index: number) => {
-    if (invoiceItems.length <= 1) return;
-    setInvoiceItems(prev => prev.filter((_, i) => i !== index));
-  };
-
   const handleInvoiceItemChange = (index: number, field: string, value: any) => {
     setInvoiceItems(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
+      const newSubtotal = updated.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
+      setInvoiceTax(Math.round(newSubtotal * 0.18));
+      return updated;
+    });
+  };
+
+  const handleAddInvoiceItem = () => {
+    setInvoiceItems(prev => {
+      const updated = [...prev, { description: "", quantity: 1, unitPrice: 0 }];
+      const newSubtotal = updated.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
+      setInvoiceTax(Math.round(newSubtotal * 0.18));
+      return updated;
+    });
+  };
+
+  const handleRemoveInvoiceItem = (index: number) => {
+    if (invoiceItems.length <= 1) return;
+    setInvoiceItems(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      const newSubtotal = updated.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
+      setInvoiceTax(Math.round(newSubtotal * 0.18));
       return updated;
     });
   };
@@ -754,7 +766,7 @@ export default function PartnerJobsPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Tax / GST (₹)</label>
+                                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Tax / GST 18% (Auto-Calculated ₹)</label>
                                   <input
                                     type="number"
                                     min="0"

@@ -172,18 +172,18 @@ export default function CustomerDashboardPage() {
   const isCompletelyEmpty = bookings.length === 0;
 
   return (
-    <div className="space-y-6 md:space-y-8 pb-12 container px-4 sm:px-6 md:px-8 mx-auto">
+    <div className="space-y-4 sm:space-y-6 md:space-y-8 pb-12 container px-3 sm:px-6 md:px-8 mx-auto w-full max-w-full overflow-x-hidden">
       {/* Dynamic Website Promotional Banners managed by Executive */}
       <WebsitePromotionalBanners placement="HOME_HERO" />
       {isCompletelyEmpty && (
-        <div className="bg-gradient-to-r from-orange-50 via-white to-orange-50/50 border border-orange-100/50 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center shrink-0 border border-orange-100 rotate-3">
-              <Car className="w-8 h-8 text-primary-orange -rotate-3" />
+        <div className="bg-gradient-to-r from-orange-50 via-white to-orange-50/50 border border-orange-100/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 shadow-sm w-full">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-xl sm:rounded-2xl shadow-sm flex items-center justify-center shrink-0 border border-orange-100 rotate-3">
+              <Car className="w-6 h-6 sm:w-8 sm:h-8 text-primary-orange -rotate-3" />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 font-heading tracking-tight">Welcome to CarBlink Dashboard!</h2>
-              <p className="text-gray-600 mt-1 font-medium">Your premium dashboard is ready. Start by adding a vehicle to unlock full insights.</p>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 font-heading tracking-tight">Welcome to CarBlink Dashboard!</h2>
+              <p className="text-gray-600 mt-1 text-xs sm:text-sm font-medium leading-relaxed">Your premium dashboard is ready. Start by adding a vehicle to unlock full insights.</p>
             </div>
           </div>
          
@@ -192,14 +192,14 @@ export default function CustomerDashboardPage() {
 
       {/* Action Center Alerts: Pending Quotes */}
       {quotesWaiting.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-3xl p-5 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-blue-600">
-              <AlertCircle className="w-6 h-6" />
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm w-full">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-blue-600">
+              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 text-lg">Action Required: Pending Quote</h3>
-              <p className="text-gray-600 text-sm font-medium">You have {quotesWaiting.length} booking(s) waiting for quote approval.</p>
+              <h3 className="font-bold text-gray-900 text-base sm:text-lg">Action Required: Pending Quote</h3>
+              <p className="text-gray-600 text-xs sm:text-sm font-medium">You have {quotesWaiting.length} booking(s) waiting for quote approval.</p>
             </div>
           </div>
           <Button asChild className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm">
@@ -210,14 +210,14 @@ export default function CustomerDashboardPage() {
 
       {/* Action Center Alerts: Additional Parts Request */}
       {additionalPartsPending.length > 0 && (
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-3xl p-5 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-purple-600">
-              <Wrench className="w-6 h-6 animate-pulse" />
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm w-full">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-purple-600">
+              <Wrench className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 text-lg">Action Required: Extra Parts / Charges Approval</h3>
-              <p className="text-gray-600 text-sm font-medium">Partner has requested approval for additional service parts for {additionalPartsPending.length} booking(s).</p>
+              <h3 className="font-bold text-gray-900 text-base sm:text-lg">Action Required: Extra Parts / Charges Approval</h3>
+              <p className="text-gray-600 text-xs sm:text-sm font-medium">Partner has requested approval for additional service parts for {additionalPartsPending.length} booking(s).</p>
             </div>
           </div>
           <Button asChild className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm">
@@ -226,10 +226,10 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 w-full">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">Overview</h1>
-          <p className="text-gray-500 mt-1 font-body">Welcome back, {user?.fullName || "Customer"}! • {todayStr}</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">Overview</h1>
+          <p className="text-gray-500 mt-1 text-xs sm:text-sm font-body break-words">Welcome back, {user?.fullName || "Customer"}! <span className="hidden sm:inline">•</span> <br className="sm:hidden" />{todayStr}</p>
         </div>
         <div className="flex space-x-3 w-full sm:w-auto">
           <Button asChild className="w-full sm:w-auto font-semibold bg-primary-orange hover:bg-primary-orange-dark text-white">
@@ -691,6 +691,135 @@ export default function CustomerDashboardPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Printable Invoice Modal Dialog */}
+      {selectedInvoice && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-gray-100 my-auto animate-in zoom-in-95">
+            {/* Modal Header Controls */}
+            <div className="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800 print:hidden shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary-orange" />
+                <span className="font-bold text-base font-heading">Official Service Invoice</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={() => window.print()} size="sm" className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs gap-1.5 rounded-xl">
+                  <Printer className="w-4 h-4" /> Print / Save PDF
+                </Button>
+                <button
+                  onClick={() => setSelectedInvoice(null)}
+                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Invoice Printable Document Body */}
+            <div className="p-6 md:p-10 overflow-y-auto flex-1 font-body text-gray-800 bg-white" id="printable-invoice">
+              {/* Top Branding & Invoice No */}
+              <div className="flex justify-between items-start pb-6 border-b-2 border-gray-200 gap-4">
+                <div>
+                  <h1 className="text-3xl font-black font-heading text-primary-navy tracking-tight">CarBlink</h1>
+                  <p className="text-xs text-gray-500 font-medium">India's Premier Auto Service & Care Network</p>
+                  <p className="text-xs text-gray-400 mt-1">GSTIN: 07AAAAC1234F1Z9 • Support: help@carblink.in</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary-orange bg-orange-50 px-3 py-1 rounded-full border border-orange-100 inline-block mb-1">
+                    INVOICE
+                  </span>
+                  <div className="text-xs font-mono font-bold text-gray-700">#INV-{(selectedInvoice._id || '0000').slice(-8).toUpperCase()}</div>
+                  <div className="text-xs text-gray-500 mt-1">Date: {new Date(selectedInvoice.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                </div>
+              </div>
+
+              {/* Billed To & Service Partner Grid */}
+              <div className="grid grid-cols-2 gap-6 my-6 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs">
+                <div>
+                  <span className="font-extrabold text-gray-400 uppercase tracking-wider block mb-1">CUSTOMER DETAILS</span>
+                  <div className="font-bold text-gray-900 text-sm">{selectedInvoice.bookingId?.customerId?.fullName || 'Valued Customer'}</div>
+                  <div className="text-gray-600 font-medium mt-0.5">{selectedInvoice.bookingId?.customerId?.phone || ''}</div>
+                  <div className="text-gray-600 font-medium mt-0.5">Vehicle: {selectedInvoice.bookingId?.vehicleId?.brand} {selectedInvoice.bookingId?.vehicleId?.model}</div>
+                  <div className="text-gray-500 text-[11px] mt-0.5 font-mono">{selectedInvoice.bookingId?.vehicleId?.registrationNumber || 'Reg: N/A'}</div>
+                </div>
+                <div className="text-right">
+                  <span className="font-extrabold text-gray-400 uppercase tracking-wider block mb-1">SERVICE WORKSHOP</span>
+                  <div className="font-bold text-gray-900 text-sm">{selectedInvoice.partnerId?.businessName || 'Verified Partner Workshop'}</div>
+                  <div className="text-gray-600 font-medium mt-0.5">{selectedInvoice.partnerId?.address || 'Verified Workshop Facility'}</div>
+                  <div className="text-gray-600 font-medium mt-0.5">Service: {selectedInvoice.bookingId?.serviceId?.name || 'Car Maintenance Service'}</div>
+                </div>
+              </div>
+
+              {/* Itemized Services & Parts Table */}
+              <div className="my-6">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-gray-700 font-extrabold border-y border-gray-200">
+                      <th className="py-3 px-4">#</th>
+                      <th className="py-3 px-4">Description / Part Name</th>
+                      <th className="py-3 px-4 text-center">Qty</th>
+                      <th className="py-3 px-4 text-right">Unit Price (₹)</th>
+                      <th className="py-3 px-4 text-right">Total (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {Array.isArray(selectedInvoice.items) && selectedInvoice.items.length > 0 ? (
+                      selectedInvoice.items.map((item: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="py-3 px-4 font-bold text-gray-400">{idx + 1}</td>
+                          <td className="py-3 px-4 font-semibold text-gray-800">{item.description}</td>
+                          <td className="py-3 px-4 text-center font-bold text-gray-700">{item.quantity || 1}</td>
+                          <td className="py-3 px-4 text-right text-gray-600">₹{(item.unitPrice || 0).toLocaleString('en-IN')}</td>
+                          <td className="py-3 px-4 text-right font-bold text-gray-900">₹{((item.quantity || 1) * (item.unitPrice || 0)).toLocaleString('en-IN')}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="py-3 px-4 font-bold text-gray-400">1</td>
+                        <td className="py-3 px-4 font-semibold text-gray-800">{selectedInvoice.bookingId?.serviceId?.name || 'Car Repair & Maintenance Service'}</td>
+                        <td className="py-3 px-4 text-center font-bold text-gray-700">1</td>
+                        <td className="py-3 px-4 text-right text-gray-600">₹{(selectedInvoice.subtotal || selectedInvoice.grandTotal || 0).toLocaleString('en-IN')}</td>
+                        <td className="py-3 px-4 text-right font-bold text-gray-900">₹{(selectedInvoice.subtotal || selectedInvoice.grandTotal || 0).toLocaleString('en-IN')}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Price Calculation Summary Box */}
+              <div className="flex justify-end my-6">
+                <div className="w-full sm:w-72 bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
+                  <div className="flex justify-between text-gray-600 font-medium">
+                    <span>Subtotal:</span>
+                    <span>₹{(selectedInvoice.subtotal || selectedInvoice.grandTotal || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  {Number(selectedInvoice.taxAmount) > 0 && (
+                    <div className="flex justify-between text-gray-600 font-medium">
+                      <span>GST (18%):</span>
+                      <span>+ ₹{(selectedInvoice.taxAmount).toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  {Number(selectedInvoice.discount) > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-bold">
+                      <span>Discount:</span>
+                      <span>- ₹{(selectedInvoice.discount).toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t border-gray-300 flex justify-between font-black text-gray-900 text-sm">
+                    <span>Grand Total:</span>
+                    <span className="text-primary-orange">₹{(selectedInvoice.grandTotal || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Note */}
+              <div className="mt-8 pt-4 border-t border-gray-200 text-center text-[11px] text-gray-400 font-medium">
+                Thank you for choosing CarBlink! Computer-generated invoice; no signature required.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

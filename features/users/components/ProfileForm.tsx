@@ -87,13 +87,23 @@ export function ProfileForm() {
     setMessage({ type: "", text: "" });
 
     try {
-      await updateUserProfile(data);
+      const payload: any = { ...data };
+      if (!payload.cityId || payload.cityId.trim() === "") delete payload.cityId;
+      if (!payload.state || payload.state.trim() === "") delete payload.state;
+      if (!payload.email || payload.email.trim() === "") delete payload.email;
+
+      await updateUserProfile(payload);
       // Fetch fresh user profile instead of mutating state directly with partial data
       await refreshUser();
       
       setMessage({ type: "success", text: "Profile updated successfully!" });
     } catch (error: any) {
-      setMessage({ type: "error", text: error?.message || "Failed to update profile." });
+      const errorMsg = typeof error?.response?.data?.message === "string" 
+        ? error.response.data.message 
+        : typeof error?.message === "string" && !error.message.includes("Cast to") 
+        ? error.message 
+        : "Failed to update profile. Please verify your entries.";
+      setMessage({ type: "error", text: errorMsg });
     } finally {
       setIsLoading(false);
     }

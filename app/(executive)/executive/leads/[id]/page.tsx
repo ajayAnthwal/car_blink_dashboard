@@ -469,6 +469,114 @@ export default function LeadDetailsPage() {
           </CardContent>
         </Card>
 
+        {/* Partner Job Completion & Uploaded Invoice Section */}
+        <Card className="shadow-subtle border-gray-100 md:col-span-2">
+          <CardHeader className="pb-3 border-b border-gray-50">
+            <CardTitle className="text-lg flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="bg-orange-50 p-2 rounded-lg mr-3">
+                  <Wrench className="w-5 h-5 text-primary-orange" />
+                </div>
+                Partner Job Execution & Invoice Artifacts
+              </div>
+              <Badge className={`text-xs px-3 py-1 font-bold ${
+                lead.job?.status === 'COMPLETED' || lead.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
+                lead.job?.status === 'IN_PROGRESS' || lead.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-700'
+              }`}>
+                Job Status: {lead.job?.status || lead.status || 'PENDING'}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
+            {/* Uploaded Photos (Before / After / Inspection) */}
+            <div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-primary-orange" /> Uploaded Workshop Photos
+              </h4>
+
+              {(!lead.job?.beforePhotos?.length && !lead.beforePhotos?.length && !lead.job?.afterPhotos?.length && !lead.afterPhotos?.length) ? (
+                <div className="p-4 bg-gray-50 rounded-xl text-xs text-gray-500 border border-gray-100">
+                  No vehicle photos uploaded by partner yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Before Photos */}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">
+                      Before Service Photos ({ (lead.job?.beforePhotos || lead.beforePhotos || []).length })
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {(lead.job?.beforePhotos || lead.beforePhotos || []).map((url: string, idx: number) => (
+                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block relative group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Before ${idx}`} className="w-20 h-20 object-cover rounded-lg border border-gray-300 shadow-sm group-hover:scale-105 transition-transform" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* After Photos */}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">
+                      After Service Photos ({ (lead.job?.afterPhotos || lead.afterPhotos || []).length })
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {(lead.job?.afterPhotos || lead.afterPhotos || []).map((url: string, idx: number) => (
+                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block relative group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`After ${idx}`} className="w-20 h-20 object-cover rounded-lg border border-gray-300 shadow-sm group-hover:scale-105 transition-transform" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Partner Submitted Invoice & Document Links */}
+            <div className="pt-4 border-t border-gray-100">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-primary-orange" /> Partner Submitted Invoice
+              </h4>
+
+              {lead.invoice || lead.job?.invoiceUrl || lead.invoiceUrl ? (
+                <div className="p-5 bg-orange-50/50 rounded-2xl border border-orange-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-base text-gray-900 font-heading">
+                        Invoice Amount: ₹{(lead.invoice?.grandTotal || lead.finalAmount || 0).toLocaleString('en-IN')}
+                      </span>
+                      {lead.invoice?.taxAmount > 0 && (
+                        <span className="text-xs font-semibold text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-200">
+                          Includes 18% GST (₹{lead.invoice.taxAmount})
+                        </span>
+                      )}
+                    </div>
+                    {lead.invoice?.items?.length > 0 && (
+                      <p className="text-xs text-gray-600 font-medium mt-1">
+                        Itemized Parts: {lead.invoice.items.map((i: any) => `${i.description} (x${i.quantity})`).join(', ')}
+                      </p>
+                    )}
+                  </div>
+
+                  {(lead.invoice?.pdfUrl || lead.job?.invoiceUrl || lead.invoiceUrl) && (
+                    <Button asChild className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-sm">
+                      <a href={lead.invoice?.pdfUrl || lead.job?.invoiceUrl || lead.invoiceUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-1.5" /> View Partner PDF Invoice
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-50 rounded-xl text-xs text-gray-500 border border-gray-100">
+                  No invoice submitted by partner for this lead yet.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
