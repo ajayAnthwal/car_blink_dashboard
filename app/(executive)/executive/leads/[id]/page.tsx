@@ -296,37 +296,44 @@ export default function LeadDetailsPage() {
             )}
 
             {/* Photos Section */}
-            {(lead.beforePhotos?.length > 0 || lead.afterPhotos?.length > 0) && (
-              <div className="pt-2 border-t border-gray-100">
-                 <h4 className="text-sm font-semibold text-gray-800 flex items-center mb-3">
-                   <ImageIcon className="w-4 h-4 mr-2 text-gray-500" /> Attached Photos
-                 </h4>
-                 <div className="flex gap-4">
-                   {lead.beforePhotos?.length > 0 && (
-                     <div className="flex-1 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <span className="text-xs text-gray-500 uppercase font-semibold mb-2 block">Before Photos ({lead.beforePhotos.length})</span>
-                        <div className="flex gap-2 overflow-x-auto">
-                          {lead.beforePhotos.map((url: string, idx: number) => (
-                             // eslint-disable-next-line @next/next/no-img-element
-                             <img key={idx} src={url} alt={`Before ${idx}`} className="h-16 w-16 object-cover rounded shadow-sm border border-gray-200" />
+            {(() => {
+              const beforePhotos = lead.beforePhotos?.length ? lead.beforePhotos : (lead.job?.beforePhotos || lead.partnerJob?.beforePhotos || []);
+              const afterPhotos = lead.afterPhotos?.length ? lead.afterPhotos : (lead.job?.afterPhotos || lead.partnerJob?.afterPhotos || []);
+              
+              if (!beforePhotos.length && !afterPhotos.length) return null;
+
+              return (
+                <div className="pt-4 border-t border-gray-100">
+                  <h4 className="text-sm font-semibold text-gray-800 flex items-center mb-3">
+                    <ImageIcon className="w-4 h-4 mr-2 text-primary-orange" /> Vehicle Service Photos ({beforePhotos.length + afterPhotos.length})
+                  </h4>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {beforePhotos.length > 0 && (
+                      <div className="flex-1 bg-gray-50 rounded-xl p-3 border border-gray-200">
+                        <span className="text-xs text-gray-600 uppercase font-bold mb-2 block">Before Service Photos ({beforePhotos.length})</span>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {beforePhotos.map((url: string, idx: number) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={idx} src={url} alt={`Before ${idx}`} className="h-20 w-20 object-cover rounded-lg shadow-sm border border-gray-200 hover:scale-105 transition-transform" />
                           ))}
                         </div>
-                     </div>
-                   )}
-                   {lead.afterPhotos?.length > 0 && (
-                     <div className="flex-1 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <span className="text-xs text-gray-500 uppercase font-semibold mb-2 block">After Photos ({lead.afterPhotos.length})</span>
-                        <div className="flex gap-2 overflow-x-auto">
-                          {lead.afterPhotos.map((url: string, idx: number) => (
-                             // eslint-disable-next-line @next/next/no-img-element
-                             <img key={idx} src={url} alt={`After ${idx}`} className="h-16 w-16 object-cover rounded shadow-sm border border-gray-200" />
+                      </div>
+                    )}
+                    {afterPhotos.length > 0 && (
+                      <div className="flex-1 bg-gray-50 rounded-xl p-3 border border-gray-200">
+                        <span className="text-xs text-gray-600 uppercase font-bold mb-2 block">After Service Photos ({afterPhotos.length})</span>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {afterPhotos.map((url: string, idx: number) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={idx} src={url} alt={`After ${idx}`} className="h-20 w-20 object-cover rounded-lg shadow-sm border border-gray-200 hover:scale-105 transition-transform" />
                           ))}
                         </div>
-                     </div>
-                   )}
-                 </div>
-              </div>
-            )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 

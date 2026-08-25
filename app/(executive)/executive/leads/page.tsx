@@ -48,13 +48,21 @@ export default function ExecutiveLeadsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  const getStatusQuery = (filter: string) => {
+    if (filter === "ACCEPTED") return "ACCEPTED";
+    if (filter === "BIDDING") return "PENDING,QUOTED";
+    if (filter === "IN_PROGRESS") return "IN_PROGRESS,COMPLETED";
+    return "PENDING,QUOTED,ACCEPTED,IN_PROGRESS,COMPLETED";
+  };
 
   // React Query: Fetch Leads
   const {
     data: leadsData,
     isLoading: isLeadsLoading,
     refetch: refetchLeads
-  } = useExecutiveLeads({ page, limit, search, status: "PENDING,QUOTED" });
+  } = useExecutiveLeads({ page, limit, search, status: getStatusQuery(statusFilter) });
 
   const leads = leadsData?.leads || [];
   const total = (leadsData as any)?.total || (leadsData as any)?.count || leads.length || 0;
@@ -362,18 +370,48 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
         <div>
           <h2 className="text-2xl font-bold text-primary-navy">Lead Assignment</h2>
           <p className="text-neutral-muted text-sm mt-1">
-            Review unassigned service requests and manually allocate them to specific partners.
+            Review service requests, track quote acceptances, and assign partners.
           </p>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); }} className="w-full md:w-64 relative">
-          <Input
-            placeholder="Search leads..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-          <Search className="w-4 h-4 text-neutral-muted absolute left-3 top-1/2 -translate-y-1/2" />
-        </form>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          {/* Status Filter Tabs */}
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
+            <button
+              onClick={() => { setStatusFilter("ALL"); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "ALL" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+            >
+              All Active
+            </button>
+            <button
+              onClick={() => { setStatusFilter("ACCEPTED"); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${statusFilter === "ACCEPTED" ? "bg-emerald-600 text-white shadow-sm" : "text-emerald-700 hover:bg-emerald-50"}`}
+            >
+              Customer Accepted ✓
+            </button>
+            <button
+              onClick={() => { setStatusFilter("BIDDING"); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "BIDDING" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+            >
+              Bidding / Pending
+            </button>
+            <button
+              onClick={() => { setStatusFilter("IN_PROGRESS"); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "IN_PROGRESS" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+            >
+              In Progress / Done
+            </button>
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); setPage(1); }} className="w-full sm:w-56 relative">
+            <Input
+              placeholder="Search leads..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-white"
+            />
+            <Search className="w-4 h-4 text-neutral-muted absolute left-3 top-1/2 -translate-y-1/2" />
+          </form>
+        </div>
       </div>
 
       {isLeadsLoading ? (
@@ -513,8 +551,26 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     {/* Bids & Status */}
                     <TableCell className="min-w-[220px] align-top">
                       <div className="flex flex-col space-y-2">
-                        <span className={`inline-flex self-start px-2 py-0.5 rounded text-[10px] font-bold border ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-warning/10 text-warning-dark border-warning/20' : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'}`}>
-                          {lead.assignment?.assignedPartnerIds?.length > 0 ? (lead.bids?.length > 0 ? 'QUOTES RECEIVED' : 'BIDDING REQUESTED') : 'UNASSIGNED'}
+                        <span className={`inline-flex self-start px-2 py-0.5 rounded text-[10px] font-extrabold border ${
+                          lead.status === 'ACCEPTED' 
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300 animate-pulse' 
+                            : lead.status === 'IN_PROGRESS' 
+                            ? 'bg-blue-100 text-blue-800 border-blue-300' 
+                            : lead.status === 'COMPLETED' 
+                            ? 'bg-purple-100 text-purple-800 border-purple-300' 
+                            : lead.assignment?.assignedPartnerIds?.length > 0 
+                            ? 'bg-warning/10 text-warning-dark border-warning/20' 
+                            : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'
+                        }`}>
+                          {lead.status === 'ACCEPTED' 
+                            ? 'CUSTOMER ACCEPTED ✓' 
+                            : lead.status === 'IN_PROGRESS' 
+                            ? 'JOB IN PROGRESS 🔧' 
+                            : lead.status === 'COMPLETED' 
+                            ? 'JOB COMPLETED 🎉' 
+                            : lead.assignment?.assignedPartnerIds?.length > 0 
+                            ? (lead.bids?.length > 0 ? 'QUOTES RECEIVED' : 'BIDDING REQUESTED') 
+                            : 'UNASSIGNED'}
                         </span>
 
                         {lead.assignment?.assignedPartnerIds?.length > 0 && (
