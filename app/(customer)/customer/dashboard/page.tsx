@@ -498,6 +498,46 @@ export default function CustomerDashboardPage() {
         )}
       </div>
 
+      {/* Pending Executive Review Section */}
+      {bookings.filter(b => b.status === 'PENDING').length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <Clock className="w-5 h-5 mr-2 text-amber-500 animate-spin" />
+            Booking Request Submitted (Executive Review Pending ⏳)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bookings.filter(b => b.status === 'PENDING').map((booking) => (
+              <Card key={booking._id} className="bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-sm border-amber-200 hover:border-amber-400 hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">ID: {booking._id.substring(booking._id.length - 6).toUpperCase()}</p>
+                      <h3 className="font-bold text-gray-900 line-clamp-1">{typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service Request'}</h3>
+                    </div>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      PENDING REVIEW
+                    </span>
+                  </div>
+                  <div className="flex items-center text-sm text-gray-600 mb-3">
+                    <Car className="w-4 h-4 mr-2 text-amber-600" />
+                    <span className="line-clamp-1">{typeof booking.vehicleId === 'object' ? `${booking.vehicleId.brand} ${booking.vehicleId.model}` : 'Your Vehicle'}</span>
+                  </div>
+                  <p className="text-xs text-amber-900/80 bg-amber-100/60 p-2.5 rounded-md border border-amber-200/50 mb-3">
+                    ℹ️ Our executive team is currently reviewing your booking and collecting workshop quotes.
+                  </p>
+                  <Button asChild variant="outline" className="w-full border-amber-300 text-amber-900 hover:bg-amber-100 font-semibold text-xs">
+                    <Link href={`/customer/bookings/${booking._id}`}>
+                      View Request Details <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Pending Quotes Section */}
       {quotesWaiting.length > 0 && (
         <div className="mt-6">

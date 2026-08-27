@@ -434,11 +434,28 @@ export default function LeadDetailsPage() {
                           
                           <div className="flex items-start md:items-center flex-col md:flex-row md:space-x-4 mt-2">
                             <div>
-                              <p className="text-xs text-gray-500 font-semibold uppercase mb-0.5">Partner</p>
-                              <p className="text-sm font-medium text-gray-900">{typeof bid.partnerId === 'object' ? bid.partnerId?.businessName : "Unknown Partner"}</p>
-                              {bid.partnerId?.userId?.phone && (
-                                <p className="text-xs text-gray-500 mt-0.5 flex items-center">
-                                  <Phone className="w-3 h-3 mr-1" /> {bid.partnerId.userId.phone}
+                              <p className="text-xs text-gray-500 font-semibold uppercase mb-0.5">Partner Garage</p>
+                              <p className="text-sm font-bold text-gray-900">
+                                {typeof bid.partnerId === 'object' ? (bid.partnerId?.businessName || bid.partnerId?.ownerName) : (bid.businessName || bid.partnerName || "Partner Garage")}
+                              </p>
+                              {((typeof bid.partnerId === 'object' && (bid.partnerId?.phone || bid.partnerId?.userId?.phone)) || bid.phone) && (
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className="text-xs text-gray-600 font-medium flex items-center">
+                                    <Phone className="w-3 h-3 mr-1 text-primary-orange" />
+                                    {(typeof bid.partnerId === 'object' ? (bid.partnerId?.phone || bid.partnerId?.userId?.phone) : bid.phone)}
+                                  </span>
+                                  <a 
+                                    href={`tel:${(typeof bid.partnerId === 'object' ? (bid.partnerId?.phone || bid.partnerId?.userId?.phone) : bid.phone)}`}
+                                    className="text-[11px] font-bold text-primary-orange bg-orange-50 px-2 py-0.5 rounded border border-orange-200 hover:bg-orange-100 transition-colors"
+                                  >
+                                    Call Partner
+                                  </a>
+                                </div>
+                              )}
+                              {(bid.partnerId?.businessAddress || bid.businessAddress) && (
+                                <p className="text-xs text-gray-500 mt-1 flex items-center">
+                                  <MapPin className="w-3 h-3 mr-1 text-gray-400" />
+                                  {bid.partnerId?.businessAddress || bid.businessAddress}
                                 </p>
                               )}
                             </div>
@@ -448,15 +465,15 @@ export default function LeadDetailsPage() {
                             <div className="mt-3 md:mt-0">
                               <p className="text-xs text-gray-500 font-semibold uppercase mb-0.5">Duration</p>
                               <p className="text-sm font-medium text-gray-900 flex items-center">
-                                <Clock className="w-3 h-3 mr-1 text-gray-400" /> {bid.estimatedDuration || "N/A"}
+                                <Clock className="w-3 h-3 mr-1 text-gray-400" /> {bid.estimatedDuration || "1-2 hours"}
                               </p>
                             </div>
                           </div>
 
                           {bid.notes && (
-                            <div className="mt-4 bg-white/60 p-3 rounded-lg border border-gray-100 text-sm text-gray-700 italic flex items-start">
-                              <span className="text-xl leading-none text-gray-300 mr-2">&quot;</span>
-                              {bid.notes}
+                            <div className="mt-3 bg-slate-50 p-3 rounded-lg border border-slate-200/60 text-xs text-gray-700 italic flex items-start">
+                              <span className="font-bold text-primary-orange mr-1.5 font-mono">Note:</span>
+                              &quot;{bid.notes}&quot;
                             </div>
                           )}
                         </div>
