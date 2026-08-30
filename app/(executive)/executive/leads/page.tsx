@@ -432,6 +432,7 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                   <TableHead className="whitespace-nowrap font-semibold">Lead ID & Customer</TableHead>
                   <TableHead className="whitespace-nowrap font-semibold">Service Details</TableHead>
                   <TableHead className="whitespace-nowrap font-semibold">Location & Time</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold">Executive Owner</TableHead>
                   <TableHead className="whitespace-nowrap font-semibold">Bids & Status</TableHead>
                   <TableHead className="whitespace-nowrap font-semibold text-right">Actions</TableHead>
                 </TableRow>
@@ -544,6 +545,38 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                               <Button type="button" size="sm" variant="outline" onClick={() => setEditingLeadId(null)} className="flex-1 text-[10px] h-5 p-0">Cancel</Button>
                             </div>
                           </form>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Executive Owner & Claim Button */}
+                    <TableCell className="min-w-[150px] align-top">
+                      <div className="flex flex-col space-y-1.5">
+                        {lead.assignedExecutiveId ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                            👤 {lead.assignedExecutiveId?.fullName || "Executive"}
+                          </span>
+                        ) : (
+                          <div className="flex flex-col space-y-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              ⚠️ Unassigned
+                            </span>
+                            <Button
+                              size="sm"
+                              className="text-[10px] h-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-0"
+                              onClick={() => {
+                                assignMutation.mutate(
+                                  { id: lead._id, data: { notes: "Claimed by Executive" } },
+                                  {
+                                    onSuccess: () => toast.success("Lead claimed successfully!"),
+                                    onError: (err: any) => toast.error(err?.message || "Failed to claim lead.")
+                                  }
+                                );
+                              }}
+                            >
+                              <UserPlus className="w-3 h-3 mr-1" /> Claim Lead
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </TableCell>

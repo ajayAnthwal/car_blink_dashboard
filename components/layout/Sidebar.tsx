@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useCustomerBookings } from "@/features/customer/hooks/useCustomerQueries";
+import { useExecutiveLeads } from "@/features/executive/hooks/useExecutiveQueries";
 
 export function Sidebar({
   isCollapsed = false,
@@ -35,6 +36,10 @@ export function Sidebar({
 
   const { data: bookingsData } = useCustomerBookings();
   const customerBookings = bookingsData?.bookings || [];
+
+  const { data: execLeadsData } = useExecutiveLeads();
+  const execLeads = execLeadsData?.leads || [];
+  const pendingLeadsCount = execLeads.filter((l: any) => l.status === 'PENDING').length || execLeads.length || 0;
 
   const activeBooking = React.useMemo(() => {
     if (currentRole !== "CUSTOMER") return null;
@@ -95,13 +100,13 @@ export function Sidebar({
                       }`}
                     />
                     {!isCollapsed && <span className="ml-3 text-sm flex-1">{item.name}</span>}
-                    {item.badge && !isCollapsed && (
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm text-white ${item.badgeColor} shrink-0`}>
-                        {item.badge}
+                    {(item.badge || (item.name.includes('Leads') && (currentRole === 'EXECUTIVE' || currentRole === 'SUPER_ADMIN') && pendingLeadsCount > 0)) && !isCollapsed && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${item.name.includes('Leads') ? 'bg-red-500 animate-pulse' : item.badgeColor} shrink-0 ml-1`}>
+                        {item.name.includes('Leads') ? pendingLeadsCount : item.badge}
                       </span>
                     )}
-                    {item.badge && isCollapsed && (
-                      <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${item.badgeColor}`} />
+                    {(item.badge || (item.name.includes('Leads') && (currentRole === 'EXECUTIVE' || currentRole === 'SUPER_ADMIN') && pendingLeadsCount > 0)) && isCollapsed && (
+                      <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${item.name.includes('Leads') ? 'bg-red-500' : item.badgeColor}`} />
                     )}
                   </div>
                 </Link>
