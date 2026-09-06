@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote, Tag } from "lucide-react";
 import { PaymentCard } from "@/components/payment/PaymentCard";
+import { loadRazorpayScript } from "@/lib/razorpay";
+import { verifyPayment } from "@/lib/services";
 import { format } from "date-fns";
 
 export default function CustomerBookingDetailsPage() {
@@ -138,18 +140,64 @@ export default function CustomerBookingDetailsPage() {
     }
   };
 
-  const handleInitiatePayment = async (amount: number, type: string = "PARTIAL") => {
+  const handleInitiatePayment = async (amount: number, type: string = "ADVANCE") => {
     if (!booking) return;
     setIsExtensionProcessing(true);
+    setMessage({ type: "", text: "" });
     try {
+      const isScriptLoaded = await loadRazorpayScript();
+      if (!isScriptLoaded) {
+        throw new Error("Razorpay SDK failed to load. Please check your internet connection.");
+      }
+
       const payload: any = {
         bookingId: booking._id || booking.id,
         amount: amount,
         paymentType: type,
         useRewardPoints: useRewardPoints,
       };
-      await initiatePaymentMutation.mutateAsync(payload);
-      setMessage({ type: "success", text: "Payment initiated successfully! Redirecting to payment gateway..." });
+      if (couponCode.trim()) {
+        payload.couponCode = couponCode.trim();
+      }
+
+      const res = await initiatePaymentMutation.mutateAsync(payload);
+      const paymentData = res?.data || res;
+      const { orderId, amount: payAmount, currency, key } = paymentData;
+
+      const options = {
+        key,
+        amount: payAmount,
+        currency: currency || "INR",
+        name: "CarBlink Services",
+        description: `${type} Payment for Booking`,
+        order_id: orderId,
+        handler: async function (response: any) {
+          try {
+            await verifyPayment({
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id,
+              signature: response.razorpay_signature,
+            });
+            setMessage({ type: "success", text: "Payment successful!" });
+            refetchBooking();
+          } catch (err: any) {
+            setMessage({ type: "error", text: "Payment verification failed." });
+          }
+        },
+        prefill: {
+          name: "CarBlink Customer",
+          email: "customer@carblink.com",
+        },
+        theme: {
+          color: "#0a2540",
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", function (response: any) {
+        setMessage({ type: "error", text: response.error.description || "Payment failed" });
+      });
+      rzp.open();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to initiate payment." });
     } finally {
@@ -218,6 +266,7 @@ export default function CustomerBookingDetailsPage() {
   const vehicleName = typeof booking.vehicleId === 'object'
     ? `${booking.vehicleId?.brand || 'Premium'} ${booking.vehicleId?.model || 'Vehicle'}`
     : "Vehicle Requested";
+
 
   const isAdvancePaid = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS');
   const isAdvancePending = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'PENDING');
@@ -707,41 +756,90 @@ export default function CustomerBookingDetailsPage() {
                   )}
 
                   {(needsAdvance || remainingAmount > 0) && booking.status !== 'COMPLETED' && (
-                    <div className="flex items-center space-x-2 py-2 border-b border-gray-100">
+                    <div className="flex items-center space-x-2 py-2 border-b border-gray-100 mb-2">
                       <input 
                         type="checkbox" 
                         id="useRewardPoints" 
-                        className="w-4 h-4 text-primary-navy"
+                        className="w-4 h-4 text-primary-navy cursor-pointer"
                         checked={useRewardPoints}
                         onChange={(e) => setUseRewardPoints(e.target.checked)}
                       />
-                      <label htmlFor="useRewardPoints" className="text-sm font-medium text-gray-700 cursor-pointer">
+                      <label htmlFor="useRewardPoints" className="text-xs font-medium text-gray-700 cursor-pointer">
                         Use my Reward Points for discount
                       </label>
                     </div>
                   )}
 
+                  {/* Clear Payment Stage Notice */}
+                  {remainingAmount > 0 && (
+                    <div className="p-3 rounded-xl border text-xs font-semibold flex items-center justify-between bg-blue-50/60 border-blue-200 text-primary-navy mb-4">
+                      <span className="flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-primary-orange flex-shrink-0" />
+                        {booking.status === 'COMPLETED' 
+                          ? "Job Completed — Pay Final Remaining Settlement"
+                          : hasPaidAdvance 
+                            ? "Advance Paid — Balance due after service completion"
+                            : "Advance Token required to confirm pickup & start service"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* If Advance is needed (Before Completion) */}
                   {needsAdvance && (
-                    <Button className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingForAdvance, "ADVANCE")} isLoading={isExtensionProcessing}>
-                      Pay Advance (₹{remainingForAdvance})
-                    </Button>
+                    <div className="space-y-3">
+                      <Button 
+                        className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold flex items-center justify-center shadow-md transition-all text-sm" 
+                        onClick={() => handleInitiatePayment(remainingForAdvance, "ADVANCE")} 
+                        isLoading={isExtensionProcessing}
+                      >
+                        <IndianRupee className="w-4 h-4 mr-1.5" /> Pay Advance Token (₹{remainingForAdvance.toLocaleString('en-IN')})
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="w-full border-primary-navy/20 hover:bg-primary-navy/5 text-primary-navy rounded-xl py-5 font-semibold text-xs" 
+                        onClick={() => handleInitiatePayment(remainingAmount, "FULL")} 
+                        isLoading={isExtensionProcessing}
+                      >
+                        Pay Full Amount Upfront (₹{remainingAmount.toLocaleString('en-IN')})
+                      </Button>
+                    </div>
                   )}
 
-                  {remainingAmount > 0 && !needsAdvance && !needsFinal && booking.status !== 'COMPLETED' && (
-                    <Button className="w-full bg-primary-orange hover:bg-primary-orange/90 text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingAmount, "PARTIAL")} isLoading={isExtensionProcessing}>
-                      Pay Additional Charges (₹{remainingAmount})
-                    </Button>
+                  {/* If Advance already paid and service still in progress */}
+                  {remainingAmount > 0 && !needsAdvance && booking.status !== 'COMPLETED' && (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 font-medium flex items-center gap-2">
+                        <Clock className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                        <span>Advance payment received. Remaining ₹{remainingAmount.toLocaleString('en-IN')} is payable after service completion.</span>
+                      </div>
+                      <Button 
+                        variant="outline"
+                        className="w-full border-primary-navy/20 hover:bg-primary-navy/5 text-primary-navy rounded-xl py-5 font-semibold text-xs" 
+                        onClick={() => handleInitiatePayment(remainingAmount, "FULL")} 
+                        isLoading={isExtensionProcessing}
+                      >
+                        Pay Remaining Balance Now (₹{remainingAmount.toLocaleString('en-IN')})
+                      </Button>
+                    </div>
                   )}
 
+                  {/* If Job is COMPLETED and Final Bill is pending */}
                   {needsFinal && (
-                    <Button className="w-full bg-success hover:bg-success/90 text-white rounded-xl py-6 font-bold" onClick={() => handleInitiatePayment(remainingAmount, "FINAL")} isLoading={isExtensionProcessing}>
-                      Pay Final Bill (₹{remainingAmount})
-                    </Button>
+                    <div className="space-y-2">
+                      <Button 
+                        className="w-full bg-success hover:bg-success/90 text-white rounded-xl py-6 font-extrabold flex items-center justify-center shadow-lg text-sm" 
+                        onClick={() => handleInitiatePayment(remainingAmount, "FINAL")} 
+                        isLoading={isExtensionProcessing}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" /> Pay Final Settlement (₹{remainingAmount.toLocaleString('en-IN')})
+                      </Button>
+                    </div>
                   )}
 
+                  {/* Fully Paid */}
                   {remainingAmount === 0 && (
-                    <div className="bg-success/10 text-success text-center py-3 rounded-xl font-bold flex items-center justify-center">
-                      <CheckCircle2 className="w-5 h-5 mr-2" /> Fully Paid
+                    <div className="bg-success/10 text-success text-center py-4 rounded-xl font-extrabold flex items-center justify-center border border-success/20 text-sm">
+                      <CheckCircle2 className="w-5 h-5 mr-2" /> All Payments Settled & Completed
                     </div>
                   )}
                 </div>

@@ -39,7 +39,7 @@ export default function PaymentsPage() {
 
   const [bookingId, setBookingId] = useState("");
   const [amount, setAmount] = useState("");
-  const [paymentType, setPaymentType] = useState("PARTIAL");
+  const [paymentType, setPaymentType] = useState("ADVANCE");
   const [couponCode, setCouponCode] = useState("");
   const [useRewardPoints, setUseRewardPoints] = useState(false);
   
@@ -86,8 +86,8 @@ export default function PaymentsPage() {
   const getTypeLabel = (type: string) => {
     switch (type?.toUpperCase()) {
       case "ADVANCE": return "Advance";
+      case "FINAL": return "Final Payment";
       case "FULL": return "Full Payment";
-      case "PARTIAL": return "Partial";
       default: return type;
     }
   };
@@ -144,9 +144,9 @@ export default function PaymentsPage() {
                 value={paymentType}
                 onChange={(e) => setPaymentType(e.target.value)}
                 options={[
-                  { value: "ADVANCE", label: "Advance" },
+                  { value: "ADVANCE", label: "Advance Payment" },
+                  { value: "FINAL", label: "Final Payment" },
                   { value: "FULL", label: "Full Payment" },
-                  { value: "PARTIAL", label: "Partial" },
                 ]}
                 required
               />

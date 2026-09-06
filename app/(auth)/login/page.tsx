@@ -43,16 +43,19 @@ function LoginContent() {
     if (!tokenToUse && typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       tokenToUse = urlParams.get('token');
+      if (!tokenToUse) {
+        tokenToUse = window.localStorage.getItem("car_blink_access_token");
+      }
     }
 
     if (tokenToUse) {
       setIsLoading(true);
       setApiAccessToken(tokenToUse);
       if (typeof window !== "undefined") {
-        const expires = new Date(Date.now() + 7 * 864e5).toUTCString();
+        const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
         window.localStorage.setItem("car_blink_access_token", tokenToUse);
-        document.cookie = `car_blink_access_token=${encodeURIComponent(tokenToUse)}; path=/; expires=${expires}`;
-        document.cookie = `accessToken=${encodeURIComponent(tokenToUse)}; path=/; expires=${expires}`;
+        document.cookie = `car_blink_access_token=${encodeURIComponent(tokenToUse)}; path=/; expires=${expires}; SameSite=Lax`;
+        document.cookie = `accessToken=${encodeURIComponent(tokenToUse)}; path=/; expires=${expires}; SameSite=Lax`;
       }
       
       getCurrentUserProfile()
@@ -61,6 +64,10 @@ function LoginContent() {
           if (!resolvedUser || !resolvedUser.role) {
             console.error("SSO User resolution failed. Received payload:", JSON.stringify(res));
             throw new Error("Invalid user profile response");
+          }
+          if (typeof window !== "undefined") {
+            const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
+            document.cookie = `role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax`;
           }
           await login(resolvedUser, tokenToUse, tokenToUse);
           const route = ROLE_ROUTES[resolvedUser.role] || "/customer/dashboard";
@@ -71,10 +78,16 @@ function LoginContent() {
           }
         })
         .catch((err) => {
-          console.error("SSO Login Error:", err);
+          console.error("SSO Login Error / Invalid local token:", err);
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem("car_blink_access_token");
+            window.localStorage.removeItem("car_blink_refresh_token");
+            document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            document.cookie = "car_blink_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            document.cookie = "role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          }
           setApiAccessToken(null);
           setIsLoading(false);
-          setError("Session expired or invalid. Please login again.");
         });
     }
   }, [ssoToken, login, router]);

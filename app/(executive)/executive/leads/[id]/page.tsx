@@ -25,7 +25,8 @@ import {
   CheckCircle,
   Share,
   ClipboardList,
-  ExternalLink
+  ExternalLink,
+  FileText
 } from "lucide-react";
 
 export default function LeadDetailsPage() {

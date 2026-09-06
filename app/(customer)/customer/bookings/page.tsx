@@ -167,7 +167,7 @@ export default function BookingsPage() {
       const res = await initiatePaymentMutation.mutateAsync({
         bookingId: selectedBooking._id,
         amount: ext.cost,
-        paymentType: "EXTENSION",
+        paymentType: "FINAL",
         extensionId: ext._id
       } as any);
       if (res && res.clientSecret) {
