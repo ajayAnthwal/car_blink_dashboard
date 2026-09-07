@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -11,8 +11,8 @@ import { ROLE_ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AuthLayout from "@/components/layout/AuthLayout";
-import { ArrowRight, LogIn, Eye, EyeOff } from "lucide-react";
-import { Suspense } from "react";
+import GoogleButton from "@/components/ui/GoogleButton";
+import { LogIn, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 function LoginContent() {
   const router = useRouter();
@@ -39,37 +39,38 @@ function LoginContent() {
   }, [user, ssoToken, router]);
 
   useEffect(() => {
-    let tokenToUse = ssoToken;
-    if (!tokenToUse && typeof window !== "undefined") {
+    let tokenFromUrl = ssoToken;
+    if (!tokenFromUrl && typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      tokenToUse = urlParams.get('token');
-      if (!tokenToUse) {
-        tokenToUse = window.localStorage.getItem("car_blink_access_token");
-      }
+      tokenFromUrl = urlParams.get('token');
     }
 
-    if (tokenToUse) {
-      setIsLoading(true);
-      setApiAccessToken(tokenToUse);
+    if (tokenFromUrl) {
+      // FRESH SSO EXCHANGE: Purge any old stale token from previous session
       if (typeof window !== "undefined") {
-        const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
-        window.localStorage.setItem("car_blink_access_token", tokenToUse);
-        document.cookie = `car_blink_access_token=${encodeURIComponent(tokenToUse)}; path=/; expires=${expires}; SameSite=Lax`;
-        document.cookie = `accessToken=${encodeURIComponent(tokenToUse)}; path=/; expires=${expires}; SameSite=Lax`;
+        window.localStorage.removeItem("car_blink_access_token");
+        window.localStorage.removeItem("car_blink_refresh_token");
+      }
+      setIsLoading(true);
+      setApiAccessToken(tokenFromUrl);
+
+      const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("car_blink_access_token", tokenFromUrl);
+        document.cookie = `car_blink_access_token=${encodeURIComponent(tokenFromUrl)}; path=/; expires=${expires}; SameSite=Lax`;
+        document.cookie = `accessToken=${encodeURIComponent(tokenFromUrl)}; path=/; expires=${expires}; SameSite=Lax`;
       }
       
       getCurrentUserProfile()
         .then(async (res) => {
           const resolvedUser = res?.role ? res : (res?.data?.role ? res.data : (res?.data || res?.user || res));
           if (!resolvedUser || !resolvedUser.role) {
-            console.error("SSO User resolution failed. Received payload:", JSON.stringify(res));
             throw new Error("Invalid user profile response");
           }
           if (typeof window !== "undefined") {
-            const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
             document.cookie = `role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax`;
           }
-          await login(resolvedUser, tokenToUse, tokenToUse);
+          await login(resolvedUser, tokenFromUrl, tokenFromUrl);
           const route = ROLE_ROUTES[resolvedUser.role] || "/customer/dashboard";
           if (typeof window !== "undefined") {
             window.location.href = route;
@@ -78,7 +79,7 @@ function LoginContent() {
           }
         })
         .catch((err) => {
-          console.error("SSO Login Error / Invalid local token:", err);
+          console.error("SSO Login Error:", err);
           if (typeof window !== "undefined") {
             window.localStorage.removeItem("car_blink_access_token");
             window.localStorage.removeItem("car_blink_refresh_token");
@@ -89,8 +90,18 @@ function LoginContent() {
           setApiAccessToken(null);
           setIsLoading(false);
         });
+    } else {
+      // No token parameter in URL: check if valid user already authenticated
+      if (user && user.role) {
+        const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
+        if (typeof window !== "undefined") {
+          window.location.href = targetRoute;
+        } else {
+          router.push(targetRoute);
+        }
+      }
     }
-  }, [ssoToken, login, router]);
+  }, [ssoToken, user, login, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +148,18 @@ function LoginContent() {
         </div>
         <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight mb-2">Welcome Back</h2>
         <p className="text-gray-500 text-sm">Enter your credentials to access your account</p>
+      </div>
+
+      <div className="mb-6">
+        <GoogleButton text="Continue with Google" />
+        <div className="relative my-6 text-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200" />
+          </div>
+          <span className="relative bg-white px-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+            or sign in with email
+          </span>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">

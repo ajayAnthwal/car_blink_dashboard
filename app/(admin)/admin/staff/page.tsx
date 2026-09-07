@@ -8,7 +8,7 @@ import {
   useCreateAdminStaffMutation 
 } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, UserCheck, Plus, ShieldCheck } from "lucide-react";
+import { Loader2, UserCheck, Plus, ShieldCheck, Eye, EyeOff } from "lucide-react";
 
 export default function AdminStaffPage() {
   const { data: staffData, isLoading: isStaffLoading } = useAdminStaff();
@@ -23,6 +23,7 @@ export default function AdminStaffPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [customRoleId, setCustomRoleId] = useState("");
 
   const createStaffMutation = useCreateAdminStaffMutation();
@@ -111,13 +112,22 @@ export default function AdminStaffPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Temporary Password</label>
-                  <input 
-                    type="password" 
-                    placeholder="••••••••"
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-navy text-sm"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-navy text-sm pr-10"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Assign Role</label>

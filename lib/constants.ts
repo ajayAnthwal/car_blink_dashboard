@@ -14,6 +14,7 @@ export const ROLE_ROUTES: Record<string, string> = {
   [ROLES.EXECUTIVE]: "/executive/dashboard",
   [ROLES.ACCOUNTS]: "/accounts/dashboard",
   [ROLES.SUPER_ADMIN]: "/admin/dashboard",
+  ADMIN: "/admin/dashboard",
 };
 
 export const CUSTOMER_ROUTES = {

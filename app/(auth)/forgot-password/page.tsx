@@ -18,21 +18,62 @@ export default function ForgotPasswordPage() {
   
   const router = useRouter();
 
+  const handleInputChange = (val: string) => {
+    setError("");
+    const isEmail = val.includes("@");
+    if (!isEmail && /^\d+$/.test(val)) {
+      if (val.length > 10) {
+        val = val.slice(0, 10);
+      }
+    }
+    setIdentifier(val);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    const rawInput = identifier.trim();
+    if (!rawInput) {
+      setError("Please enter your email or phone number.");
+      return;
+    }
+
+    const isEmail = rawInput.includes('@');
+
+    if (isEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(rawInput)) {
+        setError("Please enter a valid email address (e.g. name@example.com)");
+        return;
+      }
+    } else {
+      if (/[^\d]/.test(rawInput)) {
+        setError("Mobile number must contain digits only (10 digits required) or enter a valid email address");
+        return;
+      }
+      if (rawInput.length !== 10) {
+        setError("Mobile number must be exactly 10 digits (e.g. 9876543210)");
+        return;
+      }
+      const phoneRegex = /^[6-9]\d{9}$/;
+      if (!phoneRegex.test(rawInput)) {
+        setError("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9");
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
-      const res = await forgotPassword({ identifier });
+      const res = await forgotPassword({ identifier: rawInput });
       const serverMsg = res?.data?.message || res?.message || "Reset code has been sent.";
       setSuccess(serverMsg);
       
-      // Navigate to reset password after brief delay
       setTimeout(() => {
-        router.push(`/reset-password?identifier=${encodeURIComponent(identifier)}`);
-      }, 2500);
+        router.push(`/reset-password?identifier=${encodeURIComponent(rawInput)}`);
+      }, 1500);
     } catch (err: unknown) {
       setError((err as { message?: string })?.message || "Something went wrong. Please try again.");
     } finally {
@@ -70,7 +111,7 @@ export default function ForgotPasswordPage() {
             type="text"
             placeholder="e.g. user@example.com"
             value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
             required
             className="h-12 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
           />

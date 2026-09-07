@@ -94,12 +94,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const storedAccessToken = 
-          localStorage.getItem("car_blink_access_token") || 
-          Cookies.get("accessToken") || 
-          Cookies.get("car_blink_access_token") || 
-          Cookies.get("carBlink_token") || 
-          "";
+        const cookieToken = Cookies.get("accessToken") || Cookies.get("car_blink_access_token") || Cookies.get("carBlink_token");
+        const localToken = localStorage.getItem("car_blink_access_token");
+        const storedAccessToken = cookieToken || localToken || "";
+        if (cookieToken && cookieToken !== localToken) {
+          localStorage.setItem("car_blink_access_token", cookieToken);
+        }
         const storedRefreshToken = localStorage.getItem("car_blink_refresh_token") || Cookies.get("refreshToken") || "";
 
         if (storedAccessToken) {

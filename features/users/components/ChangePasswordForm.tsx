@@ -8,7 +8,7 @@ import { changePassword } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Lock, Key } from "lucide-react";
+import { Lock, Key, Eye, EyeOff } from "lucide-react";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -24,6 +24,9 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
 export function ChangePasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const {
     register,
@@ -76,34 +79,61 @@ export function ChangePasswordForm() {
           
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5">Current Password</label>
-            <Input
-              type="password"
-              {...register("currentPassword")}
-              required
-              className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange"
-            />
+            <div className="relative">
+              <Input
+                type={showCurrent ? "text" : "password"}
+                {...register("currentPassword")}
+                required
+                className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrent(!showCurrent)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             {errors.currentPassword && <p className="text-red-500 text-xs mt-1">{errors.currentPassword.message}</p>}
           </div>
           
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5"><Key className="w-4 h-4 text-neutral-muted" /> New Password</label>
-            <Input
-              type="password"
-              {...register("newPassword")}
-              required
-              className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange"
-            />
+            <div className="relative">
+              <Input
+                type={showNew ? "text" : "password"}
+                {...register("newPassword")}
+                required
+                className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             {errors.newPassword && <p className="text-red-500 text-xs mt-1">{errors.newPassword.message}</p>}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-neutral-dark flex items-center gap-1.5"><Key className="w-4 h-4 text-neutral-muted" /> Confirm New Password</label>
-            <Input
-              type="password"
-              {...register("confirmNewPassword")}
-              required
-              className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange"
-            />
+            <div className="relative">
+              <Input
+                type={showConfirm ? "text" : "password"}
+                {...register("confirmNewPassword")}
+                required
+                className="bg-neutral-white border-neutral-muted/40 focus:border-primary-orange pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             {errors.confirmNewPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmNewPassword.message}</p>}
           </div>
           
