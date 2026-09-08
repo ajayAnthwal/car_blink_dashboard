@@ -19,7 +19,7 @@ import { roleConfig } from "@/lib/roleConfig";
 import { Sidebar } from "./Sidebar";
 import { usePathname } from "next/navigation";
 
-import { getNotifications, markAllNotificationsAsRead } from "@/lib/services";
+import { getNotifications, markAllNotificationsAsRead, markNotificationAsRead } from "@/lib/services";
 import { useSocket } from "@/lib/SocketContext";
 import { formatDistanceToNow } from "date-fns";
 import { getNotificationTargetLink } from "@/components/notifications/NotificationDetailsModal";
@@ -42,40 +42,84 @@ export function Header() {
   const { socket } = useSocket();
   const [notifications, setNotifications] = React.useState<any[]>([]);
 
+  const fetchNotifications = React.useCallback(async () => {
+    try {
+      const res = await getNotifications();
+      const docs = Array.isArray(res) ? res : (res?.notifications || res?.docs || res?.data || []);
+      setNotifications(docs);
+    } catch (err) {
+      console.error("Failed to load notifications in header", err);
+    }
+  }, []);
+
   React.useEffect(() => {
     if (user) {
       fetchNotifications();
+      // Poll every 10s for live notification updates
+      const interval = setInterval(fetchNotifications, 10000);
+      return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, fetchNotifications]);
+
+  React.useEffect(() => {
+    const handleCustomUpdate = () => {
+      fetchNotifications();
+    };
+    window.addEventListener("notifications-updated", handleCustomUpdate);
+    return () => {
+      window.removeEventListener("notifications-updated", handleCustomUpdate);
+    };
+  }, [fetchNotifications]);
 
   React.useEffect(() => {
     if (!socket) return;
 
     const handleNewNotification = (payload: any) => {
       setNotifications(prev => [payload, ...prev]);
+      fetchNotifications();
     };
 
     socket.on("notification:new", handleNewNotification);
+    socket.on("new_notification", handleNewNotification);
+    socket.on("notification_received", handleNewNotification);
 
     return () => {
       socket.off("notification:new", handleNewNotification);
+      socket.off("new_notification", handleNewNotification);
+      socket.off("notification_received", handleNewNotification);
     };
-  }, [socket]);
+  }, [socket, fetchNotifications]);
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await getNotifications();
-      const docs = Array.isArray(res) ? res : (res?.docs || res?.data || []);
-      setNotifications(docs.slice(0, 5)); // Show top 5 in dropdown
-    } catch (err) {
-      console.error("Failed to load notifications in header", err);
+  const handleNotificationItemClick = async (notif: any) => {
+    const notifId = notif._id || notif.id;
+    if (notifId && !notif.isRead) {
+      // 1. Instantly update local state so badge count decreases right away
+      setNotifications((prev) =>
+        prev.map((n) =>
+          (n._id === notifId || n.id === notifId) ? { ...n, isRead: true } : n
+        )
+      );
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("notifications-updated"));
+      }
+      // 2. Sync with database
+      try {
+        await markNotificationAsRead(notifId);
+      } catch (err) {
+        console.error("Failed to mark notification as read", err);
+      }
     }
   };
 
   const handleMarkAllRead = async () => {
+    // 1. Instantly update local state so badge drops to 0 right away
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("notifications-updated"));
+    }
+    // 2. Sync with database
     try {
       await markAllNotificationsAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch (err) {
       console.error("Failed to mark all as read", err);
     }
@@ -174,8 +218,8 @@ export function Header() {
 
         {/* Quick Book Button for Customer */}
         {currentRole === "CUSTOMER" && (
-          <Link href="/customer/bookings" className="hidden md:flex items-center space-x-2 px-4 py-2 bg-[#F97316] text-white rounded-lg hover:bg-[#EA580C] shadow-sm transition-all duration-200 font-semibold text-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          <Link href="/customer/bookings/new" className="hidden md:flex items-center space-x-2 px-4 py-2 bg-[#F97316] text-white rounded-lg hover:bg-[#EA580C] shadow-sm transition-all duration-200 font-semibold text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
             <span>Book Service</span>
           </Link>
         )}
@@ -213,6 +257,7 @@ export function Header() {
                       <Link
                         key={notif._id || notif.id || Math.random()}
                         href={targetLink?.href || (currentRole === 'SUPER_ADMIN' ? '/admin/notifications' : `/${currentRole.toLowerCase()}/notifications`)}
+                        onClick={() => handleNotificationItemClick(notif)}
                         className={`p-4 border-b border-gray-50 hover:bg-gray-50/80 transition-colors duration-200 block group ${notif.isRead ? 'opacity-70' : `${config.accentBgColor}/5`}`}
                       >
                         <div className="flex justify-between items-start mb-1">
@@ -246,12 +291,14 @@ export function Header() {
           {/* User Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none">
-                <Avatar className="h-9 w-9 md:h-10 md:w-10 border-2 border-white cursor-pointer hover:ring-2 hover:ring-gray-100 transition-all duration-200 shadow-md">
-                  <AvatarImage src={(user as any)?.profileImage || ""} alt={user?.fullName || "User"} className="object-cover" />
-                  <AvatarFallback className="bg-primary-orange text-white flex items-center justify-center">
-                    <UserIcon className="w-5 h-5" />
-                  </AvatarFallback>
-                </Avatar>
+              <Avatar className="h-9 w-9 md:h-10 md:w-10 border-2 border-white cursor-pointer hover:ring-2 hover:ring-gray-100 transition-all duration-200 shadow-md">
+                {((user as any)?.profileImage || (user as any)?.avatar) && (
+                  <AvatarImage src={(user as any)?.profileImage || (user as any)?.avatar} alt={user?.fullName || "User"} className="object-cover" />
+                )}
+                <AvatarFallback className={`${config.accentBgColor} text-white font-bold text-sm flex items-center justify-center`}>
+                  {(user?.fullName?.trim() || "User").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl shadow-elevated border-gray-100">
               <div className="p-4 border-b border-gray-50 flex flex-col space-y-1">

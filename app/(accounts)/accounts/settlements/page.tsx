@@ -28,6 +28,7 @@ export default function SettlementsPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [securityPin, setSecurityPin] = useState("");
   const [showProcessFor, setShowProcessFor] = useState<string | null>(null);
+  const [processItem, setProcessItem] = useState<any>(null);
   const [selectedSettlement, setSelectedSettlement] = useState<any>(null); // For details modal
 
   const [reconFile, setReconFile] = useState<File | null>(null);
@@ -246,7 +247,7 @@ export default function SettlementsPage() {
                             <Button 
                               size="sm" 
                               className="bg-primary-navy hover:bg-primary-navy-light shadow-sm"
-                              onClick={() => setShowProcessFor(settlement._id)}
+                              onClick={() => { setShowProcessFor(settlement._id); setProcessItem(settlement); }}
                             >
                               <ArrowRightCircle className="w-4 h-4 mr-1" /> Process
                             </Button>
@@ -298,23 +299,27 @@ export default function SettlementsPage() {
       {/* Details Modal Overlay */}
       {selectedSettlement && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-xl">
-            <CardHeader className="border-b pb-4 mb-4">
-              <CardTitle className="text-lg">Settlement Details</CardTitle>
+          <Card className="w-full max-w-lg shadow-xl bg-white rounded-2xl overflow-hidden">
+            <CardHeader className="border-b pb-4 bg-gray-50/50">
+              <CardTitle className="text-lg font-bold text-gray-900">Settlement & Partner Bank Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-4">
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm border-b pb-2">
-                  <span className="text-gray-500">Partner Name</span>
-                  <span className="font-semibold">{selectedSettlement.partnerId?.businessName || 'N/A'}</span>
+                  <span className="text-gray-500">Partner Business</span>
+                  <span className="font-semibold text-gray-900">{selectedSettlement.partnerId?.businessName || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b pb-2">
                   <span className="text-gray-500">Customer Name</span>
-                  <span className="font-semibold">{selectedSettlement.jobId?.bookingId?.customerId?.fullName || 'N/A'}</span>
+                  <span className="font-semibold text-gray-900">{selectedSettlement.jobId?.bookingId?.customerId?.fullName || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b pb-2">
                   <span className="text-gray-500">Final Booking Amount</span>
-                  <span className="font-semibold text-primary-navy">₹{selectedSettlement.jobId?.finalAmount || selectedSettlement.grossAmount || 0}</span>
+                  <span className="font-bold text-primary-navy">₹{selectedSettlement.jobId?.finalAmount || selectedSettlement.grossAmount || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm border-b pb-2">
+                  <span className="text-gray-500">Net Partner Payout</span>
+                  <span className="font-extrabold text-emerald-600 text-base">₹{selectedSettlement.netPayoutAmount || 0}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b pb-2">
                   <span className="text-gray-500">Payment Mode</span>
@@ -322,12 +327,34 @@ export default function SettlementsPage() {
                     {selectedSettlement.jobId?.bookingId?.paymentMode || 'ONLINE'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-sm">
+                <div className="flex justify-between items-center text-sm border-b pb-2">
                   <span className="text-gray-500">Status</span>
-                  <span className="font-semibold">{selectedSettlement.status}</span>
+                  <span className="font-bold text-amber-600">{selectedSettlement.status}</span>
                 </div>
               </div>
-              <div className="flex justify-end pt-4">
+
+              {/* Partner Registered Bank Details */}
+              <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Registered Partner Bank Account</h4>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500">A/C Holder:</span>
+                  <span className="font-semibold text-gray-900">{selectedSettlement.partnerId?.bankDetails?.accountHolderName || selectedSettlement.partnerId?.businessName || 'Not Updated'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500">Account Number:</span>
+                  <span className="font-mono font-bold text-gray-900">{selectedSettlement.partnerId?.bankDetails?.accountNumber || 'Not Updated'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500">IFSC Code:</span>
+                  <span className="font-mono font-bold text-gray-900">{selectedSettlement.partnerId?.bankDetails?.ifscCode || 'Not Updated'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500">Bank Name:</span>
+                  <span className="font-semibold text-gray-900">{selectedSettlement.partnerId?.bankDetails?.bankName || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
                 <Button onClick={() => setSelectedSettlement(null)}>Close</Button>
               </div>
             </CardContent>
@@ -338,38 +365,69 @@ export default function SettlementsPage() {
       {/* Process Modal Overlay */}
       {showProcessFor && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-xl">
-            <CardHeader>
-              <CardTitle>Process Settlement (RazorpayX)</CardTitle>
+          <Card className="w-full max-w-lg shadow-xl bg-white rounded-2xl overflow-hidden">
+            <CardHeader className="border-b bg-gray-50/50 pb-4">
+              <CardTitle className="text-lg font-bold text-gray-900">Process Settlement (RazorpayX Payout)</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-primary-navy/5 border border-primary-navy/10 rounded-lg">
-                <p className="text-sm text-primary-navy/80 font-medium leading-relaxed">
-                  This will automatically deduct funds from your RazorpayX account and transfer them to the partner's registered bank account.
-                </p>
+            <CardContent className="space-y-4 pt-4">
+              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-blue-800 leading-relaxed">
+                Review the partner's bank details and payout amount below before entering your Security PIN to initiate automatic transfer.
               </div>
+
+              {/* Bank Details & Payout Summary */}
+              {processItem && (
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-2.5">
+                  <div className="flex justify-between items-center text-xs pb-1 border-b border-gray-200">
+                    <span className="text-gray-500 font-medium">Partner Name:</span>
+                    <span className="font-bold text-gray-900">{processItem.partnerId?.businessName || 'Partner'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs pb-1 border-b border-gray-200">
+                    <span className="text-gray-500 font-medium">Net Payout Amount:</span>
+                    <span className="font-extrabold text-emerald-600 text-base">₹{Number(processItem.netPayoutAmount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 font-medium">A/C Holder Name:</span>
+                    <span className="font-semibold text-gray-900">{processItem.partnerId?.bankDetails?.accountHolderName || processItem.partnerId?.businessName || 'Not Updated'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 font-medium">Account Number:</span>
+                    <span className="font-mono font-bold text-gray-900">{processItem.partnerId?.bankDetails?.accountNumber || 'Not Updated'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 font-medium">IFSC Code:</span>
+                    <span className="font-mono font-bold text-gray-900">{processItem.partnerId?.bankDetails?.ifscCode || 'Not Updated'}</span>
+                  </div>
+                  {processItem.partnerId?.bankDetails?.bankName && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 font-medium">Bank Name:</span>
+                      <span className="font-semibold text-gray-900">{processItem.partnerId?.bankDetails?.bankName}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Input
                 label="Security PIN"
                 type="password"
                 placeholder="Enter 4-digit PIN"
                 value={securityPin}
                 onChange={(e) => setSecurityPin(e.target.value)}
-                maxLength={4}
+                maxLength={6}
                 required
               />
               <div className="flex justify-end space-x-3 pt-2">
-                <Button variant="outline" onClick={() => { setShowProcessFor(null); setSecurityPin(""); }}>
+                <Button variant="outline" onClick={() => { setShowProcessFor(null); setProcessItem(null); setSecurityPin(""); }}>
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleProcess}
                   isLoading={actionId === showProcessFor}
                   disabled={!securityPin || securityPin.length < 4}
+                  className="bg-primary-navy hover:bg-primary-navy/90 text-white font-bold"
                 >
                   Initiate Automatic Payout
                 </Button>
-              </div>
-            </CardContent>
+              </div></CardContent>
           </Card>
         </div>
       )}

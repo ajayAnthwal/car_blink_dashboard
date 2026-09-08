@@ -1,12 +1,13 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Star, Loader2, MessageSquare } from "lucide-react";
+import { Star, Loader2, MessageSquare, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCustomerBookings, useCustomerReviews, useCreateReviewMutation } from "@/features/customer/hooks/useCustomerQueries";
 
 interface Review {
@@ -43,6 +44,35 @@ export default function MyReviewsPage() {
   const [rating, setRating] = useState("5");
   const [comment, setComment] = useState("");
   const [message, setMessage] = useState({ type: "", text: "" });
+
+  // Search & Pagination State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
+  const filteredReviews = reviews.filter((r) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const serviceName = r.bookingId?.serviceId?.name || "";
+    const vehicle = `${r.bookingId?.vehicleId?.brand || ""} ${r.bookingId?.vehicleId?.model || ""}`;
+    const commentText = r.comment || "";
+    return (
+      serviceName.toLowerCase().includes(q) ||
+      vehicle.toLowerCase().includes(q) ||
+      commentText.toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredReviews.length / ITEMS_PER_PAGE) || 1;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [filteredReviews.length, totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedReviews = filteredReviews.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +131,7 @@ export default function MyReviewsPage() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-3 text-xl">
             <div className="bg-orange-50 p-2 rounded-xl text-primary-orange">
-              <Star className="w-5 h-5" />
+              <MessageSquare className="w-5 h-5" />
             </div>
             <span>Write a Review</span>
           </CardTitle>
@@ -113,10 +143,13 @@ export default function MyReviewsPage() {
                 label="Select Completed Booking"
                 value={bookingId}
                 onChange={(e) => setBookingId(e.target.value)}
-                options={bookings.map(b => ({ 
-                  value: b._id, 
-                  label: `${b.vehicleId?.brand} ${b.vehicleId?.model} - ${b.serviceId?.name}` 
-                }))}
+                options={[
+                  { value: "", label: "-- Select a completed booking --" },
+                  ...bookings.map((b) => ({
+                    value: b._id,
+                    label: `${b.serviceId?.name || "Service"} (${b.vehicleId?.brand} ${b.vehicleId?.model})`,
+                  })),
+                ]}
                 disabled={bookings.length === 0}
                 required
               />
@@ -159,46 +192,118 @@ export default function MyReviewsPage() {
 
       {/* Reviews List */}
       <div>
-        <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight mb-5">Past Reviews ({reviews.length})</h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
+          <h3 className="text-2xl font-bold text-gray-900 font-heading tracking-tight">
+            Past Reviews ({reviews.length})
+          </h3>
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              placeholder="Search reviews..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-9 h-10 rounded-xl bg-white border-gray-200 text-sm"
+            />
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center">
             <Loader2 className="w-8 h-8 text-primary-orange animate-spin mx-auto mb-3" />
             <p className="text-gray-500 font-medium">Loading reviews...</p>
           </div>
-        ) : reviews.length === 0 ? (
+        ) : filteredReviews.length === 0 ? (
           <div className="bg-white/80 backdrop-blur-md p-12 rounded-3xl shadow-sm border border-white/40 text-center flex flex-col items-center justify-center">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
               <MessageSquare className="w-10 h-10 text-gray-300" />
             </div>
-            <p className="text-gray-500 font-medium">You haven&apos;t written any reviews yet.</p>
+            <p className="text-gray-500 font-medium">
+              {searchQuery ? `No reviews matching "${searchQuery}".` : "You haven't written any reviews yet."}
+            </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {reviews.map((review) => (
-              <Card key={review._id} className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-heading font-bold text-gray-900 text-lg">
-                        {review.bookingId?.serviceId?.name || "Service"}
-                      </h4>
-                      <p className="text-xs text-neutral-muted">
-                        Vehicle: {review.bookingId?.vehicleId?.brand} {review.bookingId?.vehicleId?.model}
-                      </p>
+          <div className="space-y-6">
+            <div className="space-y-4">
+              {paginatedReviews.map((review) => (
+                <Card key={review._id} className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40 hover:shadow-elevated transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-heading font-bold text-gray-900 text-lg">
+                          {review.bookingId?.serviceId?.name || "Service"}
+                        </h4>
+                        <p className="text-xs text-neutral-muted">
+                          Vehicle: {review.bookingId?.vehicleId?.brand} {review.bookingId?.vehicleId?.model}
+                        </p>
+                      </div>
+                      <div>
+                        {renderStars(review.rating)}
+                      </div>
                     </div>
-                    <div>
-                      {renderStars(review.rating)}
-                    </div>
+                    <p className="text-sm text-gray-700 bg-gray-50/50 p-4 rounded-xl border border-gray-100 mt-2 font-medium">
+                      &quot;{review.comment}&quot;
+                    </p>
+                    <p className="text-xs text-neutral-muted mt-3 text-right">
+                      Posted on {new Date(review.createdAt).toLocaleDateString()}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {filteredReviews.length > ITEMS_PER_PAGE && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-100 bg-white/80 p-4 rounded-2xl">
+                <p className="text-xs text-gray-500">
+                  Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{" "}
+                  <span className="font-semibold text-gray-900">
+                    {Math.min(startIndex + ITEMS_PER_PAGE, filteredReviews.length)}
+                  </span>{" "}
+                  of <span className="font-semibold text-gray-900">{filteredReviews.length}</span> reviews
+                </p>
+
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="h-8 px-3 text-xs flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                  </Button>
+
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`h-8 w-8 rounded-lg text-xs font-semibold transition-all ${
+                          currentPage === page
+                            ? "bg-primary-orange text-white shadow-sm"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
                   </div>
-                  <p className="text-sm text-gray-700 bg-gray-50/50 p-4 rounded-xl border border-gray-100 mt-2 font-medium">
-                    &quot;{review.comment}&quot;
-                  </p>
-                  <p className="text-xs text-neutral-muted mt-3 text-right">
-                    Posted on {new Date(review.createdAt).toLocaleDateString()}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="h-8 px-3 text-xs flex items-center gap-1"
+                  >
+                    Next <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

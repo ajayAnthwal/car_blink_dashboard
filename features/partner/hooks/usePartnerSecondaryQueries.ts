@@ -183,6 +183,9 @@ export const useMarkPartnerNotificationReadMutation = () => {
     mutationFn: (id: string) => import("@/lib/services").then(m => m.markNotificationAsRead(id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["partner", "notifications"] });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("notifications-updated"));
+      }
     },
   });
 };
@@ -193,6 +196,9 @@ export const useMarkAllPartnerNotificationsReadMutation = () => {
     mutationFn: () => import("@/lib/services").then(m => m.markAllNotificationsAsRead()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["partner", "notifications"] });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("notifications-updated"));
+      }
     },
   });
 };

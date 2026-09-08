@@ -76,6 +76,40 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+function sanitizeErrorMessage(msg: string): string {
+  if (!msg) return 'Something went wrong. Please try again.';
+  
+  let cleaned = msg.replace(/^Validation Error:\s*/i, '').trim();
+  const lower = cleaned.toLowerCase();
+  
+  if (
+    lower.includes('network error') || 
+    lower.includes('axioserror') || 
+    lower.includes('econnrefused') ||
+    lower.includes('failed to fetch') ||
+    lower.includes('status code 500') || 
+    lower.includes('status code 404')
+  ) {
+    return 'Unable to connect right now. Please check your internet connection and try again.';
+  }
+  
+  if (lower.includes('api') || lower.includes('json') || lower.includes('doctype') || lower.includes('html') || lower.includes('syntaxerror')) {
+    return 'Unable to process request right now. Please try again.';
+  }
+
+  if (lower.includes('e11000') || lower.includes('duplicate key')) {
+    if (lower.includes('email')) {
+      return 'This email address is already registered. Please sign in or use a different email.';
+    }
+    if (lower.includes('phone') || lower.includes('mobile')) {
+      return 'This phone number is already registered. Please sign in or use a different phone number.';
+    }
+    return 'An account with these details already exists. Please check your input.';
+  }
+
+  return cleaned;
+}
+
 // Response interceptor
 apiClient.interceptors.response.use(
   (response) => {
@@ -105,11 +139,25 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     
-    // Check if error response has our standard error format
-    let errorData = error.response?.data;
-    if (errorData && typeof errorData === "object" && "error" in errorData) {
-        errorData = (errorData as ApiResponse).error;
+    // Check if error response has standard format or HTML
+    let rawErrorData: any = error.response?.data;
+    let cleanMessage = "An unexpected error occurred. Please try again.";
+    
+    if (rawErrorData && typeof rawErrorData === "object") {
+      cleanMessage = rawErrorData.message || rawErrorData.error?.message || rawErrorData.error || cleanMessage;
+    } else if (typeof rawErrorData === "string" && rawErrorData.trim()) {
+      if (rawErrorData.includes("<!DOCTYPE") || rawErrorData.includes("<html")) {
+        cleanMessage = "Service is temporarily unavailable. Please try again.";
+      } else {
+        cleanMessage = rawErrorData;
+      }
+    } else if (error.message) {
+      cleanMessage = error.message;
     }
+
+    cleanMessage = sanitizeErrorMessage(cleanMessage);
+
+    const errorData = { message: cleanMessage };
 
     // Prevent infinite loop if the auth request itself returns 401
     if (

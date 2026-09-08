@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, CartesianGrid, XAxis, YAxis, Bar } from "recharts";
 import WebsitePromotionalBanners from "@/components/home/WebsitePromotionalBanners";
+import ProfileCompletionScoreWidget from "@/components/customer/ProfileCompletionScoreWidget";
 
 export default function CustomerDashboardPage() {
   const { user } = useAuth();
@@ -173,6 +174,9 @@ export default function CustomerDashboardPage() {
 
   return (
     <div className="space-y-3 sm:space-y-6 md:space-y-8 pb-12 w-full max-w-full px-1 sm:px-6 md:px-8 mx-auto overflow-x-hidden min-w-0">
+      {/* 10/10 REAL Profile Completion Score Widget */}
+      <ProfileCompletionScoreWidget />
+
       {/* Dynamic Website Promotional Banners managed by Executive */}
       <WebsitePromotionalBanners placement="HOME_HERO" />
       {isCompletelyEmpty && (
@@ -242,113 +246,125 @@ export default function CustomerDashboardPage() {
 
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Active Bookings</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-              <CalendarCheck className="w-5 h-5 text-secondary-blue" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.activeBookings}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/customer/bookings" className="flex items-center text-xs font-semibold text-secondary-blue hover:text-blue-700 group transition-colors">
-              View active <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/customer/bookings" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-blue-300 group-hover:border-blue-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500">Active Bookings</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                <CalendarCheck className="w-5 h-5 text-secondary-blue" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.activeBookings}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-secondary-blue group-hover:text-blue-700 transition-colors">
+                View active <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Completed Services</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-              <Wrench className="w-5 h-5 text-success" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.completedServices}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/customer/bookings" className="flex items-center text-xs font-semibold text-gray-500 hover:text-gray-900 group transition-colors">
-              History <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/customer/bookings" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-green-300 group-hover:border-green-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500">Completed Services</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                <Wrench className="w-5 h-5 text-success" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.completedServices}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                History <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Spent</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
-              <IndianRupee className="w-5 h-5 text-primary-orange" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">
-              {stats.totalSpent.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
-            </div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/customer/payments" className="flex items-center text-xs font-semibold text-gray-500 hover:text-gray-900 group transition-colors">
-              View payments <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/customer/payments" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-orange-300 group-hover:border-primary-orange hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500">Total Spent</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                <IndianRupee className="w-5 h-5 text-primary-orange" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">
+                {stats.totalSpent.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
+              </div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                View payments <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Active Warranties</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-purple-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.activeWarranties}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/customer/warranty" className="flex items-center text-xs font-semibold text-gray-500 hover:text-gray-900 group transition-colors">
-              View warranties <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/customer/warranty" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-purple-300 group-hover:border-purple-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500">Active Warranties</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+                <ShieldCheck className="w-5 h-5 text-purple-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.activeWarranties}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                View warranties <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
         {/* Savings Card */}
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Savings</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-              <PiggyBank className="w-5 h-5 text-teal-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">
-              {stats.totalSavings.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
-            </div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <span className="text-xs font-semibold text-gray-500">
-              Lifetime savings
-            </span>
-          </CardFooter>
-        </Card>
+        <Link href="/customer/bookings" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-teal-300 group-hover:border-teal-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500">Total Savings</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center group-hover:bg-teal-100 transition-colors">
+                <PiggyBank className="w-5 h-5 text-teal-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">
+                {stats.totalSavings.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
+              </div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                Lifetime savings
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
         {/* Rewards Card */}
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Reward Points</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
-              <Gift className="w-5 h-5 text-yellow-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.rewardPoints}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/customer/referrals" className="flex items-center text-xs font-semibold text-gray-500 hover:text-gray-900 group transition-colors">
-              Earn more <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/customer/referrals" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-yellow-300 group-hover:border-yellow-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500">Reward Points</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
+                <Gift className="w-5 h-5 text-yellow-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.rewardPoints}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                Earn more <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
       </div>
 
       {/* Additional Parts / Extra Services Section */}
@@ -507,32 +523,33 @@ export default function CustomerDashboardPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {bookings.filter(b => b.status === 'PENDING').map((booking) => (
-              <Card key={booking._id} className="bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-sm border-amber-200 hover:border-amber-400 hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
-                <CardContent className="p-5">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">ID: {booking._id.substring(booking._id.length - 6).toUpperCase()}</p>
-                      <h3 className="font-bold text-gray-900 line-clamp-1">{typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service Request'}</h3>
+              <Link key={booking._id} href={`/customer/bookings/${booking._id}`} className="block group">
+                <Card className="bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-sm border-amber-200 group-hover:border-amber-400 hover:shadow-md transition-all duration-300 relative overflow-hidden h-full cursor-pointer">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+                  <CardContent className="p-5">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">ID: {booking._id.substring(booking._id.length - 6).toUpperCase()}</p>
+                        <h3 className="font-bold text-gray-900 line-clamp-1">{typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service Request'}</h3>
+                      </div>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        PENDING REVIEW
+                      </span>
                     </div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                      PENDING REVIEW
-                    </span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600 mb-3">
-                    <Car className="w-4 h-4 mr-2 text-amber-600" />
-                    <span className="line-clamp-1">{typeof booking.vehicleId === 'object' ? `${booking.vehicleId.brand} ${booking.vehicleId.model}` : 'Your Vehicle'}</span>
-                  </div>
-                  <p className="text-xs text-amber-900/80 bg-amber-100/60 p-2.5 rounded-md border border-amber-200/50 mb-3">
-                    ℹ️ Our executive team is currently reviewing your booking and collecting workshop quotes.
-                  </p>
-                  <Button asChild variant="outline" className="w-full border-amber-300 text-amber-900 hover:bg-amber-100 font-semibold text-xs">
-                    <Link href={`/customer/bookings/${booking._id}`}>
-                      View Request Details <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                    <div className="flex items-center text-sm text-gray-600 mb-3">
+                      <Car className="w-4 h-4 mr-2 text-amber-600" />
+                      <span className="line-clamp-1">{typeof booking.vehicleId === 'object' ? `${booking.vehicleId.brand} ${booking.vehicleId.model}` : 'Your Vehicle'}</span>
+                    </div>
+                    <p className="text-xs text-amber-900/80 bg-amber-100/60 p-2.5 rounded-md border border-amber-200/50 mb-3">
+                      ℹ️ Our executive team is currently reviewing your booking and collecting workshop quotes.
+                    </p>
+                    <div className="w-full bg-amber-100 text-amber-900 border border-amber-300 group-hover:bg-amber-200 font-semibold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center transition-colors">
+                      <span>View Request Details</span>
+                      <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>
@@ -547,27 +564,28 @@ export default function CustomerDashboardPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {quotesWaiting.map((booking) => (
-              <Card key={booking._id} className="bg-white/90 backdrop-blur-md shadow-sm border-orange-200 hover:border-primary-orange/50 hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-primary-orange"></div>
-                <CardContent className="p-5">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">ID: {booking._id.substring(booking._id.length - 6).toUpperCase()}</p>
-                      <h3 className="font-bold text-gray-900 line-clamp-1">{typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service'}</h3>
+              <Link key={booking._id} href={`/customer/bookings/${booking._id}`} className="block group">
+                <Card className="bg-white/90 backdrop-blur-md shadow-sm border-orange-200 group-hover:border-primary-orange hover:shadow-lg transition-all duration-300 relative overflow-hidden h-full cursor-pointer">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-primary-orange"></div>
+                  <CardContent className="p-5">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">ID: {booking._id.substring(booking._id.length - 6).toUpperCase()}</p>
+                        <h3 className="font-bold text-gray-900 line-clamp-1">{typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service'}</h3>
+                      </div>
+                      <StatusBadge status="QUOTED" />
                     </div>
-                    <StatusBadge status="QUOTED" />
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600 mb-4">
-                    <Car className="w-4 h-4 mr-2 text-gray-400" />
-                    <span className="line-clamp-1">{typeof booking.vehicleId === 'object' ? `${booking.vehicleId.brand} ${booking.vehicleId.model}` : 'Your Vehicle'}</span>
-                  </div>
-                  <Button asChild className="w-full bg-primary-orange hover:bg-primary-orange-dark text-white font-semibold shadow-sm group-hover:shadow transition-all duration-300">
-                    <Link href={`/customer/bookings/${booking._id}`}>
-                      Review & Accept Quote <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                    <div className="flex items-center text-sm text-gray-600 mb-4">
+                      <Car className="w-4 h-4 mr-2 text-gray-400" />
+                      <span className="line-clamp-1">{typeof booking.vehicleId === 'object' ? `${booking.vehicleId.brand} ${booking.vehicleId.model}` : 'Your Vehicle'}</span>
+                    </div>
+                    <div className="w-full bg-primary-orange group-hover:bg-primary-orange-dark text-white font-semibold text-xs py-2.5 px-4 rounded-xl shadow-sm group-hover:shadow transition-all duration-300 flex items-center justify-center">
+                      <span>Review & Accept Quote</span>
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>

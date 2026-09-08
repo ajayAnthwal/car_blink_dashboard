@@ -524,6 +524,11 @@ export const assignLeadToPartner = async (id: string, data: { partnerIds: string
   return response.data;
 };
 
+export const confirmQuoteSelection = async (id: string) => {
+  const response = await apiClient.post(`/executive/leads/${id}/confirm-quote`);
+  return response.data;
+};
+
 export const forwardQuoteToCustomer = async (id: string, data: { bidIds: string[]; notes?: string }) => {
   const response = await apiClient.post(`/executive/leads/${id}/forward-quote`, data);
   return response.data;
@@ -1346,5 +1351,29 @@ export const deleteExecutiveAd = async (id: string) => {
 
 export const getActiveWebsiteAds = async (placement?: string) => {
   const response = await apiClient.get("/master-data/ads", { params: { placement } });
+  return response.data;
+};
+
+// ACCOUNTS TRANSACTIONS & PAYOUTS APIs
+export const getAccountsTransactions = async (params: { page?: number; limit?: number; search?: string; status?: string }) => {
+  const query = new URLSearchParams(params as any).toString();
+  const response = await apiClient.get(`/accounts/transactions?${query}`);
+  return response.data;
+};
+
+export const getMasterInvoices = async (params: { page?: number; limit?: number; search?: string; status?: string }) => {
+  const query = new URLSearchParams(params as any).toString();
+  const response = await apiClient.get(`/accounts/invoices?${query}`);
+  return response.data;
+};
+
+export const getExecutivePayouts = async (params: { page?: number; limit?: number; search?: string }) => {
+  const query = new URLSearchParams(params as any).toString();
+  const response = await apiClient.get(`/accounts/payouts?${query}`);
+  return response.data;
+};
+
+export const updateAccountsSecurityPin = async (data: { newPin: string }) => {
+  const response = await apiClient.patch('/accounts/profile/pin', data);
   return response.data;
 };

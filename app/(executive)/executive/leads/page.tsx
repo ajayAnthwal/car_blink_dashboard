@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus, Search, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { useSocket } from "@/lib/SocketContext";
 import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
@@ -18,6 +18,7 @@ import {
   useExecutiveLeads,
   useAssignLeadMutation,
   useForwardQuoteMutation,
+  useConfirmQuoteMutation,
   useUpdateLead,
   useServices,
   usePartnerStatus
@@ -88,6 +89,7 @@ export default function ExecutiveLeadsPage() {
   // Mutations
   const assignMutation = useAssignLeadMutation();
   const forwardMutation = useForwardQuoteMutation();
+  const confirmQuoteMutation = useConfirmQuoteMutation();
   const updateLeadMutation = useUpdateLead();
 
   // --- Assign Partner Modal State & Form ---
@@ -318,6 +320,16 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
     resolver: zodResolver(forwardQuoteSchema),
     defaultValues: { bidIds: [] }
   });
+
+
+  const handleConfirmQuote = async (leadId: string) => {
+    try {
+      await confirmQuoteMutation.mutateAsync(leadId);
+      toast.success("Customer selection confirmed! Job assigned to partner successfully.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to confirm quote selection");
+    }
+  };
 
   const handleForwardSubmit = (data: ForwardQuoteFormValues) => {
     if (!forwardBidData) return;
@@ -638,6 +650,19 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           <UserPlus className="w-3.5 h-3.5 mr-1.5" />
                           {lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More" : "Assign"}
                         </Button>
+
+                        
+                        {lead.status === 'CUSTOMER_ACCEPTED' && (
+                          <Button
+                            size="sm"
+                            className="w-full text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
+                            onClick={() => handleConfirmQuote(lead._id)}
+                            disabled={confirmQuoteMutation.isPending}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                            {confirmQuoteMutation.isPending ? "Confirming..." : "Confirm & Assign"}
+                          </Button>
+                        )}
 
                         {lead.status === 'PENDING' && lead.bids?.length > 0 && (
                           <Button

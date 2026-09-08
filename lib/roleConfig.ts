@@ -84,8 +84,9 @@ export const roleConfig: Record<Role, RoleConfigData> = {
       {
         label: "My Services",
         items: [
-          { name: "My Garage", href: "/customer/garage", icon: Car },
+          { name: "New Booking Request", href: "/customer/bookings/new", icon: Calendar },
           { name: "My Bookings", href: "/customer/bookings", icon: CalendarCheck },
+          { name: "My Garage", href: "/customer/garage", icon: Car },
           { name: "My Invoices", href: "/customer/invoices", icon: Receipt },
           { name: "My Warranties", href: "/customer/warranty", icon: ShieldCheck },
         ],

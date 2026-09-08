@@ -13,6 +13,7 @@ import {
   getPartnerStatus,
   assignLeadToPartner,
   forwardQuoteToCustomer,
+  confirmQuoteSelection,
   getExecutiveTickets,
   getFollowUps,
   initiateClickToCall,
@@ -261,6 +262,16 @@ export const useAssignLeadMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => assignLeadToPartner(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+    },
+  });
+};
+
+export const useConfirmQuoteMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => confirmQuoteSelection(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
     },

@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
+  getAccountsTransactions,
+  getMasterInvoices,
+  getExecutivePayouts,
+  updateAccountsSecurityPin,
   getAllRefunds, 
   getAllSettlements,
   getEligiblePaymentsForRefund,
@@ -254,5 +258,35 @@ export const useMarkAllNotificationsReadMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts", "notifications"] });
     },
+  });
+};
+
+export const useAccountsTransactions = (params: any = {}) => {
+  return useQuery({
+    queryKey: ["accounts", "transactions", params],
+    staleTime: 0,
+    queryFn: () => getAccountsTransactions(params),
+  });
+};
+
+export const useMasterInvoices = (params: any = {}) => {
+  return useQuery({
+    queryKey: ["accounts", "master-invoices", params],
+    staleTime: 0,
+    queryFn: () => getMasterInvoices(params),
+  });
+};
+
+export const useExecutivePayouts = (params: any = {}) => {
+  return useQuery({
+    queryKey: ["accounts", "payouts", params],
+    staleTime: 0,
+    queryFn: () => getExecutivePayouts(params),
+  });
+};
+
+export const useUpdateSecurityPinMutation = () => {
+  return useMutation({
+    mutationFn: (data: { newPin: string }) => updateAccountsSecurityPin(data),
   });
 };

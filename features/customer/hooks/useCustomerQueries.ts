@@ -437,6 +437,9 @@ export const useMarkNotificationReadMutation = () => {
     mutationFn: (id: string) => markNotificationAsRead(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customer", "notifications"] });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("notifications-updated"));
+      }
     },
   });
 };
@@ -447,6 +450,9 @@ export const useMarkAllNotificationsReadMutation = () => {
     mutationFn: () => markAllNotificationsAsRead(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customer", "notifications"] });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("notifications-updated"));
+      }
     },
   });
 };

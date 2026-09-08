@@ -2,6 +2,7 @@
 import React from "react";
 import { ProfileForm } from "@/features/users/components/ProfileForm";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
+import { SecurityPinForm } from "@/components/accounts/SecurityPinForm";
 import { DeactivateAccount } from "@/features/users/components/DeactivateAccount";
 
 export default function ProfilePage() {
@@ -10,9 +11,9 @@ export default function ProfilePage() {
       <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight mb-8">Account Settings</h2>
       
       <ProfileForm />
+      <SecurityPinForm />
       <ChangePasswordForm />
       <DeactivateAccount />
-      
     </div>
   );
 }

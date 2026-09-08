@@ -43,7 +43,7 @@ export interface Booking {
   cityId: string | City;
   description: string;
   preferredDate: string;
-  status: "PENDING" | "QUOTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "QUOTED" | "CUSTOMER_ACCEPTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   assignedPartnerId?: any;
   assignedExecutiveId?: any;
   serviceMode?: 'DOORSTEP' | 'GARAGE_VISIT';
@@ -107,7 +107,7 @@ export interface Lead {
   cityId: string | City;
   vehicleId: string | Vehicle;
   description: string;
-  status: "PENDING" | "QUOTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "QUOTED" | "CUSTOMER_ACCEPTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   createdAt: string;
 }
 

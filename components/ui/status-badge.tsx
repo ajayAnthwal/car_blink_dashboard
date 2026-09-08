@@ -2,7 +2,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 
 export type StatusType = 
-  | "PENDING" | "QUOTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED"
+  | "PENDING" | "QUOTED" | "CUSTOMER_ACCEPTED" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED"
   | "NOT_STARTED"
   | "OPEN" | "RESOLVED" | "CLOSED"
   | "SUCCESS" | "FAILED"
@@ -37,7 +37,7 @@ export const getStatusColorTheme = (status: string | undefined | null) => {
   }
   
   // WARNING themes (Orange/Yellow)
-  if (["PENDING", "QUOTED", "OPEN", "UNDER_REVIEW", "EXPIRED", "MEDIUM", "WITHDRAWN"].includes(s)) {
+  if (["PENDING", "QUOTED", "CUSTOMER_ACCEPTED", "OPEN", "UNDER_REVIEW", "EXPIRED", "MEDIUM", "WITHDRAWN"].includes(s)) {
     return {
       bgClass: "bg-warning hover:bg-warning/90 text-white",
       hex: "#F59E0B"

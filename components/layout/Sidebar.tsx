@@ -161,8 +161,11 @@ export function Sidebar({
           <DropdownMenuTrigger className="w-full focus:outline-none">
             <div className={`flex items-center p-2 rounded-lg hover:bg-white/5 transition-all duration-200 cursor-pointer ${isCollapsed ? "justify-center" : "space-x-3 text-left"}`}>
               <Avatar className="h-9 w-9 border border-gray-600 shrink-0 shadow-subtle">
-                <AvatarFallback className={`${config.accentBgColor} text-white font-bold text-xs`}>
-                  {user?.fullName?.charAt(0) || config.roleName.charAt(0)}
+                {((user as any)?.profileImage || (user as any)?.avatar) && (
+                  <AvatarImage src={(user as any)?.profileImage || (user as any)?.avatar} alt={user?.fullName || "User"} className="object-cover" />
+                )}
+                <AvatarFallback className={`${config.accentBgColor} text-white font-bold text-xs flex items-center justify-center`}>
+                  {(user?.fullName?.trim() || config.roleName).charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               {!isCollapsed && (
