@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 
 const querySchema = z.object({
+  category: z.string().optional(),
   bookingId: z.string().min(1, "Please select a booking"),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]),
   subject: z.string().min(1, "Query Title is required"),
@@ -32,6 +33,7 @@ export function QueryForm({ bookings, onSubmit, isSubmitting }: QueryFormProps) 
   } = useForm<QueryFormValues>({
     resolver: zodResolver(querySchema),
     defaultValues: {
+      category: "General Inquiry",
       bookingId: "",
       priority: "MEDIUM",
       subject: "",
@@ -58,6 +60,22 @@ export function QueryForm({ bookings, onSubmit, isSubmitting }: QueryFormProps) 
             required
           />
           {errors.bookingId && <p className="text-red-500 text-xs mt-1">{errors.bookingId.message}</p>}
+        </div>
+
+        <div>
+          <Select
+            label="Category"
+            value={watch("category") || "General Inquiry"}
+            onChange={(e) => setValue("category", e.target.value as any)}
+            options={[
+              { value: "General Inquiry", label: "General Inquiry" },
+              { value: "Booking Issue", label: "Booking Issue" },
+              { value: "Payment & Billing", label: "Payment & Billing" },
+              { value: "Vehicle Service Quality", label: "Vehicle Service Quality font-medium" },
+              { value: "Warranty Claim", label: "Warranty Claim" },
+            ]}
+            required
+          />
         </div>
 
         <div>

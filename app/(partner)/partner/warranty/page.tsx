@@ -1,7 +1,8 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { usePartnerWarranties, useIssueWarrantyMutation } from "@/features/partner/hooks/usePartnerSecondaryQueries";
 import { usePartnerJobs } from "@/features/partner/hooks/usePartnerQueries";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,9 @@ import { FileUpload } from "@/components/ui/FileUpload";
 import { ShieldCheck, Loader2 } from "lucide-react";
 
 export default function PartnerWarrantyPage() {
+  const searchParams = useSearchParams();
+  const initialJobId = searchParams.get("jobId") || "";
+
   const { data: jobsData, isLoading: isLoadingJobs } = usePartnerJobs({ status: "COMPLETED" });
   const completedJobs = jobsData?.jobs || [];
 
@@ -22,7 +26,11 @@ export default function PartnerWarrantyPage() {
   const issueMutation = useIssueWarrantyMutation();
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  const [jobId, setJobId] = useState("");
+  const [jobId, setJobId] = useState(initialJobId);
+
+  useEffect(() => {
+    if (initialJobId) setJobId(initialJobId);
+  }, [initialJobId]);
   const [warrantyPeriodMonths, setWarrantyPeriodMonths] = useState("6");
   const [warrantyUrl, setWarrantyUrl] = useState<string>("");
 

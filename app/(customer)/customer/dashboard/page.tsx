@@ -23,7 +23,8 @@ import {
   PiggyBank,
   FileText,
   Download,
-  CheckCircle2
+  CheckCircle2,
+  Info
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -325,7 +326,7 @@ export default function CustomerDashboardPage() {
         </Link>
 
         {/* Savings Card */}
-        <Link href="/customer/bookings" className="block group">
+        <Link href="/customer/payments" className="block group">
           <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-teal-300 group-hover:border-teal-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-gray-500">Total Savings</CardTitle>
@@ -339,8 +340,8 @@ export default function CustomerDashboardPage() {
               </div>
             </CardContent>
             <CardFooter className="pt-1 pb-4">
-              <span className="text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
-                Lifetime savings
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                View savings <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
               </span>
             </CardFooter>
           </Card>
@@ -350,13 +351,21 @@ export default function CustomerDashboardPage() {
         <Link href="/customer/referrals" className="block group">
           <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-yellow-300 group-hover:border-yellow-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-gray-500">Reward Points</CardTitle>
+              <div className="flex items-center space-x-1.5">
+                <CardTitle className="text-sm font-medium text-gray-500">Reward Points</CardTitle>
+                <span className="relative group/tooltip">
+                  <Info className="w-3.5 h-3.5 text-gray-400 hover:text-yellow-600 cursor-pointer transition-colors" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:block w-48 p-2 bg-gray-900 text-white text-[11px] font-normal rounded-lg shadow-xl text-center z-20 pointer-events-none">
+                    Earn points on bookings & referrals!
+                  </span>
+                </span>
+              </div>
               <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
                 <Gift className="w-5 h-5 text-yellow-600" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.rewardPoints}</div>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.rewardPoints} PTS</div>
             </CardContent>
             <CardFooter className="pt-1 pb-4">
               <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">

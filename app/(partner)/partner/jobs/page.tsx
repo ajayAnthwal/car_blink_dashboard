@@ -855,8 +855,16 @@ export default function PartnerJobsPage() {
 
                         {job.status === "COMPLETED" && (
                           <div className="space-y-4">
-                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3.5 rounded-xl text-emerald-300 text-xs font-bold flex items-center justify-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Service completed successfully!
+                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3.5 rounded-xl text-emerald-300 text-xs font-bold flex items-center justify-between gap-2">
+                              <span className="flex items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Service completed successfully!
+                              </span>
+                              <a
+                                href={`/partner/warranty?jobId=${job._id}`}
+                                className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-1.5 px-3 rounded-lg flex items-center gap-1 transition-colors"
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5" /> Issue Service Warranty
+                              </a>
                             </div>
 
                             {/* Offline Cash Payment Block */}

@@ -60,6 +60,7 @@ export default function CustomerBookingDetailsPage() {
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewMessage, setReviewMessage] = useState({ type: "", text: "" });
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   useEffect(() => {
     if (!socket || !id) return;
@@ -74,11 +75,18 @@ export default function CustomerBookingDetailsPage() {
     socket.on("booking_confirmed", handleUpdate);
     socket.on("booking_status_update", handleUpdate);
 
+    const handleOffline = () => {
+      setMessage({ type: "error", text: "📡 Internet disconnected. Please reconnect to complete payment." });
+    };
+
+    window.addEventListener("offline", handleOffline);
+
     return () => {
       socket.off("booking_updated", handleUpdate);
       socket.off("quote_received", handleUpdate);
       socket.off("booking_confirmed", handleUpdate);
       socket.off("booking_status_update", handleUpdate);
+      window.removeEventListener("offline", handleOffline);
     };
   }, [socket, id]);
 
@@ -142,6 +150,10 @@ export default function CustomerBookingDetailsPage() {
 
   const handleInitiatePayment = async (amount: number, type: string = "ADVANCE") => {
     if (!booking) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setMessage({ type: "error", text: "📡 Internet disconnected. Please reconnect to complete payment." });
+      return;
+    }
     setIsExtensionProcessing(true);
     setMessage({ type: "", text: "" });
     try {
@@ -236,6 +248,7 @@ export default function CustomerBookingDetailsPage() {
     try {
       await createReviewMutation.mutateAsync({ bookingId: id, rating: reviewRating, comment: reviewComment });
       setReviewMessage({ type: "success", text: "Thank you! Your review has been submitted." });
+      setReviewSubmitted(true);
     } catch (error: any) {
       setReviewMessage({ type: "error", text: error?.message || "Failed to submit review" });
     } finally {
@@ -342,7 +355,7 @@ export default function CustomerBookingDetailsPage() {
 
           {(booking.status !== 'COMPLETED' && booking.status !== 'CANCELLED') && !showCancel && (
             <Button variant="outline" className="bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white rounded-xl backdrop-blur-sm" onClick={() => setShowCancel(true)}>
-              Cancel & Request Refund
+              {totalPaidAmount > 0 ? "Cancel & Request Refund" : "Cancel Booking"}
             </Button>
           )}
         </div>
@@ -361,8 +374,14 @@ export default function CustomerBookingDetailsPage() {
         <Card className="border-danger/20 shadow-lg rounded-2xl overflow-hidden">
           <div className="h-1 bg-danger w-full"></div>
           <CardContent className="p-8">
-            <h3 className="text-xl font-bold text-primary-navy mb-2">Cancel Booking Request</h3>
-            <p className="text-sm text-neutral-muted mb-6">Are you sure you want to cancel? If you have made any payments, a refund request will be automatically initiated.</p>
+            <h3 className="text-xl font-bold text-primary-navy mb-2">{totalPaidAmount > 0 ? "Cancel Booking & Request Refund" : "Cancel Booking Request"}</h3>
+            <p className="text-sm text-neutral-muted mb-4">{totalPaidAmount > 0 ? `Are you sure you want to cancel? Since you have paid ₹${totalPaidAmount}, a refund request will be automatically initiated.` : "Are you sure you want to cancel this booking request?"}</p>
+            
+            <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-primary-navy font-medium flex items-center gap-2 mb-5">
+              <ShieldCheck className="w-4 h-4 text-primary-orange flex-shrink-0" />
+              <span>ℹ️ Refunds are credited to original payment source within 3-5 business days as per CarBlink Refund Policy.</span>
+            </div>
+
             <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
@@ -425,57 +444,72 @@ export default function CustomerBookingDetailsPage() {
           {/* Billing section moved to right column */}
 
           {/* Review Section */}
-          {canReview && booking.status === 'COMPLETED' && (
-            <Card className="shadow-lg border-secondary-blue/30 rounded-3xl overflow-hidden bg-gradient-to-b from-white to-secondary-blue/5">
-              <div className="h-1.5 bg-gradient-to-r from-secondary-blue to-primary-orange w-full"></div>
-              <CardContent className="p-8">
-                <div className="flex items-center space-x-4 mb-6">
-                  <div className="w-14 h-14 bg-white shadow-sm rounded-full flex items-center justify-center border border-neutral-muted/10">
-                    <Star className="w-7 h-7 text-yellow-500 fill-yellow-500" />
+          {booking.status === 'COMPLETED' && (
+            (reviewSubmitted || booking.review || !canReview) ? (
+              <Card className="shadow-sm border-success/30 rounded-3xl overflow-hidden bg-gradient-to-b from-white to-success/5">
+                <div className="h-1.5 bg-success w-full"></div>
+                <CardContent className="p-8 text-center space-y-3">
+                  <div className="w-14 h-14 bg-success/10 text-success shadow-sm rounded-full flex items-center justify-center mx-auto border border-success/20">
+                    <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-primary-navy">Rate Your Experience</h3>
-                    <p className="text-neutral-muted">How was the service provided by the partner?</p>
-                  </div>
-                </div>
-
-                {reviewMessage.text && (
-                  <div className={`p-4 rounded-xl text-sm font-medium border mb-6 ${reviewMessage.type === "success" ? "bg-success/10 text-success border-success/20" : "bg-danger/10 text-danger border-danger/20"
-                    }`}>
-                    {reviewMessage.text}
-                  </div>
-                )}
-
-                <div className="space-y-6">
-                  <div className="flex space-x-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        onClick={() => setReviewRating(star)}
-                        className={`transition-all hover:scale-110 focus:outline-none ${reviewRating >= star ? 'text-yellow-500' : 'text-neutral-300'}`}
-                      >
-                        <Star className={`w-10 h-10 ${reviewRating >= star ? 'fill-yellow-500' : ''}`} />
-                      </button>
-                    ))}
+                  <h3 className="text-2xl font-bold text-primary-navy font-heading">✔ Review Submitted - Thank You!</h3>
+                  <p className="text-neutral-muted text-sm max-w-md mx-auto">
+                    Your valuable feedback helps us maintain top service quality standards.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : canReview ? (
+              <Card className="shadow-lg border-secondary-blue/30 rounded-3xl overflow-hidden bg-gradient-to-b from-white to-secondary-blue/5">
+                <div className="h-1.5 bg-gradient-to-r from-secondary-blue to-primary-orange w-full"></div>
+                <CardContent className="p-8">
+                  <div className="flex items-center space-x-4 mb-6">
+                    <div className="w-14 h-14 bg-white shadow-sm rounded-full flex items-center justify-center border border-neutral-muted/10">
+                      <Star className="w-7 h-7 text-yellow-500 fill-yellow-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-primary-navy">Rate Your Experience</h3>
+                      <p className="text-neutral-muted">How was the service provided by the partner?</p>
+                    </div>
                   </div>
 
-                  <textarea
-                    value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Write a review about the service quality, timeline, and professionalism..."
-                    className="w-full p-4 border border-neutral-muted/20 rounded-xl focus:ring-2 focus:ring-secondary-blue/30 focus:border-secondary-blue outline-none text-sm bg-white shadow-inner min-h-[120px]"
-                  />
+                  {reviewMessage.text && (
+                    <div className={`p-4 rounded-xl text-sm font-medium border mb-6 ${reviewMessage.type === "success" ? "bg-success/10 text-success border-success/20" : "bg-danger/10 text-danger border-danger/20"
+                      }`}>
+                      {reviewMessage.text}
+                    </div>
+                  )}
 
-                  <Button
-                    className="w-full md:w-auto bg-primary-navy hover:bg-primary-navy/90 text-white rounded-xl px-8 py-6 text-md font-bold"
-                    onClick={handleSubmitReview}
-                    isLoading={isSubmittingReview}
-                  >
-                    Submit Review <ChevronRight className="w-5 h-5 ml-2" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="space-y-6">
+                    <div className="flex space-x-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setReviewRating(star)}
+                          className={`transition-all hover:scale-110 focus:outline-none ${reviewRating >= star ? 'text-yellow-500' : 'text-neutral-300'}`}
+                        >
+                          <Star className={`w-10 h-10 ${reviewRating >= star ? 'fill-yellow-500' : ''}`} />
+                        </button>
+                      ))}
+                    </div>
+
+                    <textarea
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder="Write a review about the service quality, timeline, and professionalism..."
+                      className="w-full p-4 border border-neutral-muted/20 rounded-xl focus:ring-2 focus:ring-secondary-blue/30 focus:border-secondary-blue outline-none text-sm bg-white shadow-inner min-h-[120px]"
+                    />
+
+                    <Button
+                      className="w-full md:w-auto bg-primary-navy hover:bg-primary-navy/90 text-white rounded-xl px-8 py-6 text-md font-bold"
+                      onClick={handleSubmitReview}
+                      isLoading={isSubmittingReview}
+                    >
+                      Submit Review <ChevronRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null
           )}
 
           {/* Service Photos */}

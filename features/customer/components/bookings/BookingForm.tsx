@@ -14,7 +14,10 @@ const bookingSchema = z.object({
   serviceId: z.string().min(1, "Service is required"),
   state: z.string().optional(),
   cityId: z.string().optional(),
-  preferredDate: z.string().min(1, "Preferred date is required"),
+  preferredDate: z.string().min(1, "Preferred date is required").refine((val) => {
+    const today = new Date().toISOString().split('T')[0];
+    return val >= today;
+  }, "Past dates cannot be selected for service booking"),
   preferredTime: z.string().min(1, "Preferred time is required"),
   description: z.string().min(10, "Please provide a description (min 10 chars)"),
   serviceMode: z.enum(["DOORSTEP", "GARAGE_VISIT"]),
@@ -248,6 +251,7 @@ export function BookingForm({
             <div className="relative">
               <input
                 type="date"
+                min={new Date().toISOString().split('T')[0]}
                 {...register("preferredDate")}
                 className="w-full rounded-xl border border-neutral-muted/30 bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange shadow-sm text-neutral-dark"
                 required

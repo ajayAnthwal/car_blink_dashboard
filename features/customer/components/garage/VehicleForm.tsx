@@ -119,8 +119,13 @@ export function VehicleForm({
         <div>
           <Input
             label="Registration Number"
-            placeholder="e.g. MH 01 AB 1234"
-            {...register("registrationNumber")}
+            placeholder="e.g. UK 07 AB 1234"
+            {...register("registrationNumber", {
+              onChange: (e) => {
+                const upper = e.target.value.toUpperCase();
+                setValue("registrationNumber", upper);
+              }
+            })}
           />
           {errors.registrationNumber && <p className="text-red-500 text-xs mt-1">{errors.registrationNumber.message}</p>}
         </div>
@@ -141,7 +146,7 @@ export function VehicleForm({
             <Input
               label="Year"
               type="number"
-              min="1990"
+              min={1990}
               max={new Date().getFullYear()}
               placeholder="2022"
               {...register("year")}

@@ -40,7 +40,7 @@ export default function AdminFinancePage() {
 
   const handleExportCSV = () => {
     if (!report?.settlements || report.settlements.length === 0) return alert("No data to export.");
-    const headers = ["Garage Name", "Total Job Value", "Commission (10%)", "Cash Collected", "Garage to pay Admin", "Admin to pay Garage"];
+    const headers = ["Garage Name", "Total Job Value", "Commission (15%)", "Cash Collected", "Garage to pay Admin", "Admin to pay Garage"];
     const csvRows = [headers.join(",")];
     
     // Grouping logic (simplified) to export

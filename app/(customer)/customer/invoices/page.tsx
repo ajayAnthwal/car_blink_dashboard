@@ -22,20 +22,24 @@ export default function CustomerInvoicesPage() {
 
   const filteredInvoices = invoices.filter((inv: any) => {
     if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     const bInfo = inv.bookingId || {};
     const vInfo = bInfo.vehicleId || {};
     const pInfo = inv.partnerId || {};
-    const serviceName = typeof bInfo.serviceId === 'object' ? bInfo.serviceId.name : 'Car Service Invoice';
+    const serviceName = typeof bInfo.serviceId === 'object' ? bInfo.serviceId.name || '' : 'Car Service Invoice';
     const vehicleStr = `${vInfo.brand || ''} ${vInfo.model || ''} ${vInfo.registrationNumber || ''}`;
     const workshop = pInfo.businessName || '';
     const status = inv.status || '';
+    const invId = inv._id || inv.id || '';
+    const formattedInvId = `inv-${invId.slice(-8)}`;
 
     return (
       serviceName.toLowerCase().includes(q) ||
       vehicleStr.toLowerCase().includes(q) ||
       workshop.toLowerCase().includes(q) ||
-      status.toLowerCase().includes(q)
+      status.toLowerCase().includes(q) ||
+      invId.toLowerCase().includes(q) ||
+      formattedInvId.toLowerCase().includes(q)
     );
   });
 
@@ -52,6 +56,44 @@ export default function CustomerInvoicesPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportCSV = () => {
+    if (!invoices || invoices.length === 0) return;
+    
+    const headers = ["Invoice ID", "Date", "Service Name", "Vehicle", "Workshop", "Status", "Total Amount (INR)"];
+    const rows = invoices.map((inv: any) => {
+      const invId = inv._id || inv.id || "";
+      const formattedInvId = `INV-${invId.slice(-8)}`;
+      const invDate = new Date(inv.createdAt).toLocaleDateString("en-IN");
+      const bInfo = inv.bookingId || {};
+      const vInfo = bInfo.vehicleId || {};
+      const pInfo = inv.partnerId || {};
+      const serviceName = typeof bInfo.serviceId === "object" ? bInfo.serviceId.name || "" : "Car Service";
+      const vehicleStr = `${vInfo.brand || ""} ${vInfo.model || ""} (${vInfo.registrationNumber || ""})`.trim();
+      const workshop = pInfo.businessName || "CarBlink Workshop";
+      const status = inv.status || "PAID";
+      const amount = inv.grandTotal || 0;
+
+      return [
+        `"${formattedInvId}"`,
+        `"${invDate}"`,
+        `"${serviceName.replace(/"/g, '""')}"`,
+        `"${vehicleStr.replace(/"/g, '""')}"`,
+        `"${workshop.replace(/"/g, '""')}"`,
+        `"${status}"`,
+        `"${amount}"`
+      ].join(",");
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `carblink_invoices_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (isLoading) {
@@ -83,11 +125,23 @@ export default function CustomerInvoicesPage() {
             Access, view, download, and print all verified service invoices from your workshops.
           </p>
         </div>
-        <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-3 rounded-2xl flex items-center gap-3">
-          <Receipt className="w-8 h-8 text-primary-orange" />
-          <div>
-            <div className="text-2xl font-black">{invoices.length}</div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Total Invoices</div>
+        <div className="flex flex-wrap items-center gap-3">
+          {invoices.length > 0 && (
+            <Button
+              onClick={handleExportCSV}
+              variant="outline"
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-2xl font-bold text-xs px-4 py-3 h-auto backdrop-blur-md flex items-center gap-2"
+            >
+              <Download className="w-4 h-4 text-primary-orange" />
+              Export All Invoices (CSV)
+            </Button>
+          )}
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-3 rounded-2xl flex items-center gap-3">
+            <Receipt className="w-8 h-8 text-primary-orange" />
+            <div>
+              <div className="text-2xl font-black">{invoices.length}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Total Invoices</div>
+            </div>
           </div>
         </div>
       </div>

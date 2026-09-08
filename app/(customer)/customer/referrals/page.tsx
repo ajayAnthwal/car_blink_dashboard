@@ -19,11 +19,40 @@ export default function ReferralsPage() {
   const [isCopied, setIsCopied] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
+  const fallbackCopy = (text: string) => {
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      if (successful) {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }
+    } catch (err) {
+      console.warn("Fallback copy failed", err);
+    }
+  };
+
   const handleCopyCode = () => {
     if (myProfile?.referralCode) {
-      navigator.clipboard.writeText(myProfile.referralCode);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(myProfile.referralCode)
+          .then(() => {
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+          })
+          .catch(() => {
+            fallbackCopy(myProfile.referralCode);
+          });
+      } else {
+        fallbackCopy(myProfile.referralCode);
+      }
     }
   };
 

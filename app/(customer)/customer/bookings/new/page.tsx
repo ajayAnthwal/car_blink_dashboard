@@ -105,16 +105,35 @@ export default function NewBookingPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 sm:p-8">
-          <BookingForm 
-            key={formResetKey}
-            vehicles={vehicles}
-            services={services}
-            states={states}
-            cities={filteredCities}
-            onStateChange={setSelectedState}
-            onSubmit={handleCreateBooking}
-            isSubmitting={createBookingMutation.isPending}
-          />
+          {vehicles.length === 0 ? (
+            <div className="bg-gradient-to-r from-amber-50 via-white to-amber-50 p-8 sm:p-10 rounded-2xl border-2 border-dashed border-amber-300 text-center flex flex-col items-center justify-center space-y-4">
+              <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center shadow-sm">
+                <Car className="w-8 h-8" />
+              </div>
+              <div className="max-w-md">
+                <h3 className="text-xl font-bold text-gray-900 font-heading">No Vehicles Found in Garage</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  You need to add at least one vehicle to your garage before creating a service booking.
+                </p>
+              </div>
+              <Button asChild className="bg-primary-orange hover:bg-primary-orange-dark text-white rounded-xl px-6 py-6 font-bold shadow-md text-base">
+                <Link href="/customer/garage">
+                  + Add Vehicle to Garage First
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <BookingForm 
+              key={formResetKey}
+              vehicles={vehicles}
+              services={services}
+              states={states}
+              cities={filteredCities}
+              onStateChange={setSelectedState}
+              onSubmit={handleCreateBooking}
+              isSubmitting={createBookingMutation.isPending}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

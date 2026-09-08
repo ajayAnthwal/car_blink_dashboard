@@ -125,6 +125,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
       {
         label: "Management",
         items: [
+          { name: "Service Warranties", href: "/partner/warranty", icon: ShieldCheck },
           { name: "My Wallet", href: "/partner/wallet", icon: Wallet },
           { name: "Staff / Mechanics", href: "/partner/staff", icon: Users },
           { name: "Inventory & POS", href: "/partner/inventory", icon: Package },
@@ -153,6 +154,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         items: [
           { name: "Website Leads", href: "/executive/website-leads", icon: Target },
           { name: "Leads / Assignments", href: "/executive/leads", icon: Target },
+          { name: "All Warranties", href: "/executive/warranties", icon: ShieldCheck },
           { name: "Website Ads & Banners", href: "/executive/ads", icon: Image },
           { name: "Invoices & Bills", href: "/executive/invoices", icon: Receipt },
           { name: "Helpdesk", href: "/executive/helpdesk", icon: HelpCircle },

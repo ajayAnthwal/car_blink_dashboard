@@ -4,7 +4,6 @@
 import React from "react";
 import { ProfileForm } from "@/features/users/components/ProfileForm";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
-import { DeactivateAccount } from "@/features/users/components/DeactivateAccount";
 import { useUserProfile } from "@/features/customer/hooks/useCustomerQueries";
 import { Loader2 } from "lucide-react";
 
@@ -24,8 +23,6 @@ export default function ProfilePage() {
       
       <ProfileForm />
       <ChangePasswordForm />
-      <DeactivateAccount />
-      
     </div>
   );
 }
