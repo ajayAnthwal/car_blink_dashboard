@@ -617,9 +617,16 @@ export default function CustomerBookingDetailsPage() {
                     <div className="bg-gradient-to-r from-secondary-blue/10 to-transparent p-6 border-b border-secondary-blue/10">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h4 className="font-extrabold text-primary-navy text-lg">{quote.partnerId?.businessName || "Partner"}</h4>
+                          <h4 className="font-extrabold text-primary-navy text-lg">
+                            {(booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') 
+                              ? (quote.partnerId?.businessName || "Service Partner") 
+                              : "Verified CarBlink Workshop"}
+                          </h4>
                           <div className="flex items-center text-xs font-semibold text-success mt-1">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> Verified Partner
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> 
+                            {(booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED')
+                              ? "Verified Partner"
+                              : "Verified Partner (Location & Details Unlocked Upon Booking)"}
                           </div>
                         </div>
                         <div className="text-right bg-white px-3 py-1 rounded-xl shadow-sm border border-neutral-muted/10">

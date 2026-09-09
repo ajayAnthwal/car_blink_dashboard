@@ -867,6 +867,34 @@ export default function PartnerJobsPage() {
                               </a>
                             </div>
 
+                            {/* Settlement Breakdown Card as per Specification */}
+                            {(() => {
+                              const totalVal = (job.advanceAmount || 0) + (job.finalAmount || 0) || job.estimatedCost || 0;
+                              const platformFee = Math.round(totalVal * 0.15);
+                              const netPayable = totalVal - platformFee;
+
+                              return (
+                                <div className="bg-slate-800/90 border border-slate-700/80 p-4 rounded-2xl text-xs space-y-2.5 shadow-md">
+                                  <div className="flex justify-between items-center text-gray-300 font-medium pb-2 border-b border-slate-700">
+                                    <span>Total Service Value</span>
+                                    <span className="font-bold text-white">₹{totalVal.toLocaleString('en-IN')}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-gray-400 font-medium">
+                                    <span>CarBlink Platform Fee (15%)</span>
+                                    <span className="font-bold text-red-400">- ₹{platformFee.toLocaleString('en-IN')}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-emerald-400 font-bold text-sm pt-2 border-t border-slate-700">
+                                    <span>Partner Net Settlement</span>
+                                    <span className="text-base font-extrabold">₹{netPayable.toLocaleString('en-IN')}</span>
+                                  </div>
+                                  <div className="mt-2 bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-xl text-[11px] text-blue-300 font-medium flex items-center justify-between">
+                                    <span>Settlement Status:</span>
+                                    <span className="font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">⏳ 24-Hour Dispute Hold</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
                             {/* Offline Cash Payment Block */}
                             {(() => {
                               const finalPayment = job.payments?.find((p: any) => (p.paymentType === 'FINAL' || p.paymentType === 'FULL'));
