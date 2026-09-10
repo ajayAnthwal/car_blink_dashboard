@@ -34,6 +34,11 @@ export const forgotPassword = async (data: { identifier: string }) => {
   return response.data;
 };
 
+export const sendSignupOtp = async (data: { phone: string }) => {
+  const response = await apiClient.post("/auth/send-signup-otp", data);
+  return response.data;
+};
+
 export const resetPassword = async (data: { identifier: string; token: string; newPassword: string }) => {
   const response = await apiClient.post("/auth/reset-password", data);
   return response.data;

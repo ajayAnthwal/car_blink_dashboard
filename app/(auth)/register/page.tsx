@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { registerUser, forgotPassword } from "@/lib/services";
+import { registerUser, sendSignupOtp } from "@/lib/services";
 import { ROLES, Role, ROLE_ROUTES } from "@/lib/constants";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await forgotPassword({ identifier: cleanPhone });
+      await sendSignupOtp({ phone: cleanPhone });
       setStep(2);
       setResendTimer(30);
       setCanResend(false);
@@ -93,7 +93,7 @@ export default function RegisterPage() {
     setError("");
     setIsLoading(true);
     try {
-      await forgotPassword({ identifier: formData.phone });
+      await sendSignupOtp({ phone: formData.phone });
       setResendTimer(30);
       setCanResend(false);
     } catch (err: unknown) {
