@@ -16,7 +16,7 @@ export default function LogisticsPage() {
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   
-  const { data: bookingsData, isLoading: isLoadingBookings } = useExecutiveLeads({ page: 1, limit: 100, status: "PENDING,QUOTED,ACCEPTED,IN_PROGRESS" });
+  const { data: bookingsData, isLoading: isLoadingBookings } = useExecutiveLeads({ page: 1, limit: 100, status: "PENDING,QUOTED,ACCEPTED,CUSTOMER_ACCEPTED,IN_PROGRESS" });
   const availableBookings = (bookingsData?.leads || []) as unknown[];
 
   const assignMutation = useAssignDriverMutation();

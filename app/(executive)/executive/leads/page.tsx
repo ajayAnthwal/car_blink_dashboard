@@ -52,10 +52,10 @@ export default function ExecutiveLeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
   const getStatusQuery = (filter: string) => {
-    if (filter === "ACCEPTED") return "ACCEPTED";
+    if (filter === "ACCEPTED") return "ACCEPTED,CUSTOMER_ACCEPTED";
     if (filter === "BIDDING") return "PENDING,QUOTED";
     if (filter === "IN_PROGRESS") return "IN_PROGRESS,COMPLETED";
-    return "PENDING,QUOTED,ACCEPTED,IN_PROGRESS,COMPLETED";
+    return "PENDING,QUOTED,ACCEPTED,CUSTOMER_ACCEPTED,IN_PROGRESS,COMPLETED";
   };
 
   // React Query: Fetch Leads
@@ -457,11 +457,11 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     <TableCell className="min-w-[200px] align-top">
                       <div className="flex flex-col space-y-1">
                         <span className="font-semibold text-primary-navy text-sm">
-                          {lead.customerId?.fullName || "Unknown Customer"}
+                          {lead.customerId?.fullName || lead.fullName || lead.customerName || (lead.customerId?.phone || lead.phone ? `Customer (${lead.customerId?.phone || lead.phone})` : "Guest Customer")}
                         </span>
                         <div className="text-xs text-neutral-muted flex flex-col">
-                          {lead.customerId?.phone && <span>{lead.customerId.phone}</span>}
-                          {lead.customerId?.email && <span>{lead.customerId.email}</span>}
+                          {(lead.customerId?.phone || lead.phone) && <span>{lead.customerId?.phone || lead.phone}</span>}
+                          {(lead.customerId?.email || lead.email) && <span>{lead.customerId?.email || lead.email}</span>}
                         </div>
                         <div className="mt-2 text-[10px] text-neutral-muted flex items-center space-x-2">
                           <span className="bg-gray-100 px-1.5 py-0.5 rounded font-medium border">ID: {lead._id.substring(0, 8)}</span>
@@ -597,7 +597,7 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     <TableCell className="min-w-[220px] align-top">
                       <div className="flex flex-col space-y-2">
                         <span className={`inline-flex self-start px-2 py-0.5 rounded text-[10px] font-extrabold border ${
-                          lead.status === 'ACCEPTED' 
+                          lead.status === 'ACCEPTED' || lead.status === 'CUSTOMER_ACCEPTED'
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300 animate-pulse' 
                             : lead.status === 'IN_PROGRESS' 
                             ? 'bg-blue-100 text-blue-800 border-blue-300' 
@@ -607,7 +607,7 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                             ? 'bg-warning/10 text-warning-dark border-warning/20' 
                             : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'
                         }`}>
-                          {lead.status === 'ACCEPTED' 
+                          {lead.status === 'ACCEPTED' || lead.status === 'CUSTOMER_ACCEPTED' 
                             ? 'CUSTOMER ACCEPTED ✓' 
                             : lead.status === 'IN_PROGRESS' 
                             ? 'JOB IN PROGRESS 🔧' 
@@ -648,11 +648,11 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           onClick={() => openAssignModal(lead)}
                         >
                           <UserPlus className="w-3.5 h-3.5 mr-1.5" />
-                          {lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More" : "Assign"}
+                          {lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More / Forward" : "Forward to Partner"}
                         </Button>
 
                         
-                        {lead.status === 'CUSTOMER_ACCEPTED' && (
+                        {(lead.status === 'CUSTOMER_ACCEPTED' || lead.status === 'ACCEPTED') && (
                           <Button
                             size="sm"
                             className="w-full text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
@@ -664,7 +664,7 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           </Button>
                         )}
 
-                        {lead.status === 'PENDING' && lead.bids?.length > 0 && (
+                        {(lead.status === 'PENDING' || lead.status === 'QUOTED') && lead.bids?.length > 0 && (
                           <Button
                             size="sm"
                             variant="outline"
