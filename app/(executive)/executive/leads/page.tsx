@@ -326,6 +326,7 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
     try {
       await confirmQuoteMutation.mutateAsync(leadId);
       toast.success("Customer selection confirmed! Job assigned to partner successfully.");
+      refetchLeads();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to confirm quote selection");
     }
@@ -436,32 +437,32 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
           <p className="text-neutral-muted">All leads are currently assigned or no new requests exist.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-muted/20 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-gray-50/50">
+            <Table className="w-full min-w-[1180px]">
+              <TableHeader className="bg-slate-50 border-b border-slate-200">
                 <TableRow>
-                  <TableHead className="whitespace-nowrap font-semibold">Lead ID & Customer</TableHead>
-                  <TableHead className="whitespace-nowrap font-semibold">Service Details</TableHead>
-                  <TableHead className="whitespace-nowrap font-semibold">Location & Time</TableHead>
-                  <TableHead className="whitespace-nowrap font-semibold">Executive Owner</TableHead>
-                  <TableHead className="whitespace-nowrap font-semibold">Bids & Status</TableHead>
-                  <TableHead className="whitespace-nowrap font-semibold text-right">Actions</TableHead>
+                  <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[200px]">Lead ID & Customer</TableHead>
+                  <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[230px]">Service Details</TableHead>
+                  <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[200px]">Location & Time</TableHead>
+                  <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[140px]">Executive Owner</TableHead>
+                  <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[230px]">Bids & Status</TableHead>
+                  <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[180px] text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leads.map((lead: any) => (
-                  <TableRow key={lead._id} className="hover:bg-gray-50/50">
+                  <TableRow key={lead._id} className="hover:bg-slate-50/70 transition-colors border-b border-slate-100">
 
                     {/* Customer & Lead ID */}
-                    <TableCell className="min-w-[200px] align-top">
+                    <TableCell className="min-w-[200px] align-top py-3.5">
                       <div className="flex flex-col space-y-1">
                         <span className="font-semibold text-primary-navy text-sm">
                           {lead.customerId?.fullName || lead.fullName || lead.customerName || (lead.customerId?.phone || lead.phone ? `Customer (${lead.customerId?.phone || lead.phone})` : "Guest Customer")}
                         </span>
                         <div className="text-xs text-neutral-muted flex flex-col">
                           {(lead.customerId?.phone || lead.phone) && <span>{lead.customerId?.phone || lead.phone}</span>}
-                          {(lead.customerId?.email || lead.email) && <span>{lead.customerId?.email || lead.email}</span>}
+                          {(lead.customerId?.email || lead.email) && <span className="truncate max-w-[180px]" title={lead.customerId?.email || lead.email}>{lead.customerId?.email || lead.email}</span>}
                         </div>
                         <div className="mt-2 text-[10px] text-neutral-muted flex items-center space-x-2">
                           <span className="bg-gray-100 px-1.5 py-0.5 rounded font-medium border">ID: {lead._id.substring(0, 8)}</span>
@@ -471,14 +472,14 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     </TableCell>
 
                     {/* Service Details */}
-                    <TableCell className="min-w-[220px] max-w-[280px] align-top whitespace-normal break-words">
+                    <TableCell className="min-w-[230px] max-w-[280px] align-top py-3.5 whitespace-normal break-words">
                       <div className="flex flex-col space-y-1">
                         <span className="font-bold text-sm text-neutral-dark flex items-center gap-1.5">
-                          <Wrench className="w-3.5 h-3.5 text-primary-orange" />
+                          <Wrench className="w-3.5 h-3.5 text-primary-orange shrink-0" />
                           {lead.serviceId?.name || "Service Request"}
                         </span>
                         <span className="text-xs font-medium text-neutral-600 flex items-center gap-1.5">
-                          <Car className="w-3.5 h-3.5 text-neutral-muted" />
+                          <Car className="w-3.5 h-3.5 text-neutral-muted shrink-0" />
                           {lead.vehicleId?.brand} {lead.vehicleId?.model}
                         </span>
 
@@ -503,13 +504,13 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     </TableCell>
 
                     {/* Location & Time */}
-                    <TableCell className="min-w-[200px] align-top">
+                    <TableCell className="min-w-[200px] align-top py-3.5">
                       <div className="flex flex-col space-y-2">
                         <div className="flex items-start text-xs text-neutral-700 gap-1.5">
                           <MapPin className="w-3.5 h-3.5 text-neutral-muted mt-0.5 shrink-0" />
                           <div className="flex flex-col">
                             <span className="font-medium">{lead.cityId?.name}</span>
-                            {lead.address && <span className="text-[10px] text-neutral-muted">{lead.address} {lead.landmark && `(${lead.landmark})`}</span>}
+                            {lead.address && <span className="text-[10px] text-neutral-muted line-clamp-2">{lead.address} {lead.landmark && `(${lead.landmark})`}</span>}
                           </div>
                         </div>
                         <div className="flex items-start text-xs text-neutral-700 gap-1.5">
@@ -562,7 +563,7 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     </TableCell>
 
                     {/* Executive Owner & Claim Button */}
-                    <TableCell className="min-w-[150px] align-top">
+                    <TableCell className="min-w-[140px] align-top py-3.5">
                       <div className="flex flex-col space-y-1.5">
                         {lead.assignedExecutiveId ? (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
@@ -594,10 +595,12 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     </TableCell>
 
                     {/* Bids & Status */}
-                    <TableCell className="min-w-[220px] align-top">
+                    <TableCell className="min-w-[230px] align-top py-3.5">
                       <div className="flex flex-col space-y-2">
                         <span className={`inline-flex self-start px-2 py-0.5 rounded text-[10px] font-extrabold border ${
-                          lead.status === 'ACCEPTED' || lead.status === 'CUSTOMER_ACCEPTED'
+                          lead.status === 'ACCEPTED'
+                            ? 'bg-teal-100 text-teal-800 border-teal-300'
+                            : lead.status === 'CUSTOMER_ACCEPTED'
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300 animate-pulse' 
                             : lead.status === 'IN_PROGRESS' 
                             ? 'bg-blue-100 text-blue-800 border-blue-300' 
@@ -607,7 +610,9 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                             ? 'bg-warning/10 text-warning-dark border-warning/20' 
                             : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'
                         }`}>
-                          {lead.status === 'ACCEPTED' || lead.status === 'CUSTOMER_ACCEPTED' 
+                          {lead.status === 'ACCEPTED'
+                            ? 'PARTNER ASSIGNED ✓'
+                            : lead.status === 'CUSTOMER_ACCEPTED' 
                             ? 'CUSTOMER ACCEPTED ✓' 
                             : lead.status === 'IN_PROGRESS' 
                             ? 'JOB IN PROGRESS 🔧' 
@@ -629,8 +634,8 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           <div className="flex flex-col gap-1 mt-1">
                             <span className="text-[10px] font-semibold text-primary-navy">{lead.bids.length} Bids Received:</span>
                             {lead.bids.map((bid: any) => (
-                              <div key={bid._id} className="flex justify-between items-center text-[10px] bg-white p-1 rounded border border-gray-200">
-                                <span className="font-medium truncate max-w-[80px]" title={bid.partnerId?.businessName}>{bid.partnerId?.businessName || 'Partner'}</span>
+                              <div key={bid._id} className="flex justify-between items-center text-[10px] bg-white p-1.5 rounded border border-gray-200 shadow-2xs">
+                                <span className="font-medium truncate max-w-[120px]" title={bid.partnerId?.businessName}>{bid.partnerId?.businessName || 'Partner'}</span>
                                 <span className="font-bold text-green-700">₹{bid.quotedAmount}</span>
                               </div>
                             ))}
@@ -640,35 +645,45 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     </TableCell>
 
                     {/* Actions */}
-                    <TableCell className="align-top text-right min-w-[140px]">
-                      <div className="flex flex-col gap-2 items-end">
+                    <TableCell className="align-top py-3.5 min-w-[180px] w-[180px]">
+                      <div className="flex flex-col gap-2 items-center">
                         <Button
                           size="sm"
-                          className={`w-full text-xs h-8 ${lead.assignment?.assignedPartnerIds?.length > 0 ? 'bg-white text-neutral-dark border border-gray-200 hover:bg-gray-50' : 'bg-secondary-blue hover:bg-secondary-blue/90'}`}
+                          className={`w-full text-[11px] font-semibold h-8 whitespace-nowrap shadow-2xs ${
+                            lead.assignment?.assignedPartnerIds?.length > 0 
+                              ? 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200' 
+                              : 'bg-secondary-blue hover:bg-secondary-blue/90 text-white'
+                          }`}
                           onClick={() => openAssignModal(lead)}
                         >
-                          <UserPlus className="w-3.5 h-3.5 mr-1.5" />
-                          {lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More / Forward" : "Forward to Partner"}
+                          <UserPlus className="w-3.5 h-3.5 mr-1" />
+                          <span>{lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More / Forward" : "Forward to Partner"}</span>
                         </Button>
 
-                        
-                        {(lead.status === 'CUSTOMER_ACCEPTED' || lead.status === 'ACCEPTED') && (
+                        {lead.status === 'CUSTOMER_ACCEPTED' && (
                           <Button
                             size="sm"
-                            className="w-full text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
+                            className="w-full text-[11px] font-bold h-8 bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap shadow-sm"
                             onClick={() => handleConfirmQuote(lead._id)}
                             disabled={confirmQuoteMutation.isPending}
                           >
                             <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                            {confirmQuoteMutation.isPending ? "Confirming..." : "Confirm & Assign"}
+                            <span>{confirmQuoteMutation.isPending ? "Confirming..." : "Confirm & Assign"}</span>
                           </Button>
+                        )}
+
+                        {lead.status === 'ACCEPTED' && (
+                          <div className="w-full text-center text-[11px] font-bold text-teal-800 bg-teal-50 border border-teal-200 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap">
+                            <CheckCircle className="w-3.5 h-3.5 text-teal-600" />
+                            <span>Partner Assigned</span>
+                          </div>
                         )}
 
                         {(lead.status === 'PENDING' || lead.status === 'QUOTED') && lead.bids?.length > 0 && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="w-full text-[10px] h-7 text-secondary-blue border-secondary-blue/30 hover:bg-secondary-blue/10"
+                            className="w-full text-[10px] h-7 text-secondary-blue border-secondary-blue/30 hover:bg-secondary-blue/10 whitespace-nowrap"
                             onClick={() => {
                               setForwardBidData({ leadId: lead._id, bids: lead.bids });
                               forwardForm.reset({ bidIds: lead.bids.map((b: any) => b._id) });
@@ -681,22 +696,22 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                         {/* Send Satisfaction Template Button (Only when job is COMPLETED) */}
                         {lead.status === "COMPLETED" ? (
                           lead.satisfactionStatus === "PENDING_CUSTOMER" ? (
-                            <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-bold text-center">
+                            <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full font-bold text-center w-full block">
                               ⏳ Form Sent (Pending)
                             </span>
                           ) : lead.satisfactionStatus === "SATISFIED" ? (
-                            <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full font-bold text-center">
+                            <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full font-bold text-center w-full block">
                               💚 Customer Satisfied
                             </span>
                           ) : lead.satisfactionStatus === "DISSATISFIED" ? (
-                            <span className="text-[10px] text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full font-bold text-center">
+                            <span className="text-[10px] text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-full font-bold text-center w-full block">
                               🔴 Customer Dissatisfied
                             </span>
                           ) : (
                             <Button
                               size="sm"
                               variant="outline"
-                              className="w-full text-[10px] h-7 text-primary-orange border-primary-orange/30 hover:bg-orange-50 font-bold shadow-2xs"
+                              className="w-full text-[10px] h-7 text-primary-orange border-primary-orange/30 hover:bg-orange-50 font-bold whitespace-nowrap"
                               onClick={async () => {
                                 try {
                                   const { sendSatisfactionTemplate } = await import("@/lib/services");
