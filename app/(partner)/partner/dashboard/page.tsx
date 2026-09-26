@@ -76,14 +76,15 @@ export default function PartnerDashboardPage() {
 
   const loading = isLoadingJobs || isLoadingBids || isLoadingEarnings || isLoadingProfile || isLoadingLeads;
 
-  const jobs = jobsData?.jobs || [];
-  const bids = bidsData?.bids || [];
-  const leads = leadsData?.leads || [];
+  const jobs = Array.isArray(jobsData?.jobs) ? jobsData.jobs : (Array.isArray(jobsData) ? jobsData : []);
+  const bids = Array.isArray(bidsData?.bids) ? bidsData.bids : (Array.isArray(bidsData) ? bidsData : []);
+  const leads = Array.isArray(leadsData?.leads) ? leadsData.leads : (Array.isArray(leadsData) ? leadsData : []);
 
   const stats = useMemo(() => {
-    const activeJobsCount = jobs.filter(j => ['NOT_STARTED', 'IN_PROGRESS'].includes(j.status)).length;
-    const completedJobsCount = jobs.filter(j => j.status === 'COMPLETED').length;
-    const totalEarned = (earnings as unknown)?.lifetimeEarnings || earnings?.totalEarnings || 0;
+    const safeJobs = Array.isArray(jobs) ? jobs : [];
+    const activeJobsCount = safeJobs.filter(j => j && ['NOT_STARTED', 'IN_PROGRESS'].includes(j.status)).length;
+    const completedJobsCount = safeJobs.filter(j => j && j.status === 'COMPLETED').length;
+    const totalEarned = (earnings as any)?.lifetimeEarnings || earnings?.totalEarnings || 0;
     const avgRating = profile?.rating || 0;
     const tReviews = profile?.totalReviews || 0;
 
@@ -125,16 +126,17 @@ export default function PartnerDashboardPage() {
   }, [earnings, jobs]);
 
   const barChartData = useMemo(() => {
-    const statusCounts = jobs.reduce((acc: unknown, job: unknown) => {
-      const status = job.status || 'NOT_STARTED';
+    const safeJobs = Array.isArray(jobs) ? jobs : [];
+    const statusCounts = safeJobs.reduce((acc: any, job: any) => {
+      const status = (job && job.status) ? String(job.status).toUpperCase() : 'NOT_STARTED';
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, { NOT_STARTED: 0, IN_PROGRESS: 0, COMPLETED: 0 });
 
     return [
-      { name: "Not Started", value: statusCounts.NOT_STARTED, fill: getStatusColorTheme("NOT_STARTED").hex },
-      { name: "In Progress", value: statusCounts.IN_PROGRESS, fill: getStatusColorTheme("IN_PROGRESS").hex },
-      { name: "Completed", value: statusCounts.COMPLETED, fill: getStatusColorTheme("COMPLETED").hex }
+      { name: "Not Started", value: statusCounts.NOT_STARTED || 0, fill: getStatusColorTheme("NOT_STARTED")?.hex || "#6B7280" },
+      { name: "In Progress", value: statusCounts.IN_PROGRESS || 0, fill: getStatusColorTheme("IN_PROGRESS")?.hex || "#2563EB" },
+      { name: "Completed", value: statusCounts.COMPLETED || 0, fill: getStatusColorTheme("COMPLETED")?.hex || "#16A34A" }
     ];
   }, [jobs]);
 

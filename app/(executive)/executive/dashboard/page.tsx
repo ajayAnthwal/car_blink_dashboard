@@ -125,10 +125,10 @@ export default function ExecutiveDashboardPage() {
 
   const loading = loadingFollowUps || loadingEscalations || loadingLeads || loadingWebsiteLeads;
 
-  const fUps = followUpsData?.followUps || [];
-  const esc = escalationsData?.escalations || [];
-  const lds = leadsData?.leads || [];
-  const wLds = websiteLeadsData?.leads || [];
+  const fUps = Array.isArray(followUpsData?.followUps) ? followUpsData.followUps : (Array.isArray(followUpsData) ? followUpsData : []);
+  const esc = Array.isArray(escalationsData?.escalations) ? escalationsData.escalations : (Array.isArray(escalationsData) ? escalationsData : []);
+  const lds = Array.isArray(leadsData?.leads) ? leadsData.leads : (Array.isArray(leadsData) ? leadsData : []);
+  const wLds = Array.isArray(websiteLeadsData?.leads) ? websiteLeadsData.leads : (Array.isArray(websiteLeadsData) ? websiteLeadsData : []);
 
   // Derived Latest Incoming Lead Banner
   const latestNewLead = React.useMemo(() => {
