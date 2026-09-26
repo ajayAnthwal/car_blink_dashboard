@@ -33,6 +33,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, CartesianGrid, XAxis, YAxis, Bar } from "recharts";
 import WebsitePromotionalBanners from "@/components/home/WebsitePromotionalBanners";
 import ProfileCompletionScoreWidget from "@/components/customer/ProfileCompletionScoreWidget";
+import CustomerSatisfactionWidget from "@/components/customer/CustomerSatisfactionWidget";
 
 export default function CustomerDashboardPage() {
   const { user } = useAuth();
@@ -175,6 +176,9 @@ export default function CustomerDashboardPage() {
 
   return (
     <div className="space-y-3 sm:space-y-6 md:space-y-8 pb-12 w-full max-w-full px-1 sm:px-6 md:px-8 mx-auto overflow-x-hidden min-w-0">
+      {/* Customer Satisfaction Feedback Widget for Completed Services */}
+      <CustomerSatisfactionWidget />
+
       {/* 10/10 REAL Profile Completion Score Widget */}
       <ProfileCompletionScoreWidget />
 

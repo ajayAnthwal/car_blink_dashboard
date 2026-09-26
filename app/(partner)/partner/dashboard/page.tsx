@@ -231,77 +231,85 @@ export default function PartnerDashboardPage() {
 
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Active Jobs</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Briefcase className="w-5 h-5 text-secondary-blue" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.activeJobs}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/partner/jobs" className="flex items-center text-xs font-semibold text-secondary-blue hover:text-blue-700 group transition-colors">
-              Manage jobs
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/partner/jobs" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-blue-300 group-hover:border-blue-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-blue-600 transition-colors">Active Jobs</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                <Briefcase className="w-5 h-5 text-secondary-blue" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.activeJobs}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-secondary-blue group-hover:text-blue-700 transition-colors">
+                Manage jobs <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Completed Jobs</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-success" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.completedJobs}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/partner/jobs" className="flex items-center text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors">
-              View history
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/partner/jobs" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-green-300 group-hover:border-green-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-green-600 transition-colors">Completed Jobs</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                <CheckCircle2 className="w-5 h-5 text-success" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.completedJobs}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                View history <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Earnings</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
-              <IndianRupee className="w-5 h-5 text-primary-orange" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">
-              {stats.totalEarnings.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
-            </div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/partner/earnings" className="flex items-center text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors">
-              View payouts
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/partner/earnings" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-orange-300 group-hover:border-orange-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-orange-600 transition-colors">Total Earnings</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                <IndianRupee className="w-5 h-5 text-primary-orange" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">
+                {stats.totalEarnings.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
+              </div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                View payouts <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Average Rating</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
-              <Star className="w-5 h-5 text-yellow-500 fill-current" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">
-              {stats.averageRating ? stats.averageRating.toFixed(1) : "N/A"}
-            </div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <div className="flex items-center text-xs font-semibold text-gray-500">
-              Based on {stats.totalReviews} reviews
-            </div>
-          </CardFooter>
-        </Card>
+        <Link href="/partner/reviews" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-yellow-300 group-hover:border-yellow-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-yellow-600 transition-colors">Average Rating</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
+                <Star className="w-5 h-5 text-yellow-500 fill-current" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">
+                {stats.averageRating ? stats.averageRating.toFixed(1) : "N/A"}
+              </div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                Based on {stats.totalReviews} reviews <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
       </div>
 
       {/* Middle Section: Charts */}

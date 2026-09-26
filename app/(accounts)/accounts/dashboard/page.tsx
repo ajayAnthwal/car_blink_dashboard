@@ -112,63 +112,81 @@ export default function AccountsDashboardPage() {
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Pending Refunds</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
-              <Undo2 className="w-5 h-5 text-primary-orange" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.pendingRefunds}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/accounts/refunds" className="flex items-center text-xs font-semibold text-primary-orange hover:text-orange-600 group transition-colors">
-              Process refunds <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/accounts/refunds" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-orange-300 group-hover:border-orange-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-orange-600 transition-colors">Pending Refunds</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                <Undo2 className="w-5 h-5 text-primary-orange" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.pendingRefunds}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-primary-orange group-hover:text-orange-600 transition-colors">
+                Process refunds <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Pending Settlements</CardTitle>
-            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-              <BadgeIndianRupee className="w-5 h-5 text-secondary-blue" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">{stats.pendingSettlements}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <Link href="/accounts/settlements" className="flex items-center text-xs font-semibold text-secondary-blue hover:text-blue-700 group transition-colors">
-              View settlements <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardFooter>
-        </Card>
+        <Link href="/accounts/settlements" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-blue-300 group-hover:border-blue-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-blue-600 transition-colors">Pending Settlements</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                <BadgeIndianRupee className="w-5 h-5 text-secondary-blue" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.pendingSettlements}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-secondary-blue group-hover:text-blue-700 transition-colors">
+                View settlements <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Refunds Vol.</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">₹{stats.totalRefundsAmount.toLocaleString()}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <span className="text-xs font-medium text-gray-400">Total value processed</span>
-          </CardFooter>
-        </Card>
+        <Link href="/accounts/refunds" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-orange-300 group-hover:border-orange-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-orange-600 transition-colors">Total Refunds Vol.</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                <Undo2 className="w-5 h-5 text-primary-orange" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">₹{stats.totalRefundsAmount.toLocaleString()}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                View refund history <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
 
-        <Card className="shadow-subtle border-gray-100 hover:shadow-elevated transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Settlements Vol.</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900 font-heading">₹{stats.totalSettlementsAmount.toLocaleString()}</div>
-          </CardContent>
-          <CardFooter className="pt-1 pb-4">
-            <span className="text-xs font-medium text-gray-400">Total value processed</span>
-          </CardFooter>
-        </Card>
+        <Link href="/accounts/settlements" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-blue-300 group-hover:border-blue-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-blue-600 transition-colors">Total Settlements Vol.</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                <BadgeIndianRupee className="w-5 h-5 text-secondary-blue" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">₹{stats.totalSettlementsAmount.toLocaleString()}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors">
+                View settlement history <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

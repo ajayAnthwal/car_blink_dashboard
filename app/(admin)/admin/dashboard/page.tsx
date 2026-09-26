@@ -90,71 +90,85 @@ export default function AdminDashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Total Revenue</p>
-                <h3 className="text-3xl font-bold text-gray-900 font-heading">
-                  {stats.totalRevenue.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
-                </h3>
+        <Link href="/admin/finance" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-green-300 group-hover:border-green-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1 group-hover:text-green-600 transition-colors">Total Revenue</p>
+                  <h3 className="text-3xl font-bold text-gray-900 font-heading">
+                    {stats.totalRevenue.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
+                  </h3>
+                </div>
+                <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center border border-green-100 group-hover:bg-green-100 transition-colors">
+                  <IndianRupee className="w-6 h-6 text-green-600" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center border border-green-100">
-                <IndianRupee className="w-6 h-6 text-green-600" />
+              <div className="mt-4 flex items-center text-xs font-semibold text-green-600 group-hover:text-green-800 transition-colors">
+                View financial reports <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Total Users</p>
-                <h3 className="text-3xl font-bold text-gray-900 font-heading">{stats.totalUsers}</h3>
+        <Link href="/admin/users" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-blue-300 group-hover:border-blue-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1 group-hover:text-blue-600 transition-colors">Total Users</p>
+                  <h3 className="text-3xl font-bold text-gray-900 font-heading">{stats.totalUsers}</h3>
+                </div>
+                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100 group-hover:bg-blue-100 transition-colors">
+                  <Users className="w-6 h-6 text-blue-600" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100">
-                <Users className="w-6 h-6 text-blue-600" />
+              <div className="mt-4 flex items-center text-xs font-semibold text-blue-600 group-hover:text-blue-800 transition-colors">
+                Manage users <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
               </div>
-            </div>
-            <Link href="/admin/users" className="mt-4 flex items-center text-xs font-semibold text-blue-600 hover:text-blue-800 group transition-colors">
-              Manage users <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Active Partners</p>
-                <h3 className="text-3xl font-bold text-gray-900 font-heading">{stats.activePartners}</h3>
+        <Link href="/admin/partners" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-orange-300 group-hover:border-orange-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1 group-hover:text-orange-600 transition-colors">Active Partners</p>
+                  <h3 className="text-3xl font-bold text-gray-900 font-heading">{stats.activePartners}</h3>
+                </div>
+                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100 group-hover:bg-orange-100 transition-colors">
+                  <Activity className="w-6 h-6 text-primary-orange" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100">
-                <Activity className="w-6 h-6 text-primary-orange" />
+              <div className="mt-4 flex items-center text-xs font-semibold text-primary-orange group-hover:text-orange-700 transition-colors">
+                View partners <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
               </div>
-            </div>
-            <Link href="/admin/partners" className="mt-4 flex items-center text-xs font-semibold text-primary-orange hover:text-orange-700 group transition-colors">
-              View partners <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Monthly Growth</p>
-                <h3 className="text-3xl font-bold text-gray-900 font-heading">
-                  {stats.growthRate > 0 ? '+' : ''}{stats.growthRate}%
-                </h3>
+        <Link href="/admin/finance" className="block group">
+          <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-purple-300 group-hover:border-purple-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1 group-hover:text-purple-600 transition-colors">Monthly Growth</p>
+                  <h3 className="text-3xl font-bold text-gray-900 font-heading">
+                    {stats.growthRate > 0 ? '+' : ''}{stats.growthRate}%
+                  </h3>
+                </div>
+                <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center border border-purple-100 group-hover:bg-purple-100 transition-colors">
+                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center border border-purple-100">
-                <TrendingUp className="w-6 h-6 text-purple-600" />
+              <div className="mt-4 flex items-center text-xs font-semibold text-purple-600 group-hover:text-purple-800 transition-colors">
+                View growth analytics <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
