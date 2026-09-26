@@ -5,11 +5,7 @@ import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAdminBookingDetails, useCancelAdminBookingMutation } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { 
-  Loader2, Calendar, User, Wrench, ArrowLeft, Ban, 
-  MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee,
-  Phone, Mail, Info, Camera
-} from "lucide-react";
+import { Loader2, Calendar, User, Wrench, ArrowLeft, Ban, MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee, Phone, Mail, Info, Camera } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function AdminBookingDetailsPage() {

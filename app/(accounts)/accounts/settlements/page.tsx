@@ -10,7 +10,7 @@ import {
 } from "@/features/accounts/hooks/useAccountsQueries";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock } from "lucide-react";
+import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function SettlementsPage() {

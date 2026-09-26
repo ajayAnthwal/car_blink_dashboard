@@ -9,25 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, 
-  User, 
-  Phone, 
-  Mail, 
-  Car, 
-  Wrench, 
-  MapPin, 
-  Calendar, 
-  Clock,
-  Briefcase,
-  Target,
-  Image as ImageIcon,
-  CheckCircle,
-  Share,
-  ClipboardList,
-  ExternalLink,
-  FileText
-} from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, Car, Wrench, MapPin, Calendar, Clock, Briefcase, Target, Image as ImageIcon, CheckCircle, Share, ClipboardList, ExternalLink, FileText } from "lucide-react";
 
 export default function LeadDetailsPage() {
   const { id } = useParams() as { id: string };

@@ -9,16 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  BadgeIndianRupee,
-  Undo2,
-  FileText,
-  ArrowRight,
-  Clock,
-  Activity,
-  CheckCircle2,
-  ChevronRight
-} from "lucide-react";
+import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight } from "lucide-react";
 import {
   BarChart,
   Bar,

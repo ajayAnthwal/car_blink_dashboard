@@ -1,4 +1,5 @@
 "use client";
+import { User } from "lucide-react";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import Cookies from "js-cookie";

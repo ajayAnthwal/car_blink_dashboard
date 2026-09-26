@@ -18,19 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  PhoneCall, 
-  AlertTriangle, 
-  Target,
-  ArrowRight,
-  Clock,
-  User,
-  Activity,
-  CheckCircle2,
-  ChevronRight,
-  Sparkles,
-  X
-} from "lucide-react";
+import { PhoneCall, AlertTriangle, Target, ArrowRight, Clock, User, Activity, CheckCircle2, ChevronRight, Sparkles, X } from "lucide-react";
 import { 
   BarChart, 
   Bar, 

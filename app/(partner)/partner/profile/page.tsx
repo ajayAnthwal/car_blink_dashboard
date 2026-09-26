@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Store, MapPin, Briefcase, Loader2, ShieldCheck, Upload } from "lucide-react";
+import { Store, MapPin, Briefcase, Loader2, ShieldCheck, Upload, File } from "lucide-react";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
 import { DeactivateAccount } from "@/features/users/components/DeactivateAccount";
 

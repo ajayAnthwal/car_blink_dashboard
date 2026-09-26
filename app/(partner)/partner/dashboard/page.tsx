@@ -3,14 +3,7 @@
 
 import React, { useMemo, useEffect } from "react";
 import Link from "next/link";
-import {
-  Briefcase,
-  CheckCircle2,
-  Clock,
-  IndianRupee,
-  Star,
-  AlertTriangle
-} from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, IndianRupee, Star, AlertTriangle, ArrowRight } from "lucide-react";
 import {
   LineChart,
   Line,

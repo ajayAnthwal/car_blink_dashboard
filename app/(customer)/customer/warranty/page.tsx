@@ -5,24 +5,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
-  ShieldCheck, 
-  ChevronDown, 
-  ChevronUp, 
-  Loader2, 
-  Search, 
-  ChevronLeft, 
-  ChevronRight, 
-  Download, 
-  FileText, 
-  Printer, 
-  X, 
-  CheckCircle2, 
-  Car, 
-  Calendar, 
-  Wrench, 
-  Building2 
-} from "lucide-react";
+import { ShieldCheck, ChevronDown, ChevronUp, Loader2, Search, ChevronLeft, ChevronRight, Download, FileText, Printer, X, CheckCircle2, Car, Calendar, Wrench, Building2 } from "lucide-react";
 import { useCustomerWarranties } from "@/features/customer/hooks/useCustomerQueries";
 
 export default function WarrantiesPage() {

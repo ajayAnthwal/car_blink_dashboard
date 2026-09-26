@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { HelpCircle, Loader2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { HelpCircle, Loader2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 

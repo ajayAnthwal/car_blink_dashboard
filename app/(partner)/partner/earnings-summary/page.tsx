@@ -4,7 +4,7 @@
 import React from "react";
 import { usePartnerEarnings } from "@/features/partner/hooks/usePartnerQueries";
 import { Card, CardContent } from "@/components/ui/card";
-import { PieChart, Loader2, IndianRupee, CheckCircle2, TrendingUp } from "lucide-react";
+import { Loader2, IndianRupee, CheckCircle2, TrendingUp } from "lucide-react";
 
 export default function EarningsSummaryPage() {
   const { data: summary, isLoading } = usePartnerEarnings();

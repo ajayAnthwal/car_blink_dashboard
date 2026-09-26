@@ -7,30 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/FileUpload";
-import {
-  Wrench,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
-  Image as ImageIcon,
-  FileText,
-  CheckCircle2,
-  PlayCircle,
-  MapPin,
-  Calendar,
-  Car,
-  UserCheck,
-  PlusCircle,
-  HandCoins,
-  Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  ShieldAlert,
-  Clock,
-  Sparkles,
-  DollarSign
-} from "lucide-react";
+import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car, UserCheck, PlusCircle, HandCoins, Search, Filter, ChevronLeft, ChevronRight, ShieldAlert, Clock, Sparkles, DollarSign, ShieldCheck } from "lucide-react";
 import {
   usePartnerJobs,
   usePartnerStaff,

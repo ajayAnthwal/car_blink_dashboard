@@ -8,14 +8,7 @@ import { useAdminDashboardData, useAdminUsers } from "@/features/admin/hooks/use
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  IndianRupee,
-  Users,
-  TrendingUp,
-  ArrowRight,
-  ShieldAlert,
-  Activity
-} from "lucide-react";
+import { IndianRupee, Users, TrendingUp, ArrowRight, ShieldAlert, Activity } from "lucide-react";
 import { ResponsiveContainer, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Area } from "recharts";
 
 export default function AdminDashboardPage() {

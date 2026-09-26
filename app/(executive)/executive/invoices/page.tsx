@@ -12,26 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  Receipt, 
-  FileText, 
-  CheckCircle2, 
-  Edit3, 
-  Plus, 
-  Trash2, 
-  User, 
-  Building2, 
-  Car, 
-  Search, 
-  Clock, 
-  ShieldCheck, 
-  Send,
-  Loader2,
-  X,
-  ExternalLink,
-  ChevronLeft,
-  ChevronRight
-} from "lucide-react";
+import { Receipt, FileText, CheckCircle2, Edit3, Plus, Trash2, User, Building2, Car, Search, Clock, ShieldCheck, Send, Loader2, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 

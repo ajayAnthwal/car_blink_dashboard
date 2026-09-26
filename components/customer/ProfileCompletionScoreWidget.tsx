@@ -5,21 +5,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useGarageVehicles } from "@/features/customer/hooks/useCustomerQueries";
-import { 
-  CheckCircle2, 
-  AlertCircle, 
-  Sparkles, 
-  ChevronDown, 
-  ChevronUp, 
-  User, 
-  Mail, 
-  Phone, 
-  Image as ImageIcon, 
-  MapPin, 
-  Car, 
-  PhoneCall, 
-  ArrowRight
-} from "lucide-react";
+import { CheckCircle2, AlertCircle, Sparkles, ChevronDown, ChevronUp, User, Mail, Phone, Image as ImageIcon, MapPin, Car, PhoneCall, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function ProfileCompletionScoreWidget() {

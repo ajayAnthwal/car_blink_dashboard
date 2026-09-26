@@ -3,20 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Users,
-  Map,
-  Settings,
-  Car,
-  IndianRupee,
-  Calendar,
-  Store,
-  Megaphone,
-  LifeBuoy,
-  UserCheck,
-  Bell
-} from "lucide-react";
+import { LayoutDashboard, Users, Map, Settings, Car, IndianRupee, Calendar, Store, Megaphone, LifeBuoy, UserCheck, Bell } from "lucide-react";
 
 const navItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },

@@ -4,23 +4,7 @@
 import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  MessageSquareQuote,
-  Loader2,
-  IndianRupee,
-  Clock,
-  FileText,
-  CheckCircle2,
-  XCircle,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Car,
-  Tag,
-  AlertCircle,
-  Sparkles,
-  ArrowRight
-} from "lucide-react";
+import { MessageSquareQuote, Loader2, IndianRupee, Clock, FileText, CheckCircle2, XCircle, Search, ChevronLeft, ChevronRight, Car, Tag, AlertCircle, Sparkles, ArrowRight } from "lucide-react";
 import { usePartnerBids, useWithdrawBidMutation } from "@/features/partner/hooks/usePartnerQueries";
 import Link from "next/link";
 

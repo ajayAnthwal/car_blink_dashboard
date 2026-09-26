@@ -3,13 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Undo2, 
-  BadgeIndianRupee, 
-  FileText,
-  Settings
-} from "lucide-react";
+import { LayoutDashboard, Undo2, BadgeIndianRupee, FileText, Settings } from "lucide-react";
 
 const navItems = [
   { name: "Dashboard", href: "/accounts/dashboard", icon: LayoutDashboard },

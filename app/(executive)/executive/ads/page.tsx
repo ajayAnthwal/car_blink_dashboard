@@ -9,20 +9,7 @@ import {
   useDeleteExecutiveAdMutation,
 } from "@/features/executive/hooks/useExecutiveQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Loader2,
-  Image as ImageIcon,
-  Plus,
-  Trash2,
-  Edit,
-  ExternalLink,
-  CheckCircle2,
-  XCircle,
-  Eye,
-  Sparkles,
-  Layers,
-  Upload,
-} from "lucide-react";
+import { Loader2, Image as ImageIcon, Plus, Trash2, Edit, ExternalLink, CheckCircle2, XCircle, Eye, Sparkles, Layers, Upload } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ExecutiveAdsPage() {
