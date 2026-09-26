@@ -29,7 +29,8 @@ export function ProfileCompletionScoreWidget() {
   const { data: garageData } = useGarageVehicles();
   const garageVehicles = Array.isArray(garageData) ? garageData : (garageData?.vehicles || garageData?.docs || []);
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Default to collapsed for a ultra-compact sleek look
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // 10 REAL Profile & Account Criteria
   const items = [
@@ -121,77 +122,65 @@ export function ProfileCompletionScoreWidget() {
   const missingItems = items.filter((i) => !i.completed);
   const is100Percent = completedCount === totalCount;
 
-  // Progress bar color based on score
   let progressColor = "bg-amber-500";
   if (percentage >= 80) {
     progressColor = "bg-emerald-500";
   } else if (percentage >= 50) {
-    progressColor = "bg-indigo-500";
+    progressColor = "bg-secondary-blue";
   }
 
   return (
-    <div className="w-full mb-6">
-      <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border transition-all duration-300 shadow-md ${
+    <div className="w-full mb-4">
+      <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 shadow-sm ${
         is100Percent 
-          ? "bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 border-emerald-700/50 text-white" 
-          : "bg-gradient-to-r from-slate-900 via-primary-navy to-slate-950 border-white/10 text-white"
+          ? "bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 border-emerald-700/40 text-white" 
+          : "bg-gradient-to-r from-slate-900 via-primary-navy/95 to-slate-950 border-white/10 text-white"
       }`}>
-        {/* Ambient Glows */}
-        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary-orange/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+        {/* Ambient Glow */}
+        <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-primary-orange/10 blur-2xl" />
 
-        <div className="relative z-10 p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="relative z-10 p-3 sm:p-3.5 px-4 sm:px-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             
-            {/* Left Column: Score Meter & Info */}
-            <div className="flex items-center gap-3.5 sm:gap-5 min-w-0 flex-1">
-              <div className="relative shrink-0 flex items-center justify-center">
-                <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center font-heading font-black shadow-lg border ${
-                  is100Percent 
-                    ? "bg-emerald-500 text-white border-emerald-400" 
-                    : "bg-white/10 text-white border-white/20 backdrop-blur-md"
-                }`}>
-                  <span className="text-lg sm:text-xl leading-none font-extrabold">{completedCount}/{totalCount}</span>
-                  <span className="text-[10px] uppercase font-bold text-white/70 tracking-wider mt-0.5">{percentage}%</span>
-                </div>
+            {/* Left: Score Badge & Title */}
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className={`shrink-0 px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-bold text-xs border shadow-xs ${
+                is100Percent 
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30" 
+                  : "bg-white/10 text-white border-white/15"
+              }`}>
+                <span className="font-extrabold text-sm">{completedCount}/{totalCount}</span>
+                <span className="text-[10px] text-white/70 font-mono">({percentage}%)</span>
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-heading font-bold text-base sm:text-lg text-white flex items-center gap-2">
-                    Profile Completion: {completedCount}/{totalCount}
-                    {is100Percent && <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />}
-                  </h3>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    is100Percent ? "bg-emerald-400/20 text-emerald-300 border-emerald-400/30" : "bg-white/10 text-white/90 border-white/20"
-                  }`}>
-                    {is100Percent ? "100% Verified 🎉" : `${totalCount - completedCount} Pending`}
+                <div className="flex items-center gap-2">
+                  <h4 className="font-heading font-semibold text-xs sm:text-sm text-white truncate">
+                    Profile Completion
+                    {is100Percent && <Sparkles className="w-3.5 h-3.5 text-emerald-400 inline ml-1.5" />}
+                  </h4>
+                  <span className="text-[10px] font-medium text-white/60 hidden md:inline">
+                    {is100Percent ? "All set!" : `${totalCount - completedCount} fields missing`}
                   </span>
                 </div>
-
-                <p className="text-xs sm:text-sm text-gray-300 font-medium mt-1 max-w-xl">
-                  {is100Percent 
-                    ? "Awesome! Your profile is 100% complete. Enjoy instant quote approvals and priority service booking."
-                    : `Complete your details to reach 10/10 score. Missing ${totalCount - completedCount} details required for faster service quotes.`}
-                </p>
-
-                {/* Progress Bar */}
-                <div className="mt-3 max-w-md w-full bg-white/10 h-2 rounded-full overflow-hidden p-0.5 border border-white/10">
+                
+                {/* Micro Progress Bar */}
+                <div className="mt-1 w-full max-w-xs bg-white/10 h-1.5 rounded-full overflow-hidden">
                   <div 
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${progressColor}`}
+                    className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            {/* Right Column: CTA Button & Toggle */}
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-white/10">
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
               {!is100Percent && (
-                <Button asChild size="sm" className="bg-primary-orange hover:bg-primary-orange-dark text-white font-bold rounded-xl text-xs px-4 py-2 shadow-md flex-1 sm:flex-initial">
-                  <Link href={missingItems[0]?.href || "/customer/profile"} className="flex items-center gap-1.5">
-                    <span>Complete Profile</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                <Button asChild size="sm" className="bg-primary-orange hover:bg-primary-orange/90 text-white font-bold rounded-xl text-xs px-3 py-1.5 h-8 shadow-xs">
+                  <Link href={missingItems[0]?.href || "/customer/profile"} className="flex items-center gap-1">
+                    <span>Complete</span>
+                    <ArrowRight className="w-3 h-3" />
                   </Link>
                 </Button>
               )}
@@ -200,39 +189,31 @@ export function ProfileCompletionScoreWidget() {
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors text-xs flex items-center gap-1 font-semibold"
-                  title={isExpanded ? "Hide pending fields" : "Show pending fields"}
+                  className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-xs flex items-center gap-1 font-medium h-8 px-2 border border-white/10"
                 >
-                  <span className="hidden sm:inline">{isExpanded ? "Hide" : "View"}</span>
-                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  <span className="text-[11px]">{isExpanded ? "Hide" : `+${missingItems.length} Missing`}</span>
+                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
               )}
             </div>
           </div>
 
-          {/* Missing Fields Breakdown Chips */}
+          {/* Collapsible Micro Chips for Missing Fields */}
           {!is100Percent && isExpanded && missingItems.length > 0 && (
-            <div className="mt-5 pt-4 border-t border-white/10">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                Missing Fields ({missingItems.length}):
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {missingItems.map((item) => {
-                  const ItemIcon = item.icon;
-                  return (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      className="group flex items-center gap-2 bg-white/10 hover:bg-primary-orange/20 border border-white/15 hover:border-primary-orange/50 rounded-xl px-3 py-1.5 transition-all text-xs font-semibold text-white shadow-xs"
-                    >
-                      <ItemIcon className="w-3.5 h-3.5 text-primary-orange group-hover:scale-110 transition-transform" />
-                      <span>{item.actionLabel}</span>
-                      <span className="text-[10px] text-white/50 group-hover:text-white transition-colors">+</span>
-                    </Link>
-                  );
-                })}
-              </div>
+            <div className="mt-3 pt-2.5 border-t border-white/10 flex flex-wrap gap-1.5">
+              {missingItems.map((item) => {
+                const ItemIcon = item.icon;
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className="group flex items-center gap-1.5 bg-white/10 hover:bg-primary-orange/20 border border-white/10 hover:border-primary-orange/40 rounded-lg px-2 py-0.5 transition-all text-[11px] font-medium text-white/90"
+                  >
+                    <ItemIcon className="w-3 h-3 text-primary-orange" />
+                    <span>{item.actionLabel}</span>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

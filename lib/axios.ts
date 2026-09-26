@@ -68,8 +68,12 @@ export const setLogoutCallback = (callback: (force?: boolean) => void) => {
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (inMemoryToken) {
-      config.headers.Authorization = `Bearer ${inMemoryToken}`;
+    let token = inMemoryToken;
+    if (!token && typeof window !== "undefined") {
+      token = localStorage.getItem("car_blink_access_token") || localStorage.getItem("carBlink_token");
+    }
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -98,10 +102,10 @@ function sanitizeErrorMessage(msg: string): string {
   }
 
   if (lower.includes('e11000') || lower.includes('duplicate key')) {
-    if (lower.includes('email')) {
+    if (lower.includes('email') && !lower.includes('index: phone') && !lower.includes('dup key: { phone')) {
       return 'This email address is already registered. Please sign in or use a different email.';
     }
-    if (lower.includes('phone') || lower.includes('mobile')) {
+    if ((lower.includes('phone') || lower.includes('mobile')) && !lower.includes('index: email') && !lower.includes('dup key: { email')) {
       return 'This phone number is already registered. Please sign in or use a different phone number.';
     }
     return 'An account with these details already exists. Please check your input.';

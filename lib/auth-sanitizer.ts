@@ -70,6 +70,7 @@ export async function sanitizeSession(queryClient?: any): Promise<void> {
     // Broadcast Logout event to sync website tabs
     if (typeof window !== "undefined") {
       try {
+        document.cookie = "carblink_logged_out=1; path=/; max-age=10;";
         window.localStorage.setItem("carblink_logout_event", Date.now().toString());
       } catch (e) {}
     }

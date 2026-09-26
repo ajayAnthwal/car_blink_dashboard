@@ -55,6 +55,16 @@ export const updateAuthUserProfile = async (data: { fullName?: string; phone?: s
   return response.data;
 };
 
+export const deleteAdminUser = async (id: string) => {
+  try {
+    const response = await apiClient.delete(`/super-admin/users/${id}`);
+    return response.data;
+  } catch (err) {
+    const response = await apiClient.delete(`/auth/users/${id}`);
+    return response.data;
+  }
+};
+
 // ==========================================
 // USER PROFILE APIs
 // ==========================================

@@ -51,7 +51,8 @@ import {
   getSuperAdminBookingDetails,
   cancelSuperAdminBooking,
   onboardVendor,
-  createCoupon
+  createCoupon,
+  deleteAdminUser
 } from "@/lib/services";
 
 // ==========================================
@@ -154,6 +155,16 @@ export const useUpdateAdminUserStatsMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, params }: { id: string, params: any }) => updateAdminUserStats(id, params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    }
+  });
+};
+
+export const useDeleteAdminUserMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteAdminUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     }

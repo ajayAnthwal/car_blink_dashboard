@@ -28,7 +28,20 @@ function LoginContent() {
   const { login, user } = useAuth();
 
   useEffect(() => {
-    if (user && !ssoToken) {
+    const isLogoutOrSwitch = searchParams.get('logout') === 'true' || searchParams.get('switch') === 'true';
+    if (isLogoutOrSwitch && typeof window !== 'undefined') {
+      window.localStorage.removeItem("car_blink_access_token");
+      window.localStorage.removeItem("car_blink_refresh_token");
+      document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "car_blink_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const isLogoutOrSwitch = searchParams.get('logout') === 'true' || searchParams.get('switch') === 'true';
+    if (user && !ssoToken && !isLogoutOrSwitch) {
       const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
       if (typeof window !== "undefined") {
         window.location.href = targetRoute;
@@ -36,7 +49,7 @@ function LoginContent() {
         router.push(targetRoute);
       }
     }
-  }, [user, ssoToken, router]);
+  }, [user, ssoToken, router, searchParams]);
 
   useEffect(() => {
     let tokenFromUrl = ssoToken;
@@ -45,22 +58,19 @@ function LoginContent() {
       tokenFromUrl = urlParams.get('token');
     }
 
-    if (tokenFromUrl) {
-      // FRESH SSO EXCHANGE: Purge any old stale token from previous session
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem("car_blink_access_token");
-        window.localStorage.removeItem("car_blink_refresh_token");
-      }
+    if (tokenFromUrl && tokenFromUrl !== "undefined" && tokenFromUrl !== "null") {
+      const cleanToken = tokenFromUrl.trim();
       setIsLoading(true);
-      setApiAccessToken(tokenFromUrl);
+      setApiAccessToken(cleanToken);
 
       const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
       if (typeof window !== "undefined") {
-        window.localStorage.setItem("car_blink_access_token", tokenFromUrl);
-        document.cookie = `car_blink_access_token=${encodeURIComponent(tokenFromUrl)}; path=/; expires=${expires}; SameSite=Lax`;
-        document.cookie = `accessToken=${encodeURIComponent(tokenFromUrl)}; path=/; expires=${expires}; SameSite=Lax`;
+        window.localStorage.setItem("car_blink_access_token", cleanToken);
+        window.localStorage.setItem("carBlink_token", cleanToken);
+        document.cookie = `car_blink_access_token=${encodeURIComponent(cleanToken)}; path=/; expires=${expires}; SameSite=Lax`;
+        document.cookie = `accessToken=${encodeURIComponent(cleanToken)}; path=/; expires=${expires}; SameSite=Lax`;
       }
-      
+
       getCurrentUserProfile()
         .then(async (res) => {
           const resolvedUser = res?.role ? res : (res?.data?.role ? res.data : (res?.data || res?.user || res));
@@ -69,8 +79,9 @@ function LoginContent() {
           }
           if (typeof window !== "undefined") {
             document.cookie = `role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax`;
+            document.cookie = `user_role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax`;
           }
-          await login(resolvedUser, tokenFromUrl, tokenFromUrl);
+          await login(resolvedUser, cleanToken, cleanToken);
           const route = ROLE_ROUTES[resolvedUser.role] || "/customer/dashboard";
           if (typeof window !== "undefined") {
             window.location.href = route;
@@ -80,19 +91,12 @@ function LoginContent() {
         })
         .catch((err) => {
           console.error("SSO Login Error:", err);
-          if (typeof window !== "undefined") {
-            window.localStorage.removeItem("car_blink_access_token");
-            window.localStorage.removeItem("car_blink_refresh_token");
-            document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-            document.cookie = "car_blink_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-            document.cookie = "role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          }
-          setApiAccessToken(null);
           setIsLoading(false);
         });
     } else {
       // No token parameter in URL: check if valid user already authenticated
-      if (user && user.role) {
+      const isLogoutOrSwitch = searchParams.get('logout') === 'true' || searchParams.get('switch') === 'true';
+      if (user && user.role && !isLogoutOrSwitch) {
         const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
         if (typeof window !== "undefined") {
           window.location.href = targetRoute;
@@ -101,7 +105,7 @@ function LoginContent() {
         }
       }
     }
-  }, [ssoToken, user, login, router]);
+  }, [ssoToken, user, login, router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,13 +113,21 @@ function LoginContent() {
     setIsLoading(true);
 
     try {
+      if (typeof window !== "undefined") {
+        document.cookie = "role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
       const data = await loginUser({ identifier, password });
 
       const { user, tokens } = data;
+      const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
+      if (typeof window !== "undefined") {
+        document.cookie = `role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax`;
+      }
       await login(user, tokens.accessToken, tokens.refreshToken);
 
       // Redirect strictly based on newly authenticated user.role
-      const targetRoute = ROLE_ROUTES[user.role] || "/";
+      const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
       if (typeof window !== "undefined") {
         window.location.href = targetRoute;
       } else {

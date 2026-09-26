@@ -90,12 +90,16 @@ export default function CustomerBookingDetailsPage() {
     };
   }, [socket, id]);
 
-  const handleSelectQuote = async (bidId: string) => {
+  const handleSelectQuote = async (quoteParam: any) => {
+    const bidId = typeof quoteParam === 'string' ? quoteParam : (quoteParam?._id || quoteParam?.id);
+    const quoteAmount = typeof quoteParam === 'object' ? quoteParam?.quotedAmount : 0;
     setIsAccepting(bidId);
     setMessage({ type: "", text: "" });
     try {
       await selectQuoteMutation.mutateAsync({ bookingId: id, bidId });
-      setMessage({ type: "success", text: "Quote accepted successfully! Your booking is now assigned." });
+      const advance15Val = Math.round(Number(quoteAmount || baseAmount) * 0.15);
+      setMessage({ type: "success", text: `Quote selected! Please pay the 15% advance token (₹${advance15Val}) to confirm booking & unlock partner shop details.` });
+      await handleInitiatePayment(advance15Val, "ADVANCE");
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to accept quote" });
     } finally {
@@ -324,9 +328,9 @@ export default function CustomerBookingDetailsPage() {
   
   const remainingAmount = Math.max(0, revisedTotalAmount - totalPaidAmount);
 
-  const advanceAmount = Math.round(revisedTotalAmount * 0.1);
+  const advanceAmount = Math.round(revisedTotalAmount * 0.15);
   const remainingForAdvance = advanceAmount - totalPaidAmount;
-  const needsAdvance = (booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') && baseAmount > 0 && remainingForAdvance > 0;
+  const needsAdvance = (booking.status === 'ASSIGNED' || booking.status === 'CUSTOMER_ACCEPTED' || booking.status === 'QUOTED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') && baseAmount > 0 && remainingForAdvance > 0;
   const needsFinal = booking.status === 'COMPLETED' && remainingAmount > 0;
 
   return (
@@ -611,55 +615,66 @@ export default function CustomerBookingDetailsPage() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {quotes.map((quote: any) => (
-                  <Card key={quote._id} className="border-secondary-blue/20 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden rounded-3xl relative">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-secondary-blue/5 rounded-bl-full -z-10 transition-transform group-hover:scale-150"></div>
-                    <div className="bg-gradient-to-r from-secondary-blue/10 to-transparent p-6 border-b border-secondary-blue/10">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-extrabold text-primary-navy text-lg">
-                            {(booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') 
-                              ? (quote.partnerId?.businessName || "Service Partner") 
-                              : "Verified CarBlink Workshop"}
-                          </h4>
-                          <div className="flex items-center text-xs font-semibold text-success mt-1">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> 
-                            {(booking.status === 'ASSIGNED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED')
-                              ? "Verified Partner"
-                              : "Verified Partner (Location & Details Unlocked Upon Booking)"}
+                {quotes.map((quote: any) => {
+                  const quoteId = quote._id || quote.id;
+                  const adv15Amount = Math.round(Number(quote.quotedAmount || 0) * 0.15);
+                  const isUnlocked = hasPaidAdvance || ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(booking.status);
+
+                  return (
+                    <Card key={quoteId} className="border-secondary-blue/20 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden rounded-3xl relative">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-secondary-blue/5 rounded-bl-full -z-10 transition-transform group-hover:scale-150"></div>
+                      <div className="bg-gradient-to-r from-secondary-blue/10 to-transparent p-6 border-b border-secondary-blue/10">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-extrabold text-primary-navy text-lg">
+                              {isUnlocked
+                                ? (quote.partnerId?.businessName || "Verified Service Partner") 
+                                : "Verified CarBlink Workshop"}
+                            </h4>
+                            <div className="flex items-center text-xs font-semibold text-success mt-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> 
+                              {isUnlocked
+                                ? "Verified Partner Details Unlocked"
+                                : "Verified Partner (Shop Name, Address & Contact Unlocked Upon 15% Payment)"}
+                            </div>
+                          </div>
+                          <div className="text-right bg-white px-3 py-1 rounded-xl shadow-sm border border-neutral-muted/10">
+                            <span className="text-2xl font-extrabold text-primary-orange tracking-tight">₹{quote.quotedAmount}</span>
                           </div>
                         </div>
-                        <div className="text-right bg-white px-3 py-1 rounded-xl shadow-sm border border-neutral-muted/10">
-                          <span className="text-2xl font-extrabold text-primary-orange tracking-tight">₹{quote.quotedAmount}</span>
-                        </div>
                       </div>
-                    </div>
-                    <CardContent className="p-6 space-y-5">
-                      {quote.estimatedDuration && (
-                        <div className="flex items-center text-sm text-neutral-dark font-medium bg-neutral-bg p-3 rounded-xl">
-                          <Clock className="w-4 h-4 mr-3 text-secondary-blue" />
-                          <span>Est. Time: <span className="font-bold text-primary-navy">{quote.estimatedDuration}</span></span>
-                        </div>
-                      )}
+                      <CardContent className="p-6 space-y-5">
+                        {quote.estimatedDuration && (
+                          <div className="flex items-center text-sm text-neutral-dark font-medium bg-neutral-bg p-3 rounded-xl">
+                            <Clock className="w-4 h-4 mr-3 text-secondary-blue" />
+                            <span>Est. Time: <span className="font-bold text-primary-navy">{quote.estimatedDuration}</span></span>
+                          </div>
+                        )}
 
-                      {quote.notes && (
-                        <div className="bg-white p-4 rounded-xl text-sm text-neutral-dark border border-neutral-muted/10 shadow-inner italic relative">
-                          <MessageSquareQuote className="w-6 h-6 text-neutral-muted/20 absolute top-2 left-2" />
-                          <span className="relative z-10 pl-4">{quote.notes}</span>
-                        </div>
-                      )}
+                        {quote.notes && (
+                          <div className="bg-white p-4 rounded-xl text-sm text-neutral-dark border border-neutral-muted/10 shadow-inner italic relative">
+                            <MessageSquareQuote className="w-6 h-6 text-neutral-muted/20 absolute top-2 left-2" />
+                            <span className="relative z-10 pl-4">{quote.notes}</span>
+                          </div>
+                        )}
 
-                      <Button
-                        className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold shadow-md transition-colors"
-                        onClick={() => handleSelectQuote(quote._id)}
-                        isLoading={isAccepting === quote._id}
-                        disabled={isAccepting !== null && isAccepting !== quote._id}
-                      >
-                        Accept & Assign <ChevronRight className="w-5 h-5 ml-2" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-200 text-xs font-semibold text-primary-navy flex items-center justify-between">
+                          <span>15% Advance Token Required:</span>
+                          <span className="font-extrabold text-primary-orange text-sm">₹{adv15Amount}</span>
+                        </div>
+
+                        <Button
+                          className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold shadow-md transition-colors text-sm"
+                          onClick={() => handleSelectQuote(quote)}
+                          isLoading={isAccepting === quoteId}
+                          disabled={isAccepting !== null && isAccepting !== quoteId}
+                        >
+                          Accept & Pay 15% Advance (₹{adv15Amount}) <ChevronRight className="w-5 h-5 ml-2" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -677,34 +692,44 @@ export default function CustomerBookingDetailsPage() {
 
         {/* Right Column: Support & Summary */}
         <div className="space-y-6">
-          {booking.status === 'ASSIGNED' && booking.assignedPartnerId && (
+          {(hasPaidAdvance || ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(booking.status)) && booking.assignedPartnerId && (
             <Card className="shadow-lg border-success/30 overflow-hidden rounded-3xl relative bg-gradient-to-br from-white to-success/5">
               <div className="absolute top-0 right-0 w-32 h-32 bg-success/10 rounded-bl-full -z-10"></div>
-              <div className="bg-success/10 px-6 py-4 border-b border-success/20">
+              <div className="bg-success/10 px-6 py-4 border-b border-success/20 flex justify-between items-center">
                 <h3 className="font-extrabold text-success-dark flex items-center text-lg">
-                  <CheckCircle2 className="w-5 h-5 mr-2" /> Assigned Partner
+                  <CheckCircle2 className="w-5 h-5 mr-2" /> Unlocked Partner Details
                 </h3>
+                <span className="text-xs bg-success/20 text-success-dark px-3 py-1 rounded-full font-bold">15% Paid & Confirmed</span>
               </div>
               <CardContent className="p-6">
                 <div className="mb-6 text-center pt-2">
                   <div className="w-20 h-20 bg-white rounded-full mx-auto mb-3 border-4 border-success/20 flex items-center justify-center shadow-md">
                     <Car className="w-8 h-8 text-success" />
                   </div>
-                  <p className="font-extrabold text-primary-navy text-xl">{booking.assignedPartnerId.businessName || "Service Partner"}</p>
-                  <p className="text-sm text-neutral-muted font-medium mt-1">Verified Expert</p>
+                  <p className="font-extrabold text-primary-navy text-2xl">{booking.assignedPartnerId.businessName || "Verified Service Partner"}</p>
+                  <p className="text-sm text-neutral-muted font-medium mt-1">CarBlink Certified Partner</p>
                 </div>
 
                 <div className="space-y-3">
-                  {booking.assignedPartnerId.phone && (
-                    <div className="flex items-center text-sm font-medium text-neutral-dark bg-white p-3 rounded-xl border border-neutral-muted/10 shadow-sm">
+                  {(booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone) && (
+                    <a href={`tel:${booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone}`} className="flex items-center text-sm font-semibold text-primary-navy bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm hover:border-secondary-blue/40 transition-all">
                       <Phone className="w-4 h-4 mr-3 text-secondary-blue" />
-                      {booking.assignedPartnerId.phone}
+                      <span>Phone: <span className="font-bold text-base">{booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone}</span></span>
+                    </a>
+                  )}
+                  {booking.assignedPartnerId.businessAddress && (
+                    <div className="flex items-start text-sm font-medium text-neutral-dark bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm">
+                      <MapPin className="w-4 h-4 mr-3 text-primary-orange flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-xs text-neutral-muted block font-semibold">Workshop Address:</span>
+                        <span className="font-bold text-primary-navy text-sm">{booking.assignedPartnerId.businessAddress}</span>
+                      </div>
                     </div>
                   )}
-                  {booking.assignedPartnerId.email && (
-                    <div className="flex items-center text-sm font-medium text-neutral-dark bg-white p-3 rounded-xl border border-neutral-muted/10 shadow-sm">
+                  {(booking.assignedPartnerId.email || booking.assignedPartnerId.userId?.email) && (
+                    <div className="flex items-center text-sm font-medium text-neutral-dark bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm">
                       <Mail className="w-4 h-4 mr-3 text-secondary-blue" />
-                      {booking.assignedPartnerId.email}
+                      <span>{booking.assignedPartnerId.email || booking.assignedPartnerId.userId?.email}</span>
                     </div>
                   )}
                 </div>

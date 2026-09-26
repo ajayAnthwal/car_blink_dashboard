@@ -82,14 +82,14 @@ export function GoogleButton({
 
       if (typeof window !== "undefined") {
         const roleRoutes: Record<string, string> = {
-          CUSTOMER: "/customer",
-          PARTNER: "/partner",
-          SUPER_ADMIN: "/admin",
-          ADMIN: "/admin",
-          STAFF: "/admin",
-          ACCOUNTS: "/accounts",
+          CUSTOMER: "/customer/dashboard",
+          PARTNER: "/partner/dashboard",
+          SUPER_ADMIN: "/admin/dashboard",
+          ADMIN: "/admin/dashboard",
+          STAFF: "/admin/dashboard",
+          ACCOUNTS: "/accounts/dashboard",
         };
-        const targetRoute = roleRoutes[userRole] || "/customer";
+        const targetRoute = roleRoutes[userRole] || "/customer/dashboard";
         window.location.href = targetRoute;
       }
     } catch (err: any) {

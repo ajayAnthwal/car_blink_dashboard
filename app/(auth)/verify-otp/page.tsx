@@ -34,8 +34,12 @@ function VerifyOTPContent() {
       const { user, tokens } = data;
       await login(user, tokens.accessToken, tokens.refreshToken);
       
-      const route = ROLE_ROUTES[user.role] || "/";
-      router.push(route);
+      const route = ROLE_ROUTES[user.role] || "/customer/dashboard";
+      if (typeof window !== "undefined") {
+        window.location.href = route;
+      } else {
+        router.push(route);
+      }
     } catch (err: unknown) {
       setError((err as { message?: string })?.message || "Invalid OTP. Please try again.");
     } finally {

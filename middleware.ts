@@ -3,9 +3,9 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("accessToken")?.value || request.cookies.get("car_blink_access_token")?.value;
-  let userRole = request.cookies.get("role")?.value || null;
+  let userRole: string | null = null;
   
-  if (accessToken && !userRole) {
+  if (accessToken) {
     try {
       const payloadBase64 = accessToken.split('.')[1];
       if (payloadBase64) {
@@ -23,10 +23,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  if (!userRole) {
+    userRole = request.cookies.get("role")?.value || request.cookies.get("user_role")?.value || null;
+  }
+
   const { pathname, searchParams } = request.nextUrl;
 
-  // If SSO ?token= parameter is present in URL, DO NOT intercept on /login; let /login page execute SSO exchange!
-  if (searchParams.get("token")) {
+  // If SSO ?token=, ?switch=true, or ?logout=true parameter is present in URL, DO NOT intercept on /login; let /login page execute!
+  if (searchParams.get("token") || searchParams.get("switch") || searchParams.get("logout")) {
     return NextResponse.next();
   }
 

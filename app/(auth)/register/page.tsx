@@ -185,6 +185,7 @@ export default function RegisterPage() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full Name</label>
             <Input
+              key="fullName"
               name="fullName"
               placeholder="e.g. Rahul Kumar"
               value={formData.fullName}
@@ -198,6 +199,7 @@ export default function RegisterPage() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email Address (Optional)</label>
               <Input
+                key="email"
                 name="email"
                 type="email"
                 placeholder="e.g. rahul@example.com"
@@ -209,6 +211,7 @@ export default function RegisterPage() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number</label>
               <Input
+                key="phone"
                 name="phone"
                 type="tel"
                 placeholder="e.g. 9876543210"
@@ -224,6 +227,7 @@ export default function RegisterPage() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
             <Input
+              key="password"
               name="password"
               type="password"
               placeholder="••••••••"
@@ -284,6 +288,8 @@ export default function RegisterPage() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Enter 6-Digit SMS OTP</label>
             <Input
+              key="otp"
+              name="otp"
               type="text"
               placeholder="123456"
               maxLength={6}

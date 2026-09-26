@@ -6,12 +6,13 @@ import {
   useAdminUsers, 
   useUpdateAdminUserStatusMutation, 
   useUpdateAdminUserStatsMutation,
-  useUpdateAdminUserPasswordMutation
+  useUpdateAdminUserPasswordMutation,
+  useDeleteAdminUserMutation
 } from "@/features/admin/hooks/useAdminQueries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Users, Loader2, Search, PowerOff, Power, UserCheck, UserX, ShieldAlert, Edit2, ChevronLeft, ChevronRight, KeyRound, Eye, EyeOff } from "lucide-react";
+import { Users, Loader2, Search, PowerOff, Power, UserCheck, UserX, ShieldAlert, Edit2, ChevronLeft, ChevronRight, KeyRound, Eye, EyeOff, Trash2 } from "lucide-react";
 
 export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("");
@@ -34,9 +35,12 @@ export default function AdminUsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const [deletingUser, setDeletingUser] = useState<any>(null);
+
   const updateStatusMutation = useUpdateAdminUserStatusMutation();
   const updateStatsMutation = useUpdateAdminUserStatsMutation();
   const updatePasswordMutation = useUpdateAdminUserPasswordMutation();
+  const deleteUserMutation = useDeleteAdminUserMutation();
 
   const handleResetPassword = async () => {
     if (!editingPasswordUser || !newPassword.trim()) return;
@@ -59,6 +63,18 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    setMessage({ type: "", text: "" });
+    try {
+      await deleteUserMutation.mutateAsync(deletingUser._id);
+      setMessage({ type: "success", text: `User ${deletingUser.fullName} has been deleted successfully.` });
+      setDeletingUser(null);
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to delete user." });
+    }
+  };
+
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     setActionId(id);
     setMessage({ type: "", text: "" });
@@ -73,8 +89,6 @@ export default function AdminUsersPage() {
   };
 
   const handleChangeRole = async (id: string, newRole: string) => {
-    // Note: The original code passed `{ role: newRole }` to `updateAdminUserStatus` which expects `isBlocked`. 
-    // This is a preexisting potential issue in the codebase. Let's adapt it to use updateStatsMutation if it accepts params.
     setActionId(id);
     setMessage({ type: "", text: "" });
     try {
@@ -281,7 +295,7 @@ export default function AdminUsersPage() {
                               variant="outline"
                               className={`rounded-xl shadow-sm transition-all ${
                                 user.isActive 
-                                  ? "border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300" 
+                                  ? "border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300" 
                                   : "border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
                               }`}
                               onClick={() => handleToggleStatus(user._id, user.isActive)}
@@ -290,6 +304,16 @@ export default function AdminUsersPage() {
                             >
                               {user.isActive ? <PowerOff className="w-4 h-4 mr-1.5" /> : <Power className="w-4 h-4 mr-1.5" />}
                               {user.isActive ? "Suspend" : "Activate"}
+                            </Button>
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl shadow-sm border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-all"
+                              onClick={() => setDeletingUser(user)}
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Delete
                             </Button>
                           </div>
                         )}
@@ -467,6 +491,59 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {/* Delete User Confirmation Modal */}
+      {deletingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-red-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center font-bold shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 font-heading">
+                    Delete Account
+                  </h3>
+                  <p className="text-xs text-red-600 font-medium">Permanent Action</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setDeletingUser(null)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <UserX className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to permanently delete user <span className="font-bold text-gray-900">{deletingUser.fullName}</span> ({deletingUser.email || deletingUser.phone})?
+              </p>
+              <p className="text-xs text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 font-medium">
+                ⚠️ This action cannot be undone. All data related to this user account will be permanently removed.
+              </p>
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setDeletingUser(null)}
+                className="rounded-xl border-gray-200"
+                disabled={deleteUserMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-sm font-bold"
+                onClick={handleDeleteUser}
+                isLoading={deleteUserMutation.isPending}
+              >
+                Delete Account
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
