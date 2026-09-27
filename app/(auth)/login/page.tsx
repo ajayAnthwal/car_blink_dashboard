@@ -52,10 +52,22 @@ function LoginContent() {
   }, [user, ssoToken, router, searchParams]);
 
   useEffect(() => {
-    let tokenFromUrl = ssoToken;
+    let tokenFromUrl = ssoToken || 
+                       searchParams.get("accessToken") || 
+                       searchParams.get("access_token") || 
+                       searchParams.get("authToken") || 
+                       searchParams.get("jwt") || 
+                       searchParams.get("sso") || 
+                       searchParams.get("t");
     if (!tokenFromUrl && typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      tokenFromUrl = urlParams.get('token');
+      tokenFromUrl = urlParams.get('token') || 
+                     urlParams.get('accessToken') || 
+                     urlParams.get('access_token') || 
+                     urlParams.get('authToken') || 
+                     urlParams.get('jwt') || 
+                     urlParams.get('sso') || 
+                     urlParams.get('t');
     }
 
     if (tokenFromUrl && tokenFromUrl !== "undefined" && tokenFromUrl !== "null") {

@@ -29,11 +29,19 @@ export function middleware(request: NextRequest) {
 
   const { pathname, searchParams } = request.nextUrl;
 
-  // Handle SSO ?token= query parameter across any route
-  if (searchParams.get("token")) {
+  // Handle SSO ?token= query parameter (or aliases) across any route
+  const ssoToken = searchParams.get("token") || 
+                   searchParams.get("accessToken") || 
+                   searchParams.get("access_token") || 
+                   searchParams.get("authToken") || 
+                   searchParams.get("jwt") || 
+                   searchParams.get("sso") || 
+                   searchParams.get("t");
+
+  if (ssoToken) {
     if (pathname !== "/login") {
       const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("token", searchParams.get("token")!);
+      loginUrl.searchParams.set("token", ssoToken);
       return NextResponse.redirect(loginUrl);
     }
     return NextResponse.next();
