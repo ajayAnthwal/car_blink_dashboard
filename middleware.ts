@@ -39,6 +39,50 @@ export function middleware(request: NextRequest) {
                    searchParams.get("t");
 
   if (ssoToken) {
+    try {
+      const payloadBase64 = ssoToken.split('.')[1];
+      if (payloadBase64) {
+        let base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+        const padLength = (4 - (base64.length % 4)) % 4;
+        base64 += '='.repeat(padLength);
+        const payloadString = atob(base64);
+        const payload = JSON.parse(payloadString);
+        if (payload && payload.role) {
+          const isProd = request.url.includes("carblink.in");
+          const domain = isProd ? ".carblink.in" : undefined;
+          
+          let targetPath = pathname;
+          if (targetPath === "/login" || targetPath === "/") {
+            switch (payload.role) {
+              case "CUSTOMER": targetPath = "/customer/dashboard"; break;
+              case "PARTNER": targetPath = "/partner/dashboard"; break;
+              case "EXECUTIVE": targetPath = "/executive/dashboard"; break;
+              case "ACCOUNTS": targetPath = "/accounts/dashboard"; break;
+              case "SUPER_ADMIN":
+              case "ADMIN": targetPath = "/admin/dashboard"; break;
+              default: targetPath = "/customer/dashboard"; break;
+            }
+          }
+          
+          const redirectUrl = new URL(targetPath, request.url);
+          const response = NextResponse.redirect(redirectUrl);
+          const cookieOpts = {
+            path: "/",
+            domain: domain,
+            maxAge: 30 * 86400,
+            sameSite: "lax" as const,
+          };
+          response.cookies.set("accessToken", ssoToken, cookieOpts);
+          response.cookies.set("car_blink_access_token", ssoToken, cookieOpts);
+          response.cookies.set("role", payload.role, cookieOpts);
+          response.cookies.set("user_role", payload.role, cookieOpts);
+          return response;
+        }
+      }
+    } catch (err) {
+      console.error("Middleware SSO token parse error", err);
+    }
+
     if (pathname !== "/login") {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("token", ssoToken);
