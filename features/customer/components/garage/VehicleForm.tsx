@@ -83,7 +83,8 @@ export function VehicleForm({
     { value: "PETROL", label: "Petrol" },
     { value: "DIESEL", label: "Diesel" },
     { value: "CNG", label: "CNG" },
-    { value: "EV", label: "Electric" },
+    { value: "ELECTRIC", label: "Electric (EV)" },
+    { value: "HYBRID", label: "Hybrid" },
   ];
 
   return (
