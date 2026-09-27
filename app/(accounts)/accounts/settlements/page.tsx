@@ -7,15 +7,18 @@ import {
   useSettlements, 
   useProcessSettlementMutation,
   usePlatformRevenueStats,
-  useAccountsTransactions
+  useAccountsTransactions,
+  useAccountsWithdrawalRequests,
+  useProcessWithdrawalMutation,
+  useRejectWithdrawalMutation
 } from "@/features/accounts/hooks/useAccountsQueries";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File, CreditCard } from "lucide-react";
+import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File, CreditCard, Wallet, CheckCircle, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function SettlementsPage() {
-  const [activeTab, setActiveTab] = useState<"SETTLEMENTS" | "PAYMENTS">("SETTLEMENTS");
+  const [activeTab, setActiveTab] = useState<"SETTLEMENTS" | "PAYMENTS" | "WITHDRAWALS">("WITHDRAWALS");
   const [page, setPage] = useState(1);
   const limit = 10;
   
@@ -27,6 +30,12 @@ export default function SettlementsPage() {
   const { data: revenueStats, isLoading: isLoadingStats } = usePlatformRevenueStats();
   const { data: txData, isLoading: isLoadingTx } = useAccountsTransactions({ page: 1, limit: 50, search: searchTerm });
   const rawTxList = txData?.transactions || txData?.data?.transactions || (Array.isArray(txData) ? txData : []);
+
+  const { data: withdrawalsData, isLoading: isLoadingWithdrawals, refetch: refetchWithdrawals } = useAccountsWithdrawalRequests({ page: 1, limit: 50, search: searchTerm });
+  const withdrawalList = withdrawalsData?.withdrawals || [];
+
+  const processWithdrawalMut = useProcessWithdrawalMutation();
+  const rejectWithdrawalMut = useRejectWithdrawalMutation();
 
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -49,13 +58,20 @@ export default function SettlementsPage() {
     setActionId(showProcessFor);
     setMessage({ type: "", text: "" });
     try {
-      await processMutation.mutateAsync({ id: showProcessFor, transactionReference: "", pin: securityPin });
-      setMessage({ type: "success", text: "Settlement processed successfully." });
+      if (processItem?.isWithdrawal) {
+        await processWithdrawalMut.mutateAsync({ id: showProcessFor, pin: securityPin });
+        setMessage({ type: "success", text: "Partner withdrawal request approved & paid out successfully!" });
+        refetchWithdrawals();
+      } else {
+        await processMutation.mutateAsync({ id: showProcessFor, transactionReference: "", pin: securityPin });
+        setMessage({ type: "success", text: "Settlement processed successfully." });
+        refetchSettlements();
+      }
       setShowProcessFor(null);
       setSecurityPin("");
-      refetchSettlements();
+      setProcessItem(null);
     } catch (err: unknown) {
-      setMessage({ type: "error", text: err?.message || `Failed to process settlement.` });
+      setMessage({ type: "error", text: err?.message || `Failed to process payout.` });
     } finally {
       setActionId(null);
     }
@@ -175,7 +191,16 @@ export default function SettlementsPage() {
       {/* Existing Settlements / Customer Payments Section */}
       <Card>
         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 pb-4 border-b border-gray-100">
-          <div className="flex items-center bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl w-full sm:w-auto flex-wrap gap-1">
+            <button
+              onClick={() => setActiveTab("WITHDRAWALS")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === "WITHDRAWALS" ? "bg-primary-orange text-white shadow-sm" : "text-orange-700 hover:bg-orange-50"
+              }`}
+            >
+              <Wallet className="w-4 h-4" />
+              Partner Wallet Withdrawals ({withdrawalList.length})
+            </button>
             <button
               onClick={() => setActiveTab("SETTLEMENTS")}
               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
@@ -183,7 +208,7 @@ export default function SettlementsPage() {
               }`}
             >
               <BadgeIndianRupee className="w-4 h-4 text-primary-orange" />
-              Partner Settlements ({total})
+              Partner Job Settlements ({total})
             </button>
             <button
               onClick={() => setActiveTab("PAYMENTS")}
@@ -192,7 +217,7 @@ export default function SettlementsPage() {
               }`}
             >
               <CreditCard className="w-4 h-4" />
-              Customer Advance & Payments ({rawTxList.length})
+              Customer Payments ({rawTxList.length})
             </button>
           </div>
 
@@ -200,7 +225,7 @@ export default function SettlementsPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder={activeTab === "PAYMENTS" ? "Search customer or payment ID..." : "Search by ID or Partner Name..."}
+              placeholder={activeTab === "WITHDRAWALS" ? "Search partner or bank..." : activeTab === "PAYMENTS" ? "Search customer or payment ID..." : "Search by ID or Partner Name..."}
               className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-navy/20"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -209,7 +234,109 @@ export default function SettlementsPage() {
         </CardHeader>
 
         <CardContent className="pt-4">
-          {activeTab === "PAYMENTS" ? (
+          {activeTab === "WITHDRAWALS" ? (
+            isLoadingWithdrawals ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="w-8 h-8 text-primary-orange animate-spin" />
+              </div>
+            ) : withdrawalList.length === 0 ? (
+              <div className="text-center py-10 text-neutral-muted">
+                <p>No wallet withdrawal requests found.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-neutral-muted uppercase bg-neutral-bg">
+                    <tr>
+                      <th className="px-4 py-3 rounded-l-lg">ID / Partner Name</th>
+                      <th className="px-4 py-3">Bank Account Details</th>
+                      <th className="px-4 py-3">Amount</th>
+                      <th className="px-4 py-3">Requested Date</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 rounded-r-lg text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-muted/10">
+                    {withdrawalList.map((w: any) => {
+                      const pName = w.partnerId?.businessName || w.bankDetails?.accountHolderName || 'Partner Workshop';
+                      const pPhone = w.partnerId?.phone || '';
+                      const bank = w.bankDetails || {};
+                      const isPending = w.status === 'PENDING';
+                      const isCompleted = w.status === 'COMPLETED';
+
+                      return (
+                        <tr key={w._id} className="hover:bg-neutral-bg/50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-primary-navy">
+                            <div className="font-bold text-gray-900">{pName}</div>
+                            {pPhone && <div className="text-xs text-gray-500">Phone: {pPhone}</div>}
+                            <div className="text-[10px] text-gray-400">Ref: #{String(w._id).slice(-8)}</div>
+                          </td>
+                          <td className="px-4 py-3 text-xs">
+                            <div className="font-semibold text-gray-800">A/C: {bank.accountNumber || 'N/A'}</div>
+                            <div className="text-gray-500">IFSC: {bank.ifscCode || 'N/A'}</div>
+                            <div className="text-gray-500 font-medium">Holder: {bank.accountHolderName || pName}</div>
+                          </td>
+                          <td className="px-4 py-3 font-extrabold text-base text-orange-600">
+                            ₹{w.amount?.toLocaleString('en-IN') || 0}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-neutral-dark whitespace-nowrap">
+                            {new Date(w.createdAt).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
+                              isCompleted ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                              w.status === 'FAILED' ? 'bg-red-100 text-red-800 border border-red-300' :
+                              'bg-amber-100 text-amber-800 border border-amber-300 animate-pulse'
+                            }`}>
+                              {isCompleted ? 'PAID / COMPLETED ✓' : w.status === 'FAILED' ? 'REJECTED / REFUNDED' : 'PENDING PAYOUT ⏳'}
+                            </span>
+                            {w.referenceId && <div className="text-[10px] text-gray-500 mt-1 font-mono">UTR: {w.referenceId}</div>}
+                          </td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            {isPending ? (
+                              <div className="flex items-center justify-end space-x-2">
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 shadow-sm"
+                                  onClick={() => {
+                                    setShowProcessFor(w._id);
+                                    setProcessItem({ ...w, isWithdrawal: true });
+                                    setSecurityPin("");
+                                  }}
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5 mr-1" /> Approve & Pay
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-300 text-red-700 hover:bg-red-50 font-bold text-xs h-8 px-2"
+                                  onClick={async () => {
+                                    const pin = prompt("Enter 4-digit Security PIN to Reject & Refund to Partner Wallet:");
+                                    if (!pin) return;
+                                    try {
+                                      await rejectWithdrawalMut.mutateAsync({ id: w._id, pin, reason: "Rejected by Accounts" });
+                                      setMessage({ type: "success", text: "Withdrawal request rejected and amount refunded to partner wallet!" });
+                                      refetchWithdrawals();
+                                    } catch (err: any) {
+                                      setMessage({ type: "error", text: err?.message || "Failed to reject withdrawal" });
+                                    }
+                                  }}
+                                >
+                                  <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400 font-medium">No actions</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : activeTab === "PAYMENTS" ? (
             isLoadingTx ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />

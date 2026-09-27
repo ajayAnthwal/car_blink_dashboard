@@ -4,12 +4,12 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useAccountsDashboardData, useActivityLogs, useAccountsTransactions } from "@/features/accounts/hooks/useAccountsQueries";
+import { useAccountsDashboardData, useActivityLogs, useAccountsTransactions, useAccountsWithdrawalRequests } from "@/features/accounts/hooks/useAccountsQueries";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight, CreditCard } from "lucide-react";
+import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight, CreditCard, Wallet, ArrowUpRight } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -30,6 +30,10 @@ export default function AccountsDashboardPage() {
   const { data, isLoading: loading } = useAccountsDashboardData();
   const { data: activityLogs = [] } = useActivityLogs(5);
   const { data: txData } = useAccountsTransactions({ limit: 10 });
+  const { data: withdrawalsData } = useAccountsWithdrawalRequests({ limit: 10 });
+  const withdrawalList = withdrawalsData?.withdrawals || [];
+  const pendingWithdrawals = useMemo(() => withdrawalList.filter((w: any) => w.status === 'PENDING'), [withdrawalList]);
+
   const rawTransactions = txData?.transactions || txData?.data?.transactions || (Array.isArray(txData) ? txData : []);
   const recentPayments = useMemo(() => Array.isArray(rawTransactions) ? rawTransactions.slice(0, 5) : [], [rawTransactions]);
 
@@ -256,6 +260,74 @@ export default function AccountsDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Partner Wallet Withdrawal Requests */}
+      <Card className="shadow-subtle border-gray-100 bg-gradient-to-r from-orange-50/30 via-white to-white border-l-4 border-l-primary-orange">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-primary-navy">
+              <Wallet className="w-5 h-5 text-primary-orange" />
+              <span>Partner Wallet Withdrawal Requests ({pendingWithdrawals.length} Pending)</span>
+            </CardTitle>
+            <CardDescription>Live payout requests submitted by service partners</CardDescription>
+          </div>
+          <Button variant="ghost" size="sm" asChild className="text-primary-orange hover:text-orange-700">
+            <Link href="/accounts/settlements">Process in Settlements <ArrowUpRight className="w-4 h-4 ml-1" /></Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          {pendingWithdrawals.length === 0 ? (
+            <div className="p-6 text-center flex flex-col items-center justify-center">
+              <Wallet className="w-8 h-8 text-gray-300 mb-1" />
+              <p className="text-gray-500 text-xs font-medium">No pending partner withdrawal requests.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow>
+                  <TableHead className="font-semibold text-gray-700">Partner</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Bank Details</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Amount</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Requested On</TableHead>
+                  <TableHead className="font-semibold text-gray-700 text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingWithdrawals.map((w: any) => {
+                  const pName = w.partnerId?.businessName || w.bankDetails?.accountHolderName || 'Partner Workshop';
+                  const bank = w.bankDetails || {};
+
+                  return (
+                    <TableRow key={w._id} className="hover:bg-gray-50/50 transition-colors">
+                      <TableCell className="font-bold text-xs text-primary-navy">
+                        <div>{pName}</div>
+                        <div className="text-[10px] text-gray-500 font-normal">ID: #{String(w._id).slice(-6)}</div>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <div className="font-medium text-gray-800">A/C: {bank.accountNumber}</div>
+                        <div className="text-[10px] text-gray-500">IFSC: {bank.ifscCode} ({bank.accountHolderName})</div>
+                      </TableCell>
+                      <TableCell className="text-orange-600 font-extrabold text-sm">
+                        ₹{w.amount?.toLocaleString('en-IN') || 0}
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-500">
+                        {new Date(w.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-7 px-3 shadow-2xs">
+                          <Link href="/accounts/settlements">
+                            Payout Now <ArrowRight className="w-3 h-3 ml-1" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Customer Payments Received */}
       <Card className="shadow-subtle border-gray-100">

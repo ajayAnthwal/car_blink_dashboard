@@ -290,3 +290,47 @@ export const useUpdateSecurityPinMutation = () => {
     mutationFn: (data: { newPin: string }) => updateAccountsSecurityPin(data),
   });
 };
+
+export const useAccountsWithdrawalRequests = (params: any = {}) => {
+  return useQuery({
+    queryKey: ["accounts", "withdrawals", params],
+    staleTime: 0,
+    queryFn: async () => {
+      const { getAccountsWithdrawalRequests } = await import("@/lib/services");
+      const res = await getAccountsWithdrawalRequests(params);
+      const list = res?.withdrawals || res?.data?.withdrawals || (Array.isArray(res) ? res : []);
+      return {
+        withdrawals: list,
+        total: res?.total || res?.data?.total || list.length
+      };
+    },
+  });
+};
+
+export const useProcessWithdrawalMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { id: string; pin: string; referenceId?: string }) => {
+      const { processAccountsWithdrawal } = await import("@/lib/services");
+      return processAccountsWithdrawal(data.id, { pin: data.pin, referenceId: data.referenceId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts", "withdrawals"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts", "dashboard"] });
+    },
+  });
+};
+
+export const useRejectWithdrawalMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { id: string; pin: string; reason?: string }) => {
+      const { rejectAccountsWithdrawal } = await import("@/lib/services");
+      return rejectAccountsWithdrawal(data.id, { pin: data.pin, reason: data.reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts", "withdrawals"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts", "dashboard"] });
+    },
+  });
+};

@@ -1392,3 +1392,19 @@ export const updateAccountsSecurityPin = async (data: { newPin: string }) => {
   const response = await apiClient.patch('/accounts/profile/pin', data);
   return response.data;
 };
+
+export const getAccountsWithdrawalRequests = async (params: { page?: number; limit?: number; status?: string } = {}) => {
+  const query = new URLSearchParams(params as any).toString();
+  const response = await apiClient.get(`/accounts/withdrawals?${query}`);
+  return response.data;
+};
+
+export const processAccountsWithdrawal = async (id: string, data: { pin: string; referenceId?: string }) => {
+  const response = await apiClient.patch(`/accounts/withdrawals/${id}/process`, data);
+  return response.data;
+};
+
+export const rejectAccountsWithdrawal = async (id: string, data: { pin: string; reason?: string }) => {
+  const response = await apiClient.patch(`/accounts/withdrawals/${id}/reject`, data);
+  return response.data;
+};
