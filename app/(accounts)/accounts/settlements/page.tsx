@@ -6,14 +6,16 @@ import { uploadBankReconciliation } from "@/lib/services";
 import { 
   useSettlements, 
   useProcessSettlementMutation,
-  usePlatformRevenueStats
+  usePlatformRevenueStats,
+  useAccountsTransactions
 } from "@/features/accounts/hooks/useAccountsQueries";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File } from "lucide-react";
+import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function SettlementsPage() {
+  const [activeTab, setActiveTab] = useState<"SETTLEMENTS" | "PAYMENTS">("SETTLEMENTS");
   const [page, setPage] = useState(1);
   const limit = 10;
   
@@ -23,6 +25,8 @@ export default function SettlementsPage() {
   const total = settlementsData?.total || 0;
   
   const { data: revenueStats, isLoading: isLoadingStats } = usePlatformRevenueStats();
+  const { data: txData, isLoading: isLoadingTx } = useAccountsTransactions({ page: 1, limit: 50, search: searchTerm });
+  const rawTxList = txData?.transactions || txData?.data?.transactions || (Array.isArray(txData) ? txData : []);
 
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -168,25 +172,108 @@ export default function SettlementsPage() {
       </Card>
 
       {/* Existing Settlements Section */}
+      {/* Existing Settlements / Customer Payments Section */}
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 pb-4">
-          <CardTitle className="flex items-center space-x-2">
-            <BadgeIndianRupee className="w-5 h-5 text-primary-orange" />
-            <span>Settlements History</span>
-          </CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 pb-4 border-b border-gray-100">
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
+            <button
+              onClick={() => setActiveTab("SETTLEMENTS")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === "SETTLEMENTS" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <BadgeIndianRupee className="w-4 h-4 text-primary-orange" />
+              Partner Settlements ({total})
+            </button>
+            <button
+              onClick={() => setActiveTab("PAYMENTS")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === "PAYMENTS" ? "bg-emerald-600 text-white shadow-sm" : "text-emerald-700 hover:bg-emerald-50"
+              }`}
+            >
+              <CreditCard className="w-4 h-4" />
+              Customer Advance & Payments ({rawTxList.length})
+            </button>
+          </div>
+
           <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by ID or Partner Name..."
+              placeholder={activeTab === "PAYMENTS" ? "Search customer or payment ID..." : "Search by ID or Partner Name..."}
               className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-navy/20"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </CardHeader>
-        <CardContent>
-          {isLoadingSettlements ? (
+
+        <CardContent className="pt-4">
+          {activeTab === "PAYMENTS" ? (
+            isLoadingTx ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+              </div>
+            ) : rawTxList.length === 0 ? (
+              <div className="text-center py-10 text-neutral-muted">
+                <p>No customer payments found.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-neutral-muted uppercase bg-neutral-bg">
+                    <tr>
+                      <th className="px-4 py-3 rounded-l-lg">Txn / Booking ID</th>
+                      <th className="px-4 py-3">Customer Details</th>
+                      <th className="px-4 py-3">Payment Type</th>
+                      <th className="px-4 py-3">Amount</th>
+                      <th className="px-4 py-3">Date & Time</th>
+                      <th className="px-4 py-3 rounded-r-lg text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-muted/10">
+                    {rawTxList.map((p: any) => {
+                      const custName = p.customer?.fullName || p.customerId?.fullName || 'Customer';
+                      const custPhone = p.customer?.phone || p.customerId?.phone || '';
+                      const bId = p.bookingId?._id || p.bookingId || p._id;
+                      const isAdvance = p.paymentType === 'ADVANCE';
+
+                      return (
+                        <tr key={p._id} className="hover:bg-neutral-bg/50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-primary-navy">
+                            <div>#{String(p.transactionId || p._id).slice(-8)}</div>
+                            <div className="text-xs text-neutral-muted">Booking: #{String(bId).slice(-6)}</div>
+                          </td>
+                          <td className="px-4 py-3 text-neutral-dark">
+                            <div className="font-bold">{custName}</div>
+                            {custPhone && <div className="text-xs text-neutral-muted">{custPhone}</div>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 text-xs font-extrabold rounded-full ${
+                              isAdvance ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                            }`}>
+                              {isAdvance ? '15% ADVANCE ⏳' : (p.paymentType || 'FULL')}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-extrabold text-base text-gray-900">
+                            ₹{p.amount?.toLocaleString('en-IN') || 0}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-neutral-dark whitespace-nowrap">
+                            {new Date(p.createdAt || p.paidAt || Date.now()).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              {p.status || 'SUCCESS'} ✓
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : isLoadingSettlements ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="w-8 h-8 text-primary-orange animate-spin" />
             </div>

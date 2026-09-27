@@ -127,7 +127,7 @@ export default function PartnerDashboardPage() {
     }, { NOT_STARTED: 0, IN_PROGRESS: 0, COMPLETED: 0 });
 
     return [
-      { name: "Not Started", value: statusCounts.NOT_STARTED || 0, fill: getStatusColorTheme("NOT_STARTED")?.hex || "#6B7280" },
+      { name: "Ready to Start", value: statusCounts.NOT_STARTED || 0, fill: getStatusColorTheme("NOT_STARTED")?.hex || "#F59E0B" },
       { name: "In Progress", value: statusCounts.IN_PROGRESS || 0, fill: getStatusColorTheme("IN_PROGRESS")?.hex || "#2563EB" },
       { name: "Completed", value: statusCounts.COMPLETED || 0, fill: getStatusColorTheme("COMPLETED")?.hex || "#16A34A" }
     ];

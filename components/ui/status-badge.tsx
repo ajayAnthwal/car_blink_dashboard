@@ -37,7 +37,7 @@ export const getStatusColorTheme = (status: string | undefined | null) => {
   }
   
   // WARNING themes (Orange/Yellow)
-  if (["PENDING", "QUOTED", "CUSTOMER_ACCEPTED", "OPEN", "UNDER_REVIEW", "EXPIRED", "MEDIUM", "WITHDRAWN"].includes(s)) {
+  if (["PENDING", "QUOTED", "CUSTOMER_ACCEPTED", "OPEN", "UNDER_REVIEW", "EXPIRED", "MEDIUM", "WITHDRAWN", "NOT_STARTED", "READY_TO_START"].includes(s)) {
     return {
       bgClass: "bg-warning hover:bg-warning/90 text-white",
       hex: "#F59E0B"
@@ -45,7 +45,7 @@ export const getStatusColorTheme = (status: string | undefined | null) => {
   }
   
   // PRIMARY themes (Blue)
-  if (["IN_PROGRESS", "NOT_STARTED", "LOW"].includes(s)) {
+  if (["IN_PROGRESS", "LOW"].includes(s)) {
     return {
       bgClass: "bg-secondary-blue hover:bg-secondary-blue/90 text-white",
       hex: "#2563EB"
@@ -73,6 +73,16 @@ export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
         className={`uppercase text-[10px] font-extrabold tracking-wider border-amber-300 bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-0.5 shadow-2xs ${className}`}
       >
         AWAITING 15% ADVANCE ⏳
+      </Badge>
+    );
+  }
+
+  if (safeStatus.toUpperCase() === 'NOT_STARTED' || safeStatus.toUpperCase() === 'READY_TO_START') {
+    return (
+      <Badge 
+        className={`uppercase text-[10px] font-extrabold tracking-wider border-amber-300 bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-0.5 shadow-2xs ${className}`}
+      >
+        READY TO START ⏳
       </Badge>
     );
   }

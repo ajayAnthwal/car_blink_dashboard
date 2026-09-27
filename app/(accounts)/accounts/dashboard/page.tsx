@@ -4,12 +4,12 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useAccountsDashboardData, useActivityLogs } from "@/features/accounts/hooks/useAccountsQueries";
+import { useAccountsDashboardData, useActivityLogs, useAccountsTransactions } from "@/features/accounts/hooks/useAccountsQueries";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight } from "lucide-react";
+import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight, CreditCard } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -29,6 +29,9 @@ export default function AccountsDashboardPage() {
 
   const { data, isLoading: loading } = useAccountsDashboardData();
   const { data: activityLogs = [] } = useActivityLogs(5);
+  const { data: txData } = useAccountsTransactions({ limit: 10 });
+  const rawTransactions = txData?.transactions || txData?.data?.transactions || (Array.isArray(txData) ? txData : []);
+  const recentPayments = useMemo(() => Array.isArray(rawTransactions) ? rawTransactions.slice(0, 5) : [], [rawTransactions]);
 
   const stats = data?.stats || {
     pendingRefunds: 0,
@@ -253,6 +256,82 @@ export default function AccountsDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Customer Payments Received */}
+      <Card className="shadow-subtle border-gray-100">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-primary-navy">
+              <CreditCard className="w-5 h-5 text-emerald-600" />
+              <span>Recent Customer Payments Received</span>
+            </CardTitle>
+            <CardDescription>Live feed of customer advance (15%) and full payments</CardDescription>
+          </div>
+          <Button variant="ghost" size="sm" asChild className="text-secondary-blue hover:text-blue-700">
+            <Link href="/accounts/transactions">View All Ledger</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          {recentPayments.length === 0 ? (
+            <div className="p-8 text-center flex flex-col items-center justify-center">
+              <CreditCard className="w-10 h-10 text-gray-300 mb-2" />
+              <p className="text-gray-500 text-sm font-medium">No customer payments recorded yet.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow>
+                  <TableHead className="font-semibold text-gray-700">Txn / Booking ID</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Customer</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Type</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Amount</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Date & Time</TableHead>
+                  <TableHead className="font-semibold text-gray-700 text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentPayments.map((p: any) => {
+                  const custName = p.customer?.fullName || p.customerId?.fullName || 'Customer';
+                  const custPhone = p.customer?.phone || p.customerId?.phone || '';
+                  const bId = p.bookingId?._id || p.bookingId || p._id;
+                  const isAdvance = p.paymentType === 'ADVANCE';
+
+                  return (
+                    <TableRow key={p._id} className="hover:bg-gray-50/50 transition-colors">
+                      <TableCell className="font-medium text-xs text-primary-navy">
+                        <div>#{String(p.transactionId || p._id).slice(-8)}</div>
+                        <div className="text-[10px] text-gray-400">Booking: #{String(bId).slice(-6)}</div>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <div className="font-semibold text-gray-900">{custName}</div>
+                        {custPhone && <div className="text-[10px] text-gray-500">{custPhone}</div>}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${
+                          isAdvance ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                        }`}>
+                          {isAdvance ? 'ADVANCE (15%)' : (p.paymentType || 'FULL')}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-gray-900 font-extrabold text-sm">
+                        ₹{p.amount?.toLocaleString('en-IN') || 0}
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-500">
+                        {new Date(p.createdAt || p.paidAt || Date.now()).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          {p.status || 'SUCCESS'} ✓
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Recent Refunds Table */}
