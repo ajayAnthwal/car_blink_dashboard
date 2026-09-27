@@ -306,18 +306,18 @@ export default function CustomerBookingDetailsPage() {
     : "Vehicle Requested";
 
 
-  const isAdvancePaid = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS');
+  const isAdvancePaid = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS' && p.amount > 0);
   const isAdvancePending = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'PENDING');
-  const isFinalPaid = booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'SUCCESS');
+  const isFinalPaid = booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'SUCCESS' && p.amount > 0);
   const isFinalPending = booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'PENDING');
-  const isFullPaid = booking.payments?.some((p: any) => p.paymentType === 'FULL' && p.status === 'SUCCESS');
-  const hasPaidAdvance = isAdvancePaid || isFullPaid;
+  const isFullPaid = booking.payments?.some((p: any) => p.paymentType === 'FULL' && p.status === 'SUCCESS' && p.amount > 0);
+  
+  const totalPaidAmount = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
+  const hasPaidAdvance = isAdvancePaid || isFullPaid || totalPaidAmount > 0;
   const hasPaidFinal = isFinalPaid || isFullPaid;
 
   const acceptedQuoteAmount = quotes.find(q => q._id === booking.acceptedBidId || q._id === (booking.acceptedBidId as any)?._id)?.quotedAmount || (booking.acceptedBidId as any)?.quotedAmount || 0;
   const baseAmount = booking.jobDetails?.finalAmount || acceptedQuoteAmount || 1500;
-
-  const totalPaidAmount = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
 
   const approvedExtensions = booking.jobDetails?.jobExtensions?.filter((e: any) => e.status === 'APPROVED') || [];
   const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + ext.cost, 0);
@@ -328,9 +328,10 @@ export default function CustomerBookingDetailsPage() {
   
   const remainingAmount = Math.max(0, revisedTotalAmount - totalPaidAmount);
 
-  const advanceAmount = Math.round(revisedTotalAmount * 0.15);
-  const remainingForAdvance = advanceAmount - totalPaidAmount;
-  const needsAdvance = (booking.status === 'ASSIGNED' || booking.status === 'CUSTOMER_ACCEPTED' || booking.status === 'QUOTED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') && baseAmount > 0 && remainingForAdvance > 0;
+  const rawAdv = Math.round(revisedTotalAmount * 0.15);
+  const advanceAmount = revisedTotalAmount > 0 ? Math.max(1, rawAdv) : 0;
+  const remainingForAdvance = Math.max(0, advanceAmount - totalPaidAmount);
+  const needsAdvance = !hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED';
   const needsFinal = booking.status === 'COMPLETED' && remainingAmount > 0;
 
   return (
@@ -871,15 +872,15 @@ export default function CustomerBookingDetailsPage() {
                     </div>
                   )}
 
-                  {/* If Advance is needed (Before Completion) */}
-                  {needsAdvance && (
+                  {/* If Advance is needed (Before Completion and Not Paid Yet) */}
+                  {(!hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED') && (
                     <div className="space-y-3">
                       <Button 
                         className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold flex items-center justify-center shadow-md transition-all text-sm" 
-                        onClick={() => handleInitiatePayment(remainingForAdvance, "ADVANCE")} 
+                        onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
                         isLoading={isExtensionProcessing}
                       >
-                        <IndianRupee className="w-4 h-4 mr-1.5" /> Pay Advance Token (₹{remainingForAdvance.toLocaleString('en-IN')})
+                        <IndianRupee className="w-4 h-4 mr-1.5" /> Pay Advance Token (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})
                       </Button>
                       <Button 
                         variant="outline"
@@ -892,8 +893,8 @@ export default function CustomerBookingDetailsPage() {
                     </div>
                   )}
 
-                  {/* If Advance already paid and service still in progress */}
-                  {remainingAmount > 0 && !needsAdvance && booking.status !== 'COMPLETED' && (
+                  {/* If Advance ALREADY paid and service still in progress */}
+                  {(hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED') && (
                     <div className="space-y-3">
                       <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 font-medium flex items-center gap-2">
                         <Clock className="w-4 h-4 flex-shrink-0 text-amber-600" />

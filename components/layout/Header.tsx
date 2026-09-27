@@ -75,18 +75,30 @@ export function Header() {
     if (!socket) return;
 
     const handleNewNotification = (payload: any) => {
-      setNotifications(prev => [payload, ...prev]);
+      if (payload && (payload.title || payload.message)) {
+        setNotifications(prev => [payload, ...prev]);
+      }
+      fetchNotifications();
+    };
+
+    const handleRefetch = () => {
       fetchNotifications();
     };
 
     socket.on("notification:new", handleNewNotification);
     socket.on("new_notification", handleNewNotification);
     socket.on("notification_received", handleNewNotification);
+    socket.on("new_lead", handleRefetch);
+    socket.on("new_bid", handleRefetch);
+    socket.on("booking_confirmed", handleRefetch);
 
     return () => {
       socket.off("notification:new", handleNewNotification);
       socket.off("new_notification", handleNewNotification);
       socket.off("notification_received", handleNewNotification);
+      socket.off("new_lead", handleRefetch);
+      socket.off("new_bid", handleRefetch);
+      socket.off("booking_confirmed", handleRefetch);
     };
   }, [socket, fetchNotifications]);
 

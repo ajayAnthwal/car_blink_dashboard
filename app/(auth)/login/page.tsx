@@ -344,10 +344,10 @@ function LoginContent() {
       {loginMode === "password" ? (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email or Phone</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email Address</label>
             <Input
               type="text"
-              placeholder="e.g. user@example.com or +919876543210"
+              placeholder="e.g. user@example.com"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               required

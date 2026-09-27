@@ -126,9 +126,10 @@ export default function ExecutiveDashboardPage() {
     const platformLeadsList = Array.isArray(lds?.docs) ? lds.docs : (Array.isArray(lds?.data) ? lds.data : (Array.isArray(lds) ? lds : []));
 
     const unassignedWebsiteLeads = websiteLeadsList.filter((l: any) => l.status === "NEW" || l.status === "PENDING");
+    let latestWebItem: any = null;
     if (unassignedWebsiteLeads.length > 0) {
-      const latest = unassignedWebsiteLeads.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-      return {
+      const latest = [...unassignedWebsiteLeads].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      latestWebItem = {
         id: latest._id || latest.id,
         name: latest.name || "New Customer",
         phone: latest.phone || "",
@@ -142,24 +143,37 @@ export default function ExecutiveDashboardPage() {
     }
 
     const unassignedPlatformLeads = platformLeadsList.filter((l: any) => l.status === "PENDING" || l.status === "QUOTED");
+    let latestPlatformItem: any = null;
     if (unassignedPlatformLeads.length > 0) {
-      const latest = unassignedPlatformLeads.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      const latest = [...unassignedPlatformLeads].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
       const customerObj = typeof latest.customerId === "object" ? latest.customerId : null;
       const cityObj = typeof latest.cityId === "object" ? latest.cityId : null;
-      return {
+      const vehicleObj = typeof latest.vehicleId === "object" ? latest.vehicleId : null;
+
+      const vehicleDetails = vehicleObj 
+        ? `${vehicleObj.brand || ''} ${vehicleObj.model || ''}`.trim()
+        : '';
+
+      latestPlatformItem = {
         id: latest._id || latest.id,
-        name: customerObj?.fullName || "New Customer",
-        phone: customerObj?.phone || "",
+        name: customerObj?.fullName || latest.phone || "New Customer",
+        phone: customerObj?.phone || latest.phone || "",
         source: "Platform Booking",
-        city: cityObj?.name || "",
-        message: latest.description || "Booking requested.",
+        city: cityObj?.name || latest.address || "",
+        message: vehicleDetails ? `Vehicle: ${vehicleDetails} • ${latest.description || 'Booking requested.'}` : (latest.description || "Booking requested."),
         timestamp: latest.createdAt ? new Date(latest.createdAt) : new Date(),
         isLive: false,
         isWebsiteLead: false,
       };
     }
 
-    return null;
+    if (latestWebItem && latestPlatformItem) {
+      const timeWeb = new Date(latestWebItem.timestamp).getTime();
+      const timePlat = new Date(latestPlatformItem.timestamp).getTime();
+      return timeWeb >= timePlat ? latestWebItem : latestPlatformItem;
+    }
+
+    return latestWebItem || latestPlatformItem || null;
   }, [liveLeadAlert, wLds, lds]);
 
   // Compute Stats
