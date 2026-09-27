@@ -16,10 +16,12 @@ interface NotificationDetailsModalProps {
 
 export const getNotificationTargetLink = (notification: any, userRole: string = "CUSTOMER") => {
   if (!notification) return null;
-  const payload = notification.data || notification.payload || {};
+  const payload = notification.metadata || notification.data || notification.payload || {};
   const category = (notification.category || notification.type || "").toUpperCase();
   const titleLower = (notification.title || "").toLowerCase();
   const msgLower = (notification.message || "").toLowerCase();
+
+  const bId = payload.bookingId || payload.id || notification.metadata?.bookingId;
 
   // 1. Extra Parts / Additional Parts Approval / Job Extensions
   if (
@@ -31,14 +33,14 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     msgLower.includes("extension")
   ) {
     if (userRole === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
-    if (userRole === "CUSTOMER") return { label: "Review Extra Parts", href: payload.bookingId ? `/customer/bookings/${payload.bookingId}` : "/customer/bookings" };
-    return { label: "View Booking Details", href: payload.bookingId ? `/executive/leads` : "/executive/leads" };
+    if (userRole === "CUSTOMER") return { label: "Review Extra Parts", href: bId ? `/customer/bookings/${bId}` : "/customer/bookings" };
+    return { label: "View Booking Details", href: "/executive/leads" };
   }
 
   // 2. Invoice Notifications
   if (payload.invoiceId || titleLower.includes("invoice") || msgLower.includes("invoice")) {
     if (userRole === "PARTNER") return { label: "View Active Jobs & Invoices", href: "/partner/jobs" };
-    if (userRole === "CUSTOMER") return { label: "View Booking & Invoice", href: payload.bookingId ? `/customer/bookings/${payload.bookingId}` : "/customer/dashboard" };
+    if (userRole === "CUSTOMER") return { label: "View Booking & Invoice", href: bId ? `/customer/bookings/${bId}` : "/customer/dashboard" };
     return { label: "Go to Executive Invoice Console", href: "/executive/invoices" };
   }
 
@@ -59,14 +61,14 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
 
   // 4. Booking / Quote / Lead Updates
   if (
-    payload.bookingId ||
+    bId ||
     titleLower.includes("booking") ||
     msgLower.includes("booking") ||
     titleLower.includes("quote") ||
     msgLower.includes("quote")
   ) {
     if (userRole === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
-    if (userRole === "CUSTOMER") return { label: "View Booking Details", href: payload.bookingId ? `/customer/bookings/${payload.bookingId}` : "/customer/bookings" };
+    if (userRole === "CUSTOMER") return { label: "View Booking Details", href: bId ? `/customer/bookings/${bId}` : "/customer/bookings" };
     return { label: "View Leads & Bookings", href: "/executive/leads" };
   }
 
