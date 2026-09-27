@@ -64,8 +64,15 @@ export function middleware(request: NextRequest) {
             }
           }
           
-          const redirectUrl = new URL(targetPath, request.url);
-          const response = NextResponse.redirect(redirectUrl);
+          // Construct clean redirect URL without token query params to prevent infinite redirect loop
+          const cleanUrl = new URL(targetPath, request.url);
+          searchParams.forEach((val, key) => {
+            if (!["token", "accessToken", "access_token", "authToken", "jwt", "sso", "t"].includes(key)) {
+              cleanUrl.searchParams.set(key, val);
+            }
+          });
+
+          const response = NextResponse.redirect(cleanUrl);
           const cookieOpts = {
             path: "/",
             domain: domain,
