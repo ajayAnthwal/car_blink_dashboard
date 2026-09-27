@@ -1,13 +1,13 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useAdminTransactions, useAdminBookings } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AdminFinanceNav } from "@/components/layout/AdminFinanceNav";
-import { Loader2, CreditCard, Search, ArrowUpRight, CheckCircle2, Clock, XCircle, FileText } from "lucide-react";
+import { Loader2, CreditCard, Search, ArrowUpRight, CheckCircle2, Clock, XCircle, FileText, TrendingUp, IndianRupee, Wallet } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminTransactionsPage() {
@@ -48,6 +48,14 @@ export default function AdminTransactionsPage() {
     });
     total = transactions.length;
   }
+
+  // Summary Metrics
+  const summaryMetrics = useMemo(() => {
+    const totalCollected = transactions.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    const successCount = transactions.filter(t => t.status === 'SUCCESS' || t.status === 'PAID' || t.status === 'COMPLETED').length;
+    const successRate = transactions.length > 0 ? Math.round((successCount / transactions.length) * 100) : 100;
+    return { totalCollected, successCount, successRate };
+  }, [transactions]);
 
   const totalPages = Math.ceil(total / limit) || 1;
 
@@ -126,6 +134,57 @@ export default function AdminTransactionsPage() {
         >
           <FileText className="w-4 h-4" /> Export CSV
         </Button>
+      </div>
+
+      {/* Metric Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="bg-white shadow-sm border-gray-200">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase text-gray-500 tracking-wider mb-1">Total Advance Volume</p>
+                <h3 className="text-3xl font-bold text-gray-900 font-heading">
+                  ₹{summaryMetrics.totalCollected.toLocaleString('en-IN')}
+                </h3>
+              </div>
+              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100">
+                <TrendingUp className="w-6 h-6 text-emerald-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white shadow-sm border-gray-200">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase text-gray-500 tracking-wider mb-1">Completed Payments</p>
+                <h3 className="text-3xl font-bold text-gray-900 font-heading">
+                  {summaryMetrics.successCount} Records
+                </h3>
+              </div>
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100">
+                <IndianRupee className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white shadow-sm border-gray-200">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase text-gray-500 tracking-wider mb-1">Payment Success Rate</p>
+                <h3 className="text-3xl font-bold text-emerald-600 font-heading">
+                  {summaryMetrics.successRate}%
+                </h3>
+              </div>
+              <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100">
+                <Wallet className="w-6 h-6 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search & Filter Bar */}
