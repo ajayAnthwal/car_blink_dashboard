@@ -19,12 +19,18 @@ export const useCustomerInvoicesQuery = () => {
   return useQuery({
     queryKey: ["customer", "invoices"],
     queryFn: async () => {
-      const res = await getCustomerInvoices();
-      return {
-        invoices: extractArray(res, "invoices"),
-        total: res?.total || res?.data?.total || extractArray(res, "invoices").length
-      };
+      try {
+        const res = await getCustomerInvoices();
+        return {
+          invoices: extractArray(res, "invoices"),
+          total: res?.total || res?.data?.total || extractArray(res, "invoices").length
+        };
+      } catch (err) {
+        console.warn("useCustomerInvoicesQuery error:", err);
+        return { invoices: [], total: 0 };
+      }
     },
+    retry: 1,
     refetchOnMount: true,
     staleTime: 0,
     refetchInterval: 5000
@@ -36,11 +42,17 @@ export const useCustomerBookingInvoiceQuery = (bookingId: string) => {
     queryKey: ["customer", "bookings", bookingId, "invoice"],
     queryFn: async () => {
       if (!bookingId) return null;
-      const { getCustomerBookingInvoice } = await import("@/lib/services");
-      const res = await getCustomerBookingInvoice(bookingId);
-      return res?.data?.invoice || res?.invoice || res?.data || null;
+      try {
+        const { getCustomerBookingInvoice } = await import("@/lib/services");
+        const res = await getCustomerBookingInvoice(bookingId);
+        return res?.data?.invoice || res?.invoice || res?.data || null;
+      } catch (err) {
+        console.warn("useCustomerBookingInvoiceQuery error:", err);
+        return null;
+      }
     },
     enabled: !!bookingId,
+    retry: 1,
     refetchOnMount: true,
     staleTime: 0
   });
@@ -50,23 +62,29 @@ export const useCustomerBookings = (params?: { page?: number; limit?: number; se
   return useQuery({
     queryKey: ["customer", "bookings", params],
     queryFn: async () => {
-      const res = await getBookings(params);
-      const bookingsArray = extractArray(res, "bookings") as Booking[];
-      let totalCount = 0;
+      try {
+        const res = await getBookings(params);
+        const bookingsArray = extractArray(res, "bookings") as Booking[];
+        let totalCount = 0;
 
-      if (res?.total) {
-        totalCount = res.total;
-      } else if (res?.data?.total) {
-        totalCount = res.data.total;
-      } else {
-        totalCount = bookingsArray.length;
+        if (res?.total) {
+          totalCount = res.total;
+        } else if (res?.data?.total) {
+          totalCount = res.data.total;
+        } else {
+          totalCount = bookingsArray.length;
+        }
+
+        return {
+          bookings: bookingsArray,
+          total: totalCount
+        };
+      } catch (err) {
+        console.warn("useCustomerBookings query error:", err);
+        return { bookings: [], total: 0 };
       }
-
-      return {
-        bookings: bookingsArray,
-        total: totalCount
-      };
     },
+    retry: 1,
     refetchOnMount: true,
     staleTime: 0,
     refetchInterval: 5000
@@ -78,12 +96,18 @@ export const useBookingDetails = (id: string | null) => {
     queryKey: ["customer", "bookings", id],
     queryFn: async () => {
       if (!id) return null;
-      const res = await getBookingById(id);
-      if (res?._id) return res;
-      if (res?.data?._id) return res.data;
-      return res?.data?.booking || res?.data?.data || res?.data || res;
+      try {
+        const res = await getBookingById(id);
+        if (res?._id) return res;
+        if (res?.data?._id) return res.data;
+        return res?.data?.booking || res?.data?.data || res?.data || res;
+      } catch (err) {
+        console.warn("useBookingDetails error:", err);
+        return null;
+      }
     },
     enabled: !!id,
+    retry: 1,
   });
 };
 
@@ -92,10 +116,16 @@ export const useCanReviewBooking = (id: string | null) => {
     queryKey: ["customer", "bookings", id, "can-review"],
     queryFn: async () => {
       if (!id) return false;
-      const res = await canReviewBooking(id);
-      return res?.canReview || res?.data?.canReview || false;
+      try {
+        const res = await canReviewBooking(id);
+        return res?.canReview || res?.data?.canReview || false;
+      } catch (err) {
+        console.warn("useCanReviewBooking error:", err);
+        return false;
+      }
     },
     enabled: !!id,
+    retry: 1,
   });
 };
 
@@ -103,12 +133,18 @@ export const useCustomerPayments = (params?: { page?: number; limit?: number; se
   return useQuery({
     queryKey: ["customer", "payments", params],
     queryFn: async () => {
-      const res = await getPaymentHistory();
-      return {
-        payments: extractArray(res, "payments") as Payment[],
-        total: res?.total || res?.data?.total || extractArray(res, "payments").length
-      };
+      try {
+        const res = await getPaymentHistory();
+        return {
+          payments: extractArray(res, "payments") as Payment[],
+          total: res?.total || res?.data?.total || extractArray(res, "payments").length
+        };
+      } catch (err) {
+        console.warn("useCustomerPayments error:", err);
+        return { payments: [], total: 0 };
+      }
     },
+    retry: 1,
   });
 };
 
@@ -116,12 +152,18 @@ export const useCustomerWarranties = (params?: { page?: number; limit?: number; 
   return useQuery({
     queryKey: ["customer", "warranties", params],
     queryFn: async () => {
-      const res = await getWarranties();
-      return {
-        warranties: extractArray(res, "warranties") as Warranty[],
-        total: res?.total || res?.data?.total || extractArray(res, "warranties").length
-      };
+      try {
+        const res = await getWarranties();
+        return {
+          warranties: extractArray(res, "warranties") as Warranty[],
+          total: res?.total || res?.data?.total || extractArray(res, "warranties").length
+        };
+      } catch (err) {
+        console.warn("useCustomerWarranties error:", err);
+        return { warranties: [], total: 0 };
+      }
     },
+    retry: 1,
   });
 };
 
@@ -142,6 +184,7 @@ export const useCustomerStatsQuery = () => {
       }
       return { totalSavings: 0, rewardPoints: 0 };
     },
+    retry: 1,
   });
 };
 

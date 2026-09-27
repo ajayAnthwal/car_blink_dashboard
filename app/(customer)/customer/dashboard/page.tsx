@@ -43,7 +43,7 @@ export default function CustomerDashboardPage() {
   const { data: invoicesData, isLoading: loadingInvoices } = useCustomerInvoicesQuery();
   const invoices = invoicesData?.invoices || [];
 
-  const loading = loadingBookings || loadingPayments || loadingWarranties || loadingStats;
+  const loading = loadingBookings;
 
   // Safe Data Wrappers
   const safeBookings = useMemo(() => Array.isArray(bookings) ? bookings : [], [bookings]);
