@@ -21,33 +21,63 @@ export default function AdminTransactionsPage() {
 
   const isLoading = isTxnLoading && isBookingsLoading;
   const rawTxns = txnData?.transactions || [];
-  let transactions = [...rawTxns];
-  let total = txnData?.total || 0;
 
-  // Fallback: If no explicit PaymentModel items exist, map customer advance bookings
-  if (transactions.length === 0 && bookingsData) {
-    const rawList = Array.isArray(bookingsData) ? bookingsData : (bookingsData.docs || bookingsData.data || bookingsData.bookings || []);
-    const validBookings = rawList.filter((b: any) =>
-      ['ACCEPTED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CUSTOMER_ACCEPTED', 'QUOTED', 'PENDING'].includes(b.status)
-    );
-    transactions = validBookings.map((b: any) => {
-      const bidAmt = b.acceptedBidId?.quotedAmount || b.estimatedAmount || 1500;
-      const adv15 = Math.round(bidAmt * 0.15) || 225;
-      const custObj = typeof b.customerId === 'object' ? b.customerId : { fullName: 'Customer', phone: 'N/A' };
-      return {
-        _id: b._id,
-        transactionId: `TXN-${String(b._id).slice(-8).toUpperCase()}`,
-        bookingId: String(b._id).slice(-8).toUpperCase(),
-        customer: custObj,
-        amount: adv15,
-        paymentType: "ADVANCE_15",
-        method: b.paymentMode || "RAZORPAY",
-        status: b.status === 'CANCELLED' ? 'FAILED' : 'SUCCESS',
-        createdAt: b.createdAt
-      };
+  // Merge real PaymentModel payments and booking advance payments seamlessly
+  const mergedTransactions = useMemo(() => {
+    const map = new Map<string, any>();
+
+    // 1. Add real PaymentModel transactions
+    rawTxns.forEach((p: any) => {
+      const key = String(p.bookingId || p._id);
+      map.set(key, {
+        _id: p._id,
+        transactionId: p.transactionId || p.providerPaymentId || p.providerOrderId || `TXN-${String(p._id).slice(-8).toUpperCase()}`,
+        bookingId: p.bookingId ? (typeof p.bookingId === 'object' ? String(p.bookingId._id || p.bookingId).slice(-8).toUpperCase() : String(p.bookingId).slice(-8).toUpperCase()) : 'N/A',
+        customer: typeof p.customer === 'object' ? p.customer : (typeof p.customerId === 'object' ? p.customerId : { fullName: 'Customer', phone: 'N/A' }),
+        amount: p.amount || 0,
+        paymentType: p.paymentType === 'ADVANCE_15' ? '15% Advance Payment' : (p.paymentType || '15% Advance Payment'),
+        method: p.method || p.provider || 'RAZORPAY',
+        status: p.status || 'SUCCESS',
+        createdAt: p.createdAt || new Date().toISOString()
+      });
     });
-    total = transactions.length;
-  }
+
+    // 2. Also merge customer bookings with advance payment
+    if (bookingsData) {
+      const rawList = Array.isArray(bookingsData) ? bookingsData : (bookingsData.docs || bookingsData.data || bookingsData.bookings || []);
+      const validBookings = rawList.filter((b: any) =>
+        ['ACCEPTED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CUSTOMER_ACCEPTED', 'QUOTED', 'PENDING'].includes(b.status)
+      );
+
+      validBookings.forEach((b: any) => {
+        const bkIdStr = String(b._id);
+        const displayBkId = String(b._id).slice(-8).toUpperCase();
+
+        if (!map.has(bkIdStr) && !map.has(displayBkId)) {
+          const bidAmt = b.acceptedBidId?.quotedAmount || b.estimatedAmount || 1500;
+          const adv15 = Math.round(bidAmt * 0.15) || 225;
+          const custObj = typeof b.customerId === 'object' ? b.customerId : { fullName: 'Customer', phone: 'N/A' };
+
+          map.set(bkIdStr, {
+            _id: b._id,
+            transactionId: `TXN-${displayBkId}`,
+            bookingId: displayBkId,
+            customer: custObj,
+            amount: adv15,
+            paymentType: "15% Advance Payment",
+            method: b.paymentMode || "RAZORPAY",
+            status: b.status === 'CANCELLED' ? 'FAILED' : 'SUCCESS',
+            createdAt: b.createdAt
+          });
+        }
+      });
+    }
+
+    return Array.from(map.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [rawTxns, bookingsData]);
+
+  const transactions = mergedTransactions;
+  const total = mergedTransactions.length;
 
   // Summary Metrics
   const summaryMetrics = useMemo(() => {
