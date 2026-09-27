@@ -71,8 +71,14 @@ apiClient.interceptors.request.use(
     let token = inMemoryToken;
     if (!token && typeof window !== "undefined") {
       token = localStorage.getItem("car_blink_access_token") || localStorage.getItem("carBlink_token");
+      if (!token && document.cookie) {
+        const match = document.cookie.match(/(?:^|;\s*)(?:accessToken|car_blink_access_token)=([^;]+)/);
+        if (match && match[1]) {
+          token = decodeURIComponent(match[1]);
+        }
+      }
     }
-    if (token) {
+    if (token && token !== "undefined" && token !== "null") {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -90,15 +96,17 @@ function sanitizeErrorMessage(msg: string): string {
     lower.includes('network error') || 
     lower.includes('axioserror') || 
     lower.includes('econnrefused') ||
-    lower.includes('failed to fetch') ||
-    lower.includes('status code 500') || 
-    lower.includes('status code 404')
+    lower.includes('failed to fetch')
   ) {
     return 'Unable to connect right now. Please check your internet connection and try again.';
   }
+
+  if (lower.includes('status code 404') || lower.includes('not found') || lower.includes('404')) {
+    return 'Requested item or route was not found.';
+  }
   
   if (lower.includes('api') || lower.includes('json') || lower.includes('doctype') || lower.includes('html') || lower.includes('syntaxerror')) {
-    return 'Unable to process request right now. Please try again.';
+    return 'Data could not be loaded. Please refresh or try again.';
   }
 
   if (lower.includes('e11000') || lower.includes('duplicate key')) {
@@ -151,7 +159,7 @@ apiClient.interceptors.response.use(
       cleanMessage = rawErrorData.message || rawErrorData.error?.message || rawErrorData.error || cleanMessage;
     } else if (typeof rawErrorData === "string" && rawErrorData.trim()) {
       if (rawErrorData.includes("<!DOCTYPE") || rawErrorData.includes("<html")) {
-        cleanMessage = "Service is temporarily unavailable. Please try again.";
+        cleanMessage = "Data could not be loaded. Please refresh or try again.";
       } else {
         cleanMessage = rawErrorData;
       }
