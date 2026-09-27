@@ -187,6 +187,38 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
+      {/* Action Center Alert: Awaiting 15% Advance Token Payment */}
+      {awaiting15PercentAdvance.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 border-2 border-amber-300 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md w-full min-w-0">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center shadow-md shrink-0 animate-bounce">
+              <Clock className="w-5 h-5 sm:w-8 sm:h-8" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="bg-amber-500 text-white font-extrabold text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                  AWAITING 15% ADVANCE ⏳
+                </span>
+                <span className="text-xs font-bold text-amber-900">
+                  {awaiting15PercentAdvance.length} Booking(s) Pending Confirmation
+                </span>
+              </div>
+              <h3 className="font-bold text-amber-950 text-sm sm:text-lg break-words">
+                Action Required: Pay 15% Advance Token to Confirm Pickup & Service
+              </h3>
+              <p className="text-amber-800 text-xs sm:text-sm font-medium break-words mt-0.5">
+                Please pay the 15% advance token to confirm your booking and unlock partner workshop contact details.
+              </p>
+            </div>
+          </div>
+          <Button asChild className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md text-xs sm:text-sm px-6 py-2.5">
+            <Link href={`/customer/bookings/${awaiting15PercentAdvance[0]._id}`}>
+              Pay 15% Advance Now <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
+        </div>
+      )}
+
       {/* Action Center Alerts: Pending Quotes */}
       {quotesWaiting.length > 0 && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm w-full min-w-0">

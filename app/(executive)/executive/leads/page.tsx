@@ -601,7 +601,9 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           lead.status === 'ACCEPTED'
                             ? 'bg-teal-100 text-teal-800 border-teal-300'
                             : lead.status === 'CUSTOMER_ACCEPTED'
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300 animate-pulse' 
+                            ? (lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse') 
                             : lead.status === 'IN_PROGRESS' 
                             ? 'bg-blue-100 text-blue-800 border-blue-300' 
                             : lead.status === 'COMPLETED' 
@@ -613,7 +615,9 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           {lead.status === 'ACCEPTED'
                             ? 'PARTNER ASSIGNED ✓'
                             : lead.status === 'CUSTOMER_ACCEPTED' 
-                            ? 'CUSTOMER ACCEPTED ✓' 
+                            ? (lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))
+                                ? 'CUSTOMER ACCEPTED & PAID ✓'
+                                : 'AWAITING 15% ADVANCE ⏳') 
                             : lead.status === 'IN_PROGRESS' 
                             ? 'JOB IN PROGRESS 🔧' 
                             : lead.status === 'COMPLETED' 
@@ -661,15 +665,29 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                         </Button>
 
                         {lead.status === 'CUSTOMER_ACCEPTED' && (
-                          <Button
-                            size="sm"
-                            className="w-full text-[11px] font-bold h-8 bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap shadow-sm"
-                            onClick={() => handleConfirmQuote(lead._id)}
-                            disabled={confirmQuoteMutation.isPending}
-                          >
-                            <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                            <span>{confirmQuoteMutation.isPending ? "Confirming..." : "Confirm & Assign"}</span>
-                          </Button>
+                          lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) ? (
+                            <Button
+                              size="sm"
+                              className="w-full text-[11px] font-bold h-8 bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap shadow-sm"
+                              onClick={() => handleConfirmQuote(lead._id)}
+                              disabled={confirmQuoteMutation.isPending}
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                              <span>{confirmQuoteMutation.isPending ? "Confirming..." : "Confirm & Assign"}</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full text-[10px] font-bold h-8 text-amber-800 border-amber-300 bg-amber-50 hover:bg-amber-100 whitespace-nowrap shadow-2xs"
+                              onClick={() => {
+                                toast.error("Customer has selected quote but HAS NOT paid the 15% advance token (₹2) yet! 15% advance payment is required to confirm booking.", { duration: 5000 });
+                              }}
+                            >
+                              <Clock className="w-3.5 h-3.5 mr-1 text-amber-600" />
+                              <span>Awaiting 15% Advance</span>
+                            </Button>
+                          )
                         )}
 
                         {lead.status === 'ACCEPTED' && (
