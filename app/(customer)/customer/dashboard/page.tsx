@@ -117,6 +117,10 @@ export default function CustomerDashboardPage() {
     return safeBookings.filter(b => b && b.status === 'QUOTED');
   }, [safeBookings]);
 
+  const awaiting15PercentAdvance = useMemo(() => {
+    return safeBookings.filter(b => b && (b.status === 'CUSTOMER_ACCEPTED' || b.status === 'AWAITING_15_PERCENT_ADVANCE'));
+  }, [safeBookings]);
+
   const additionalPartsPending = useMemo(() => {
     return safeBookings.filter(b => {
       if (!b) return false;
