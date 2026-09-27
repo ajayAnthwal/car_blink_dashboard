@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
 
   const handleLogout = async (force: boolean = false) => {
+    setIsLoading(true);
     if (!force) {
       try {
         await logoutUser();
@@ -55,7 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAccessToken(null);
 
     if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-      window.location.href = "/login";
+      window.location.href = "/login?logout=true";
     }
   };
 

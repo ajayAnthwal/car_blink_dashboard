@@ -24,16 +24,12 @@ export default function AccountsLayout({ children }: { children: React.ReactNode
     }
   }, [user, isLoading, router]);
 
-  if (isLoading) {
+  if (isLoading || !user || user.role !== "ACCOUNTS") {
     return (
       <div className="flex h-screen items-center justify-center bg-neutral-bg">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-orange"></div>
       </div>
     );
-  }
-
-  if (!user || user.role !== "ACCOUNTS") {
-    return null;
   }
 
   return (
