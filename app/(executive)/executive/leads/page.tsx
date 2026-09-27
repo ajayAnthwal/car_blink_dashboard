@@ -381,50 +381,71 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
     <div className="space-y-6 max-w-7xl mx-auto relative pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-primary-navy">Lead Assignment</h2>
-          <p className="text-neutral-muted text-sm mt-1">
-            Review service requests, track quote acceptances, and assign partners.
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="text-2xl font-bold text-primary-navy">Lead Assignment</h2>
+            <span className="bg-blue-100 text-blue-800 text-xs font-extrabold px-2.5 py-0.5 rounded-full border border-blue-200">
+              Customer Bookings
+            </span>
+          </div>
+          <p className="text-neutral-muted text-sm">
+            Review customer service requests, track quote acceptances, and assign partners.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          {/* Status Filter Tabs */}
-          <div className="flex items-center bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
-            <button
-              onClick={() => { setStatusFilter("ALL"); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "ALL" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
-            >
-              All Active
-            </button>
-            <button
-              onClick={() => { setStatusFilter("ACCEPTED"); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${statusFilter === "ACCEPTED" ? "bg-emerald-600 text-white shadow-sm" : "text-emerald-700 hover:bg-emerald-50"}`}
-            >
-              Customer Accepted ✓
-            </button>
-            <button
-              onClick={() => { setStatusFilter("BIDDING"); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "BIDDING" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
-            >
-              Bidding / Pending
-            </button>
-            <button
-              onClick={() => { setStatusFilter("IN_PROGRESS"); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "IN_PROGRESS" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
-            >
-              In Progress / Done
-            </button>
-          </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); setPage(1); }} className="w-full sm:w-56 relative">
-            <Input
-              placeholder="Search leads..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-white"
-            />
-            <Search className="w-4 h-4 text-neutral-muted absolute left-3 top-1/2 -translate-y-1/2" />
-          </form>
+        {/* Lead Type Quick Switcher */}
+        <div className="flex items-center bg-slate-200/70 p-1 rounded-xl border border-slate-300/60 shadow-2xs">
+          <Link
+            href="/executive/leads"
+            className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-primary-navy shadow-sm flex items-center gap-1.5"
+          >
+            <Car className="w-3.5 h-3.5 text-blue-600" /> Platform Bookings
+          </Link>
+          <Link
+            href="/executive/website-leads"
+            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition-colors"
+          >
+            <Target className="w-3.5 h-3.5 text-primary-orange" /> Website Enquiries & Quotes
+          </Link>
         </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div className="flex items-center bg-gray-200/80 p-1 rounded-xl w-full sm:w-auto">
+          <button
+            onClick={() => { setStatusFilter("ALL"); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "ALL" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+          >
+            All Active
+          </button>
+          <button
+            onClick={() => { setStatusFilter("ACCEPTED"); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${statusFilter === "ACCEPTED" ? "bg-emerald-600 text-white shadow-sm" : "text-emerald-700 hover:bg-emerald-50"}`}
+          >
+            Customer Accepted ✓
+          </button>
+          <button
+            onClick={() => { setStatusFilter("BIDDING"); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "BIDDING" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+          >
+            Bidding / Pending
+          </button>
+          <button
+            onClick={() => { setStatusFilter("IN_PROGRESS"); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "IN_PROGRESS" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+          >
+            In Progress / Done
+          </button>
+        </div>
+
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); }} className="w-full sm:w-64 relative">
+          <Input
+            placeholder="Search customer, vehicle, location..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-white text-xs"
+          />
+          <Search className="w-4 h-4 text-neutral-muted absolute left-3 top-1/2 -translate-y-1/2" />
+        </form>
       </div>
 
       {isLeadsLoading ? (
