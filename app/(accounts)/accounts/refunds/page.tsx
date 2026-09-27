@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import { 
   useRefunds, 
+  useApproveRefundMutation,
   useProcessRefundMutation, 
   useRejectRefundMutation 
 } from "@/features/accounts/hooks/useAccountsQueries";
@@ -14,20 +15,24 @@ import { Input } from "@/components/ui/input";
 
 export default function RefundsPage() {
   const { data, isLoading } = useRefunds({ page: 1, limit: 50 });
-  // In accounts, we should ideally only see APPROVED or PROCESSED or REJECTED
   const refunds = data?.refunds || [];
   
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [rejectReason, setRejectReason] = useState("");
-  const [showRejectFor, setShowRejectFor] = useState<string | null>(null);
+  const [showRejectFor, setShowRejectFor] = useState<any>(null);
   const [securityPin, setSecurityPin] = useState("");
-  const [showProcessFor, setShowProcessFor] = useState<string | null>(null);
+  const [showProcessFor, setShowProcessFor] = useState<any>(null);
 
+  const approveMutation = useApproveRefundMutation();
   const processMutation = useProcessRefundMutation();
   const rejectMutation = useRejectRefundMutation();
 
-  const handleAction = async (id: string, action: "process" | "reject") => {
+  const handleAction = async (item: any, action: "process" | "reject") => {
+    if (!item) return;
+    const id = typeof item === "string" ? item : item._id;
+    const currentStatus = typeof item === "object" ? item.status : "";
+
     setActionId(id);
     setMessage({ type: "", text: "" });
     try {
@@ -37,8 +42,11 @@ export default function RefundsPage() {
           setActionId(null);
           return;
         }
+        if (currentStatus === 'REQUESTED' || currentStatus === 'PENDING') {
+          await approveMutation.mutateAsync(id);
+        }
         await processMutation.mutateAsync({ id, pin: securityPin });
-        setMessage({ type: "success", text: "Refund processed successfully." });
+        setMessage({ type: "success", text: "Refund processed and funds returned to customer successfully." });
         setShowProcessFor(null);
         setSecurityPin("");
       } else if (action === "reject") {
@@ -122,12 +130,12 @@ export default function RefundsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
-                        {refund.status === 'APPROVED' ? (
+                        {refund.status !== 'PROCESSED' && refund.status !== 'REJECTED' ? (
                           <>
                             <Button
                               size="sm"
                               className="bg-primary-navy hover:bg-primary-navy-light"
-                              onClick={() => setShowProcessFor(refund._id)}
+                              onClick={() => setShowProcessFor(refund)}
                               isLoading={actionId === refund._id}
                             >
                               <ArrowRightCircle className="w-4 h-4 mr-1" /> Process
@@ -136,7 +144,7 @@ export default function RefundsPage() {
                               size="sm"
                               variant="outline"
                               className="border-danger text-danger hover:bg-danger/5 ml-2"
-                              onClick={() => setShowRejectFor(refund._id)}
+                              onClick={() => setShowRejectFor(refund)}
                             >
                               <X className="w-4 h-4" /> Reject
                             </Button>
