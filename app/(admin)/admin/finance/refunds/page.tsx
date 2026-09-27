@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Undo2, Check, Loader2, ArrowRightCircle, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { AdminFinanceNav } from "@/components/layout/AdminFinanceNav";
 
 export default function AdminRefundsPage() {
   const { data, isLoading } = useRefunds({ page: 1, limit: 50 });
@@ -71,7 +72,8 @@ export default function AdminRefundsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto p-4">
+      <AdminFinanceNav />
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-primary-navy">Refund Requests (Operations)</h2>

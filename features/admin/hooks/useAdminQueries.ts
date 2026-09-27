@@ -52,8 +52,19 @@ import {
   cancelSuperAdminBooking,
   onboardVendor,
   createCoupon,
-  deleteAdminUser
+  deleteAdminUser,
+  getAccountsTransactions
 } from "@/lib/services";
+
+export const useAdminTransactions = (page: number = 1, limit: number = 20, search?: string, status?: string) => {
+  return useQuery({
+    queryKey: ["admin", "transactions", page, limit, search, status],
+    queryFn: async () => {
+      const res = await getAccountsTransactions({ page, limit, search, status });
+      return res;
+    }
+  });
+};
 
 // ==========================================
 // Dashboard & Finance

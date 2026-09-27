@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, IndianRupee, TrendingUp, Calendar, Building2, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { AdminFinanceNav } from "@/components/layout/AdminFinanceNav";
 
 export default function AdminFinancePage() {
   // Date filters defaulting to current month
@@ -75,7 +76,8 @@ export default function AdminFinancePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12 p-4">
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12 p-4">
+      <AdminFinanceNav />
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-primary-navy to-indigo-900 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-elevated">
         <div className="flex items-center gap-5 text-white">

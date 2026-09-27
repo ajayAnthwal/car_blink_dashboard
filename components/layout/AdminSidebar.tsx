@@ -15,7 +15,7 @@ const navItems = [
   { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { name: "Website Leads", href: "/admin/marketing/leads", icon: Store },
   { name: "Notifications", href: "/admin/marketing/notifications", icon: Bell },
-  { name: "Finance", href: "/admin/finance/settlements", icon: IndianRupee },
+  { name: "Finance", href: "/admin/finance", icon: IndianRupee },
   { name: "Master Data", href: "/admin/master-data", icon: Map },
   { name: "Vehicles", href: "/admin/vehicles", icon: Car },
 ];

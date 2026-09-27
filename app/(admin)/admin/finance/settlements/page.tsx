@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { useAdminSettlements, useMarkAdminSettlementPaidMutation } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, IndianRupee, CheckCircle, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { AdminFinanceNav } from "@/components/layout/AdminFinanceNav";
 
 export default function AdminSettlementsPage() {
   const [statusFilter, setStatusFilter] = useState("");
@@ -63,6 +64,7 @@ export default function AdminSettlementsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in pb-12 p-4">
+      <AdminFinanceNav />
       <div className="bg-gradient-to-r from-primary-navy to-gray-900 rounded-3xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between shadow-elevated gap-4">
         <div className="flex items-center gap-5 text-white">
           <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20">
