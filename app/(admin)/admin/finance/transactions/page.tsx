@@ -26,24 +26,24 @@ export default function AdminTransactionsPage() {
   const mergedTransactions = useMemo(() => {
     const map = new Map<string, any>();
 
-    // 1. Add real PaymentModel transactions
+    // 1. Add real PaymentModel transactions from DB
     rawTxns.forEach((p: any) => {
-      const key = String(p.bookingId || p._id);
+      const key = String(p._id);
       map.set(key, {
         _id: p._id,
         transactionId: p.transactionId || p.providerPaymentId || p.providerOrderId || `TXN-${String(p._id).slice(-8).toUpperCase()}`,
         bookingId: p.bookingId ? (typeof p.bookingId === 'object' ? String(p.bookingId._id || p.bookingId).slice(-8).toUpperCase() : String(p.bookingId).slice(-8).toUpperCase()) : 'N/A',
         customer: typeof p.customer === 'object' ? p.customer : (typeof p.customerId === 'object' ? p.customerId : { fullName: 'Customer', phone: 'N/A' }),
         amount: p.amount || 0,
-        paymentType: p.paymentType === 'ADVANCE_15' ? '15% Advance Payment' : (p.paymentType || '15% Advance Payment'),
+        paymentType: p.paymentType === 'ADVANCE' || p.paymentType === 'ADVANCE_15' ? '15% Advance Payment' : (p.paymentType || 'Payment'),
         method: p.method || p.provider || 'RAZORPAY',
         status: p.status || 'SUCCESS',
         createdAt: p.createdAt || new Date().toISOString()
       });
     });
 
-    // 2. Also merge customer bookings with advance payment
-    if (bookingsData) {
+    // 2. If no real PaymentModel records exist, fallback to bookings
+    if (rawTxns.length === 0 && bookingsData) {
       const rawList = Array.isArray(bookingsData) ? bookingsData : (bookingsData.docs || bookingsData.data || bookingsData.bookings || []);
       const validBookings = rawList.filter((b: any) =>
         ['ACCEPTED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CUSTOMER_ACCEPTED', 'QUOTED', 'PENDING'].includes(b.status)
@@ -129,9 +129,10 @@ export default function AdminTransactionsPage() {
           </span>
         );
       case "PENDING":
+      case "CREATED":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-            <Clock className="w-3.5 h-3.5" /> Pending
+            <Clock className="w-3.5 h-3.5" /> {status === 'CREATED' ? 'Created' : 'Pending'}
           </span>
         );
       default:
