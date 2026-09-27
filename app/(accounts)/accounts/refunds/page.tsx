@@ -31,7 +31,6 @@ export default function RefundsPage() {
   const handleAction = async (item: any, action: "process" | "reject") => {
     if (!item) return;
     const id = typeof item === "string" ? item : item._id;
-    const currentStatus = typeof item === "object" ? item.status : "";
 
     setActionId(id);
     setMessage({ type: "", text: "" });
@@ -41,9 +40,6 @@ export default function RefundsPage() {
           setMessage({ type: "error", text: "Please enter a valid 4-digit Security PIN." });
           setActionId(null);
           return;
-        }
-        if (currentStatus === 'REQUESTED' || currentStatus === 'PENDING') {
-          await approveMutation.mutateAsync(id);
         }
         await processMutation.mutateAsync({ id, pin: securityPin });
         setMessage({ type: "success", text: "Refund processed and funds returned to customer successfully." });
