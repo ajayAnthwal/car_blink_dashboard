@@ -29,8 +29,17 @@ export function middleware(request: NextRequest) {
 
   const { pathname, searchParams } = request.nextUrl;
 
-  // If SSO ?token=, ?switch=true, or ?logout=true parameter is present in URL, DO NOT intercept on /login; let /login page execute!
-  if (searchParams.get("token") || searchParams.get("switch") || searchParams.get("logout")) {
+  // Handle SSO ?token= query parameter across any route
+  if (searchParams.get("token")) {
+    if (pathname !== "/login") {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("token", searchParams.get("token")!);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+  }
+
+  if (searchParams.get("switch") || searchParams.get("logout")) {
     return NextResponse.next();
   }
 

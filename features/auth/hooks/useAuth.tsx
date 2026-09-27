@@ -69,6 +69,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const getCookieOpts = () => {
+    const opts: any = { path: "/", expires: 7 };
+    if (typeof window !== "undefined" && window.location.hostname.endsWith("carblink.in")) {
+      opts.domain = ".carblink.in";
+    }
+    return opts;
+  };
+
   const handleLogin = async (newUser: User, newAccessToken: string, newRefreshToken: string) => {
     // 1. Sanitize any existing session state or tokens first
     await sanitizeSession(queryClient);
@@ -80,7 +88,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (newAccessToken) {
       localStorage.setItem("car_blink_access_token", newAccessToken);
-      Cookies.set("accessToken", newAccessToken, { path: "/", expires: 7 });
+      Cookies.set("accessToken", newAccessToken, getCookieOpts());
+      Cookies.set("car_blink_access_token", newAccessToken, getCookieOpts());
     }
 
     if (newRefreshToken) {
@@ -88,7 +97,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     // Store in cookie for server-side verification
-    Cookies.set("role", newUser.role, { path: "/", expires: 7 });
+    Cookies.set("role", newUser.role, getCookieOpts());
+    Cookies.set("user_role", newUser.role, getCookieOpts());
     await setSessionCookie(newAccessToken, newUser.role);
   };
 
@@ -111,8 +121,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (resolvedUser && resolvedUser.role) {
               setUser(resolvedUser);
               setAccessToken(storedAccessToken);
-              Cookies.set("role", resolvedUser.role, { path: "/", expires: 7 });
-              Cookies.set("accessToken", storedAccessToken, { path: "/", expires: 7 });
+              Cookies.set("role", resolvedUser.role, getCookieOpts());
+              Cookies.set("user_role", resolvedUser.role, getCookieOpts());
+              Cookies.set("accessToken", storedAccessToken, getCookieOpts());
+              Cookies.set("car_blink_access_token", storedAccessToken, getCookieOpts());
               localStorage.setItem("car_blink_access_token", storedAccessToken);
               setIsLoading(false);
               return;
@@ -128,7 +140,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const newAccessToken = refreshData.accessToken;
             setApiAccessToken(newAccessToken);
             localStorage.setItem("car_blink_access_token", newAccessToken);
-            Cookies.set("accessToken", newAccessToken, { path: "/", expires: 7 });
+            Cookies.set("accessToken", newAccessToken, getCookieOpts());
+            Cookies.set("car_blink_access_token", newAccessToken, getCookieOpts());
 
             if (refreshData.refreshToken) {
               localStorage.setItem("car_blink_refresh_token", refreshData.refreshToken);
@@ -139,7 +152,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (resolvedUser && resolvedUser.role) {
               setUser(resolvedUser);
               setAccessToken(newAccessToken);
-              Cookies.set("role", resolvedUser.role, { path: "/", expires: 7 });
+              Cookies.set("role", resolvedUser.role, getCookieOpts());
+              Cookies.set("user_role", resolvedUser.role, getCookieOpts());
               await setSessionCookie(newAccessToken);
               setIsLoading(false);
               return;
