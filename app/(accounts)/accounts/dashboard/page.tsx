@@ -392,8 +392,14 @@ export default function AccountsDashboardPage() {
                         {new Date(p.createdAt || p.paidAt || Date.now()).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-                          {p.status || 'SUCCESS'} ✓
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                          p.status === 'SUCCESS'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : p.status === 'CREATED' || p.status === 'PENDING'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : 'bg-red-100 text-red-800 border border-red-300'
+                        }`}>
+                          {p.status === 'SUCCESS' ? 'SUCCESS ✓' : p.status === 'CREATED' ? 'ORDER CREATED ⏳' : (p.status || 'PENDING')}
                         </span>
                       </TableCell>
                     </TableRow>

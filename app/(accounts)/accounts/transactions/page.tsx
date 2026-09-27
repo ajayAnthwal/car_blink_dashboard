@@ -118,10 +118,10 @@ export default function AccountsTransactionsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${
-                        t.status === 'SUCCESS' ? 'bg-green-100 text-green-700' :
-                        t.status === 'FAILED' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                        t.status === 'SUCCESS' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                        t.status === 'CREATED' || t.status === 'PENDING' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-red-100 text-red-800 border border-red-300'
                       }`}>
-                        {t.status || 'PENDING'}
+                        {t.status === 'SUCCESS' ? 'SUCCESS ✓' : t.status === 'CREATED' ? 'ORDER CREATED ⏳' : (t.status || 'PENDING')}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-500">
