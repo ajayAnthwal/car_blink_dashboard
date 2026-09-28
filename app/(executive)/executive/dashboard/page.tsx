@@ -312,7 +312,16 @@ export default function ExecutiveDashboardPage() {
                     {latestNewLead.isBid ? "LIVE PARTNER BID PLACED" : (latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING")}
                   </span>
                   <span className="text-xs text-white/80 font-medium">
-                    {latestNewLead.timestamp ? new Date(latestNewLead.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                    {(() => {
+                      if (!latestNewLead.timestamp) return "Just now";
+                      try {
+                        const d = new Date(latestNewLead.timestamp);
+                        if (isNaN(d.getTime())) return "Just now";
+                        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      } catch {
+                        return "Just now";
+                      }
+                    })()}
                   </span>
                 </div>
                 <h3 className="font-heading font-black text-lg md:text-xl text-white mt-1">

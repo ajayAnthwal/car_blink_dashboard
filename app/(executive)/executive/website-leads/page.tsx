@@ -10,6 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
+const formatDateSafe = (dateVal: any, pattern: string = 'MMM dd, yyyy HH:mm') => {
+  if (!dateVal) return 'N/A';
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return 'N/A';
+    return format(d, pattern);
+  } catch {
+    return 'N/A';
+  }
+};
+
 export default function MarketingLeadsPage() {
   const router = useRouter();
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
@@ -311,7 +322,7 @@ export default function MarketingLeadsPage() {
                           <div className="font-bold text-gray-900">{lead.name}</div>
                           <div className="flex items-center text-xs text-gray-400 mt-1">
                             <Calendar className="w-3 h-3 mr-1" />
-                            {lead.createdAt ? format(new Date(lead.createdAt), 'MMM dd, yyyy HH:mm') : 'N/A'}
+                            {formatDateSafe(lead.createdAt, 'MMM dd, yyyy HH:mm')}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -472,7 +483,7 @@ export default function MarketingLeadsPage() {
                   <div>
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Submitted At</h4>
                     <p className="font-medium text-gray-900">
-                      {selectedLead.createdAt ? format(new Date(selectedLead.createdAt), 'MMM dd, yyyy hh:mm a') : 'N/A'}
+                      {formatDateSafe(selectedLead.createdAt, 'MMM dd, yyyy hh:mm a')}
                     </p>
                   </div>
                 </div>
