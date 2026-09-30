@@ -14,14 +14,21 @@ interface NotificationDetailsModalProps {
   userRole?: string;
 }
 
-export const getNotificationTargetLink = (notification: any, userRole: string = "CUSTOMER") => {
+export const getNotificationTargetLink = (notification: any, userRole: string = "SUPER_ADMIN") => {
   if (!notification) return null;
   const payload = notification.metadata || notification.data || notification.payload || {};
   const category = (notification.category || notification.type || "").toUpperCase();
   const titleLower = (notification.title || "").toLowerCase();
   const msgLower = (notification.message || "").toLowerCase();
+  const role = (userRole || "").toUpperCase();
 
-  const bId = payload.bookingId || payload.id || notification.metadata?.bookingId;
+  const bId = payload.bookingId || payload.leadId || payload.id || notification.metadata?.bookingId || notification.metadata?.leadId;
+  const ticketId = payload.ticketId || payload.ticket_id || payload.queryId || notification.metadata?.ticketId;
+  const partnerId = payload.partnerId || payload.partner_id || payload.workshopId || notification.metadata?.partnerId;
+  const invoiceId = payload.invoiceId || payload.invoice_id || notification.metadata?.invoiceId;
+  const settlementId = payload.settlementId || payload.settlement_id || payload.refundId || notification.metadata?.settlementId;
+  const warrantyId = payload.warrantyId || payload.warranty_id || notification.metadata?.warrantyId;
+  const userId = payload.userId || payload.user_id || notification.metadata?.userId;
 
   // 1. Extra Parts / Additional Parts Approval / Job Extensions
   if (
@@ -32,22 +39,26 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     titleLower.includes("extension") ||
     msgLower.includes("extension")
   ) {
-    if (userRole === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
-    if (userRole === "CUSTOMER") return { label: "Review Extra Parts", href: bId ? `/customer/bookings/${bId}` : "/customer/bookings" };
-    return { label: "View Booking Details", href: "/executive/leads" };
+    if (role === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
+    if (role === "CUSTOMER") return { label: "Review Extra Parts", href: bId ? `/customer/bookings/${bId}` : "/customer/bookings" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Booking Details", href: bId ? `/admin/bookings/${bId}` : "/admin/bookings" };
+    if (role === "EXECUTIVE") return { label: "View Booking Details", href: "/executive/leads" };
+    return { label: "View Bookings", href: "/admin/bookings" };
   }
 
   // 2. Invoice Notifications
   if (payload.invoiceId || titleLower.includes("invoice") || msgLower.includes("invoice")) {
-    if (userRole === "PARTNER") return { label: "View Active Jobs & Invoices", href: "/partner/jobs" };
-    if (userRole === "CUSTOMER") return { label: "View Booking & Invoice", href: bId ? `/customer/bookings/${bId}` : "/customer/dashboard" };
-    return { label: "Go to Executive Invoice Console", href: "/executive/invoices" };
+    if (role === "PARTNER") return { label: "View Active Jobs & Invoices", href: "/partner/jobs" };
+    if (role === "CUSTOMER") return { label: "View Booking & Invoice", href: bId ? `/customer/bookings/${bId}` : "/customer/dashboard" };
+    if (role === "ACCOUNTS") return { label: "View Accounts Invoices", href: "/accounts/invoices" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Invoices & Finance", href: "/admin/finance" };
+    if (role === "EXECUTIVE") return { label: "Go to Executive Invoice Console", href: "/executive/invoices" };
+    return { label: "View Invoices", href: "/admin/finance" };
   }
 
   // 3. Customer Query / Support Ticket / Helpdesk
   if (
-    payload.ticketId ||
-    payload.queryId ||
+    ticketId ||
     titleLower.includes("query") ||
     msgLower.includes("query") ||
     titleLower.includes("ticket") ||
@@ -55,8 +66,10 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     titleLower.includes("support") ||
     msgLower.includes("help")
   ) {
-    if (userRole === "CUSTOMER") return { label: "View My Queries", href: "/customer/support" };
-    return { label: "View Helpdesk Tickets", href: "/executive/helpdesk" };
+    if (role === "CUSTOMER") return { label: "View My Queries", href: "/customer/support" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Helpdesk Tickets", href: ticketId ? `/admin/helpdesk/${ticketId}` : "/admin/helpdesk" };
+    if (role === "EXECUTIVE") return { label: "View Helpdesk Tickets", href: ticketId ? `/executive/helpdesk/${ticketId}` : "/executive/helpdesk" };
+    return { label: "View Helpdesk", href: "/admin/helpdesk" };
   }
 
   // 4. Booking / Quote / Lead Updates
@@ -67,44 +80,80 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     titleLower.includes("quote") ||
     msgLower.includes("quote")
   ) {
-    if (userRole === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
-    if (userRole === "CUSTOMER") return { label: "View Booking Details", href: bId ? `/customer/bookings/${bId}` : "/customer/bookings" };
-    return { label: "View Leads & Bookings", href: "/executive/leads" };
+    if (role === "PARTNER") return { label: "View Partner Jobs", href: "/partner/jobs" };
+    if (role === "CUSTOMER") return { label: "View Booking Details", href: bId ? `/customer/bookings/${bId}` : "/customer/bookings" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Booking Details", href: bId ? `/admin/bookings/${bId}` : "/admin/bookings" };
+    if (role === "EXECUTIVE") return { label: "View Leads & Bookings", href: "/executive/leads" };
+    return { label: "View Bookings", href: "/admin/bookings" };
   }
 
   // 5. Partner Registration & Status
-  if (payload.partnerId || titleLower.includes("partner") || msgLower.includes("partner")) {
-    if (userRole === "EXECUTIVE" || userRole === "SUPER_ADMIN" || userRole === "ADMIN") {
+  if (partnerId || titleLower.includes("partner") || msgLower.includes("partner")) {
+    if (role === "SUPER_ADMIN" || role === "ADMIN") {
+      return { label: "Review & Manage Partner", href: partnerId ? `/admin/partners/${partnerId}` : "/admin/partners" };
+    }
+    if (role === "EXECUTIVE") {
       return { label: "Review & Verify Partner", href: "/executive/partner-status" };
+    }
+    if (role === "PARTNER") {
+      return { label: "View Workshop Profile", href: "/partner/profile" };
     }
   }
 
   // 6. Website Leads & Callbacks
-  if (titleLower.includes("website lead") || titleLower.includes("callback")) {
-    return { label: "View Website Leads", href: "/executive/website-leads" };
+  if (titleLower.includes("website lead") || titleLower.includes("callback") || titleLower.includes("lead")) {
+    if (role === "SUPER_ADMIN" || role === "ADMIN") {
+      return { label: "View Marketing Leads", href: "/admin/marketing/leads" };
+    }
+    if (role === "EXECUTIVE") {
+      return { label: "View Website Leads", href: "/executive/website-leads" };
+    }
   }
 
-  // 6. Warranties
+  // 7. Warranties
   if (payload.warrantyId || titleLower.includes("warranty") || msgLower.includes("warranty")) {
-    if (userRole === "CUSTOMER") return { label: "View Warranties", href: payload.warrantyId ? `/customer/warranty/${payload.warrantyId}` : "/customer/warranty" };
+    if (role === "CUSTOMER") return { label: "View Warranties", href: payload.warrantyId ? `/customer/warranty/${payload.warrantyId}` : "/customer/warranty" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Admin Dashboard", href: "/admin/dashboard" };
+    if (role === "EXECUTIVE") return { label: "View Warranties", href: "/executive/warranties" };
   }
 
-  // 7. Settlements / Payouts
-  if (payload.settlementId || titleLower.includes("payment") || titleLower.includes("payout")) {
-    if (userRole === "ACCOUNTS") return { label: "View Settlements", href: "/accounts/settlements" };
-    if (userRole === "PARTNER") return { label: "View My Wallet", href: "/partner/wallet" };
+  // 8. Settlements / Payouts / Payments
+  if (
+    payload.settlementId ||
+    titleLower.includes("payment") ||
+    msgLower.includes("payment") ||
+    titleLower.includes("payout") ||
+    msgLower.includes("payout") ||
+    titleLower.includes("settlement") ||
+    msgLower.includes("settlement") ||
+    titleLower.includes("refund") ||
+    msgLower.includes("refund")
+  ) {
+    if (role === "ACCOUNTS") return { label: "View Settlements", href: "/accounts/settlements" };
+    if (role === "PARTNER") return { label: "View My Wallet", href: "/partner/wallet" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Finance Settlements", href: "/admin/finance/settlements" };
+    if (role === "CUSTOMER") return { label: "View Payments", href: "/customer/payments" };
+  }
+
+  // 9. Users / Staff Management
+  if (payload.userId || titleLower.includes("user") || msgLower.includes("user") || titleLower.includes("staff") || msgLower.includes("staff")) {
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "Manage Users", href: "/admin/users" };
+    if (role === "PARTNER") return { label: "Manage Staff", href: "/partner/staff" };
   }
 
   // Fallback defaults
-  if (userRole === "CUSTOMER") return { label: "View Dashboard", href: "/customer/dashboard" };
-  if (userRole === "PARTNER") return { label: "View Dashboard", href: "/partner/dashboard" };
-  return { label: "View Notifications", href: "/executive/notifications" };
+  if (role === "CUSTOMER") return { label: "View Dashboard", href: "/customer/dashboard" };
+  if (role === "PARTNER") return { label: "View Dashboard", href: "/partner/dashboard" };
+  if (role === "ACCOUNTS") return { label: "View Accounts", href: "/accounts/dashboard" };
+  if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Notifications", href: "/admin/notifications" };
+  if (role === "EXECUTIVE") return { label: "View Notifications", href: "/executive/notifications" };
+  return { label: "View Dashboard", href: "/admin/dashboard" };
 };
 
 export function NotificationDetailsModal({
   notification,
   onClose,
-  userRole = "EXECUTIVE"
+  userRole = "SUPER_ADMIN"
 }: NotificationDetailsModalProps) {
   if (!notification) return null;
 

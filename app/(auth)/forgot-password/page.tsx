@@ -66,13 +66,15 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
 
+    const cleanInput = isEmail ? rawInput.toLowerCase() : rawInput.replace(/[^0-9]/g, '').slice(-10);
+
     try {
-      const res = await forgotPassword({ identifier: isEmail ? rawInput : (cleanIdentifier || rawInput) });
+      const res = await forgotPassword({ identifier: cleanInput });
       const serverMsg = res?.data?.message || res?.message || "Reset code has been sent.";
       setSuccess(serverMsg);
       
       setTimeout(() => {
-        router.push(`/reset-password?identifier=${encodeURIComponent(rawInput)}`);
+        router.push(`/reset-password?identifier=${encodeURIComponent(cleanInput)}`);
       }, 1500);
     } catch (err: unknown) {
       setError((err as { message?: string })?.message || "Something went wrong. Please try again.");

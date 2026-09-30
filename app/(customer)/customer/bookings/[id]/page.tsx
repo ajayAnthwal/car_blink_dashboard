@@ -19,16 +19,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote, Tag, ExternalLink } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote, Tag, ExternalLink, ThumbsUp, ThumbsDown, HeartHandshake, Sparkles } from "lucide-react";
 import { PaymentCard } from "@/components/payment/PaymentCard";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { verifyPayment } from "@/lib/services";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { format } from "date-fns";
+import toast from "react-hot-toast";
 
 export default function CustomerBookingDetailsPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
   const { socket } = useSocket();
+  const { user } = useAuth();
 
   const { data: booking, isLoading, refetch: refetchBooking } = useBookingDetails(id);
   const { data: quotesData, refetch: refetchQuotes } = useBookingQuotes(id);
@@ -52,6 +55,13 @@ export default function CustomerBookingDetailsPage() {
   const [couponCode, setCouponCode] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [useRewardPoints, setUseRewardPoints] = useState(false);
+  const [selectedPaymentPreference, setSelectedPaymentPreference] = useState<"CASH" | "ONLINE">("ONLINE");
+
+  useEffect(() => {
+    if (booking?.paymentMode) {
+      setSelectedPaymentPreference(booking.paymentMode);
+    }
+  }, [booking?.paymentMode]);
 
   const [message, setMessage] = useState({ type: "", text: "" });
 
@@ -61,6 +71,47 @@ export default function CustomerBookingDetailsPage() {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewMessage, setReviewMessage] = useState({ type: "", text: "" });
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  // Official Satisfaction Form states
+  const [satisfactionChoice, setSatisfactionChoice] = useState<boolean | null>(null);
+  const [satisfactionRating, setSatisfactionRating] = useState<number>(5);
+  const [satisfactionFeedback, setSatisfactionFeedback] = useState<string>("");
+  const [isSubmittingSatisfaction, setIsSubmittingSatisfaction] = useState(false);
+  const [satisfactionSubmittedLocally, setSatisfactionSubmittedLocally] = useState(false);
+
+  const handleSubmitSatisfaction = async () => {
+    if (!booking || satisfactionChoice === null) {
+      toast.error("Please choose whether you are satisfied or have issues.");
+      return;
+    }
+    setIsSubmittingSatisfaction(true);
+    try {
+      const { respondSatisfactionTemplate } = await import("@/lib/services");
+      await respondSatisfactionTemplate(booking._id || id, {
+        isSatisfied: satisfactionChoice,
+        rating: satisfactionRating,
+        feedback: satisfactionFeedback
+      });
+      toast.success("Thank you! Your satisfaction response has been officially recorded.");
+      setSatisfactionSubmittedLocally(true);
+      refetchBooking();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to submit satisfaction feedback.");
+    } finally {
+      setIsSubmittingSatisfaction(false);
+    }
+  };
+
+  const isSatisfactionResponded = Boolean(
+    satisfactionSubmittedLocally || 
+    booking?.satisfactionStatus === 'SATISFIED' || 
+    booking?.satisfactionStatus === 'DISSATISFIED'
+  );
+
+  const isSatisfactionPending = !isSatisfactionResponded && (
+    booking?.satisfactionStatus === 'PENDING_CUSTOMER' || 
+    booking?.status === 'COMPLETED'
+  );
 
   useEffect(() => {
     if (!socket || !id) return;
@@ -152,34 +203,54 @@ export default function CustomerBookingDetailsPage() {
     }
   };
 
+  const handleTogglePaymentMode = async (mode: "CASH" | "ONLINE") => {
+    if (!booking) return;
+    setSelectedPaymentPreference(mode);
+    try {
+      const { updateBookingPaymentMode } = await import("@/lib/services");
+      await updateBookingPaymentMode(booking._id || booking.id, mode);
+      refetchBooking();
+      toast.success(mode === "CASH" ? "Payment preference set to Cash to Partner" : "Payment preference set to Online Payment");
+    } catch (e: any) {
+      // Local state is updated
+    }
+  };
+
   const handlePayAtWorkshop = async (payAmount: number, type: string = "ADVANCE") => {
     if (!booking) return;
     setIsExtensionProcessing(true);
     setMessage({ type: "", text: "" });
     try {
-      const payload: any = {
+      const { markOfflinePayment, updateBookingPaymentMode } = await import("@/lib/services");
+      
+      try {
+        await updateBookingPaymentMode(booking._id || booking.id, "CASH");
+      } catch (e) {}
+
+      await markOfflinePayment({
         bookingId: booking._id || booking.id,
         amount: payAmount,
         paymentType: type,
-        useRewardPoints: useRewardPoints,
-      };
-      if (couponCode.trim()) {
-        payload.couponCode = couponCode.trim();
-      }
-      const res = await initiatePaymentMutation.mutateAsync(payload);
-      const paymentData = res?.data || res;
-      const { orderId } = paymentData;
-
-      await verifyPayment({
-        paymentId: "pay_cash_" + Date.now(),
-        orderId: orderId || "order_cash_" + Date.now(),
-        signature: "pay_at_workshop_cod_confirmed",
       });
 
-      setMessage({ type: "success", text: "✓ Pay at Workshop / COD selected! Your booking is confirmed." });
+      setSelectedPaymentPreference("CASH");
+      setMessage({
+        type: "success",
+        text: type === "FINAL"
+          ? "✓ Cash payment marked! Partner will confirm upon physical cash collection."
+          : "✓ Pay at Workshop / Cash selected! Your booking is confirmed."
+      });
       refetchBooking();
     } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to confirm Pay at Workshop." });
+      if (err?.message?.includes("already exists or is pending")) {
+        setMessage({
+          type: "success",
+          text: "✓ Cash payment is already registered and waiting for partner verification."
+        });
+        refetchBooking();
+      } else {
+        setMessage({ type: "error", text: err?.message || "Failed to confirm Pay at Workshop." });
+      }
     } finally {
       setIsExtensionProcessing(false);
     }
@@ -255,9 +326,41 @@ export default function CustomerBookingDetailsPage() {
           }
         },
         prefill: {
-          name: booking.customerId?.fullName || "CarBlink Customer",
-          email: booking.customerId?.email || "customer@carblink.com",
-          contact: booking.customerId?.phone || "",
+          name: user?.fullName || (typeof booking.customerId === 'object' ? booking.customerId?.fullName : "") || "CarBlink Customer",
+          email: user?.email || (typeof booking.customerId === 'object' ? booking.customerId?.email : "") || "",
+          contact: user?.phone || (typeof booking.customerId === 'object' ? booking.customerId?.phone : "") || booking?.phone || "",
+        },
+        readonly: {
+          contact: Boolean(user?.phone || (typeof booking.customerId === 'object' && booking.customerId?.phone) || booking?.phone),
+          email: Boolean(user?.email || (typeof booking.customerId === 'object' && booking.customerId?.email)),
+          name: Boolean(user?.fullName || (typeof booking.customerId === 'object' && booking.customerId?.fullName)),
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: "Pay via UPI QR / Apps",
+                instruments: [
+                  {
+                    method: "upi",
+                    flows: ["qr", "intent", "collect"]
+                  }
+                ]
+              },
+              other: {
+                name: "Other Payment Modes",
+                instruments: [
+                  { method: "card" },
+                  { method: "netbanking" },
+                  { method: "wallet" }
+                ]
+              }
+            },
+            sequence: ["block.upi", "block.other"],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
         },
         theme: {
           color: "#0a2540",
@@ -383,6 +486,13 @@ export default function CustomerBookingDetailsPage() {
   const remainingForAdvance = Math.max(0, advanceAmount - totalPaidAmount);
   const needsAdvance = !hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED';
   const needsFinal = booking.status === 'COMPLETED' && remainingAmount > 0;
+  const effectivePaymentMode = selectedPaymentPreference || booking.paymentMode || "ONLINE";
+  const isCashMode = effectivePaymentMode === "CASH";
+  const isFinalPendingCash = booking.payments?.some((p: any) => 
+    (p.paymentType === 'FINAL' || p.paymentType === 'FULL') && 
+    p.status === 'PENDING' && 
+    (p.provider === 'CASH' || p.providerOrderId?.startsWith('CASH_'))
+  );
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -415,6 +525,40 @@ export default function CustomerBookingDetailsPage() {
           )}
         </div>
       </div>
+
+      {/* Action Required: Satisfaction Template Alert Banner */}
+      {isSatisfactionPending && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/20 to-amber-500/15 border-2 border-primary-orange/40 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-orange text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Sparkles className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-extrabold text-primary-navy text-sm sm:text-base">
+                  Action Required: Service Satisfaction Feedback
+                </h4>
+                <span className="bg-primary-orange text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wide">
+                  Pending
+                </span>
+              </div>
+              <p className="text-xs text-neutral-dark/80 mt-0.5">
+                Your service is completed! Please confirm if you are satisfied with the workshop service.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              const el = document.getElementById("satisfaction-form-section");
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-sm px-4 py-2"
+          >
+            Fill Satisfaction Form ↓
+          </Button>
+        </div>
+      )}
 
       {message.text && (
         <div className={`p-4 rounded-xl text-sm font-medium border shadow-sm ${message.type === "success"
@@ -717,6 +861,202 @@ export default function CustomerBookingDetailsPage() {
           </Card>
 
           {/* Billing section moved to right column */}
+
+          {/* Official Service Satisfaction Form & Status */}
+          <div id="satisfaction-form-section" className="scroll-mt-6">
+            {isSatisfactionPending ? (
+              <Card className="shadow-lg border-2 border-primary-orange/40 rounded-3xl overflow-hidden bg-gradient-to-b from-orange-50/50 via-white to-amber-50/30">
+                <div className="h-2 bg-gradient-to-r from-primary-orange via-amber-500 to-orange-400 w-full" />
+                <CardContent className="p-6 sm:p-8 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-orange-100 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-primary-orange/10 rounded-2xl flex items-center justify-center text-primary-orange shadow-sm border border-primary-orange/20">
+                        <HeartHandshake className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl sm:text-2xl font-extrabold text-primary-navy font-heading">
+                            Service Satisfaction Form
+                          </h3>
+                          <Badge className="bg-primary-orange text-white text-[10px] font-bold uppercase tracking-wider">
+                            Action Required
+                          </Badge>
+                        </div>
+                        <p className="text-xs sm:text-sm text-neutral-muted">
+                          Are you satisfied with the service provided for your vehicle?
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Choice Buttons */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSatisfactionChoice(true)}
+                      className={`p-4 rounded-2xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2.5 shadow-sm ${
+                        satisfactionChoice === true
+                          ? "bg-emerald-600 text-white border-emerald-600 shadow-md ring-4 ring-emerald-500/20"
+                          : "bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400"
+                      }`}
+                    >
+                      <ThumbsUp className={`w-5 h-5 ${satisfactionChoice === true ? "text-white" : "text-emerald-600"}`} />
+                      <span>Yes, I am Fully Satisfied</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSatisfactionChoice(false)}
+                      className={`p-4 rounded-2xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2.5 shadow-sm ${
+                        satisfactionChoice === false
+                          ? "bg-red-600 text-white border-red-600 shadow-md ring-4 ring-red-500/20"
+                          : "bg-white text-red-800 border-red-300 hover:bg-red-50 hover:border-red-400"
+                      }`}
+                    >
+                      <ThumbsDown className={`w-5 h-5 ${satisfactionChoice === false ? "text-white" : "text-red-600"}`} />
+                      <span>No, I have Issues / Complaints</span>
+                    </button>
+                  </div>
+
+                  {/* Rating & Feedback Form once choice is selected */}
+                  {satisfactionChoice !== null && (
+                    <div className="space-y-4 pt-3 border-t border-orange-200/60 animate-in fade-in duration-200">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                          How would you rate the service quality? ({satisfactionRating} of 5 Stars)
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setSatisfactionRating(star)}
+                              className="p-1.5 hover:scale-125 transition-transform"
+                            >
+                              <Star
+                                className={`w-7 h-7 ${
+                                  star <= satisfactionRating
+                                    ? "text-amber-500 fill-amber-500"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            </button>
+                          ))}
+                          <span className="text-xs font-semibold text-neutral-dark ml-2">
+                            {satisfactionRating === 5
+                              ? "Excellent ⭐⭐⭐⭐⭐"
+                              : satisfactionRating === 4
+                              ? "Very Good ⭐⭐⭐⭐"
+                              : satisfactionRating === 3
+                              ? "Average ⭐⭐⭐"
+                              : satisfactionRating === 2
+                              ? "Poor ⭐⭐"
+                              : "Terrible ⭐"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                          {satisfactionChoice
+                            ? "Comments or Praise (Optional)"
+                            : "Please describe the issues or dissatisfaction in detail *"}
+                        </label>
+                        <textarea
+                          value={satisfactionFeedback}
+                          onChange={(e) => setSatisfactionFeedback(e.target.value)}
+                          placeholder={
+                            satisfactionChoice
+                              ? "Tell us what you liked about the service..."
+                              : "Please explain what went wrong so our executive team can resolve it immediately..."
+                          }
+                          rows={3}
+                          className="w-full p-3.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-primary-orange"
+                        />
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                        <p className="text-xs text-neutral-muted">
+                          ℹ️ Submitting this form directly records your feedback with CarBlink Operations.
+                        </p>
+                        <Button
+                          onClick={handleSubmitSatisfaction}
+                          isLoading={isSubmittingSatisfaction}
+                          className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-md"
+                        >
+                          Submit Satisfaction Response
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : isSatisfactionResponded ? (
+              <Card className={`shadow-sm rounded-3xl overflow-hidden border-2 ${
+                (booking?.satisfactionStatus === 'SATISFIED' || (satisfactionSubmittedLocally && satisfactionChoice === true))
+                  ? "bg-gradient-to-b from-white to-emerald-50/50 border-emerald-300"
+                  : "bg-gradient-to-b from-white to-red-50/50 border-red-300"
+              }`}>
+                <div className={`h-2 w-full ${
+                  (booking?.satisfactionStatus === 'SATISFIED' || (satisfactionSubmittedLocally && satisfactionChoice === true))
+                    ? "bg-emerald-500"
+                    : "bg-red-500"
+                }`} />
+                <CardContent className="p-6 sm:p-8 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${
+                        (booking?.satisfactionStatus === 'SATISFIED' || (satisfactionSubmittedLocally && satisfactionChoice === true))
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-red-100 text-red-700"
+                      }`}>
+                        {(booking?.satisfactionStatus === 'SATISFIED' || (satisfactionSubmittedLocally && satisfactionChoice === true)) ? (
+                          <ThumbsUp className="w-6 h-6" />
+                        ) : (
+                          <ThumbsDown className="w-6 h-6" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-extrabold text-primary-navy font-heading">
+                            {(booking?.satisfactionStatus === 'SATISFIED' || (satisfactionSubmittedLocally && satisfactionChoice === true))
+                              ? "Service Satisfaction: Confirmed Satisfied ✓"
+                              : "Service Satisfaction: Issues Reported ⚠️"}
+                          </h3>
+                        </div>
+                        <p className="text-xs sm:text-sm text-neutral-muted">
+                          {(booking?.satisfactionStatus === 'SATISFIED' || (satisfactionSubmittedLocally && satisfactionChoice === true))
+                            ? "You confirmed that you were fully satisfied with this service."
+                            : "You reported issues with this service. Our operations team is reviewing it."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {(booking?.satisfactionRating || (satisfactionSubmittedLocally && satisfactionRating)) && (
+                      <div className="flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-xl border border-gray-200 shadow-sm self-start sm:self-auto">
+                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                        <span className="text-sm font-black text-gray-900">
+                          {booking?.satisfactionRating || satisfactionRating} / 5 Stars
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {(booking?.satisfactionFeedback || (satisfactionSubmittedLocally && satisfactionFeedback)) && (
+                    <div className="p-3.5 bg-white/80 rounded-xl border border-gray-200/80 text-xs sm:text-sm text-gray-700 italic">
+                      &quot;{booking?.satisfactionFeedback || satisfactionFeedback}&quot;
+                    </div>
+                  )}
+
+                  {booking?.satisfactionRespondedAt && (
+                    <p className="text-[11px] text-gray-400">
+                      Recorded on {format(new Date(booking.satisfactionRespondedAt), "PPP 'at' p")}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
 
           {/* Review Section */}
           {booking.status === 'COMPLETED' && (
@@ -1198,7 +1538,9 @@ export default function CustomerBookingDetailsPage() {
                         <span className="flex items-center gap-1.5">
                           <ShieldCheck className="w-4 h-4 text-primary-orange flex-shrink-0" />
                           {booking.status === 'COMPLETED' 
-                            ? "Job Completed — Pay Final Remaining Settlement"
+                            ? (effectivePaymentMode === 'CASH'
+                                ? "Job Completed — Pay Cash to Partner at Handover"
+                                : "Job Completed — Pay Final Remaining Settlement Online")
                             : hasPaidAdvance 
                               ? "Advance Paid — Balance due after service completion"
                               : "Advance Token required to confirm pickup & start service"}
@@ -1206,11 +1548,37 @@ export default function CustomerBookingDetailsPage() {
                       </div>
 
                       {/* Customer Selected Payment Mode Preference */}
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-700">Booking Payment Preference:</span>
-                        <Badge variant="outline" className={booking.paymentMode === 'CASH' ? "bg-emerald-50 text-emerald-700 border-emerald-300 font-bold" : "bg-blue-50 text-blue-700 border-blue-300 font-bold"}>
-                          {booking.paymentMode === 'CASH' ? "💵 CASH / PAY AT WORKSHOP" : "💳 ONLINE PAYMENT"}
-                        </Badge>
+                      <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-800">Payment Method Preference:</span>
+                          <span className="text-[10px] font-semibold text-slate-500">
+                            {effectivePaymentMode === 'CASH' ? "Handover physical cash" : "Razorpay / UPI / Card"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePaymentMode("CASH")}
+                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                              effectivePaymentMode === "CASH"
+                                ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                            }`}
+                          >
+                            💵 Cash to Partner
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePaymentMode("ONLINE")}
+                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                              effectivePaymentMode === "ONLINE"
+                                ? "bg-primary-navy text-white border-primary-navy shadow-sm"
+                                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                            }`}
+                          >
+                            💳 Pay Online
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1218,7 +1586,7 @@ export default function CustomerBookingDetailsPage() {
                   {/* If Advance is needed (Before Completion and Not Paid Yet) */}
                   {(!hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED') && (
                     <div className="space-y-3">
-                      {booking.paymentMode === 'CASH' ? (
+                      {effectivePaymentMode === 'CASH' ? (
                         <>
                           {/* Featured Primary for Cash Preference */}
                           <Button 
@@ -1289,14 +1657,71 @@ export default function CustomerBookingDetailsPage() {
 
                   {/* If Job is COMPLETED and Final Bill is pending */}
                   {needsFinal && (
-                    <div className="space-y-2">
-                      <Button 
-                        className="w-full bg-success hover:bg-success/90 text-white rounded-xl py-6 font-extrabold flex items-center justify-center shadow-lg text-sm" 
-                        onClick={() => handleInitiatePayment(remainingAmount, "FINAL")} 
-                        isLoading={isExtensionProcessing}
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2" /> Pay Final Settlement (₹{remainingAmount.toLocaleString('en-IN')})
-                      </Button>
+                    <div className="space-y-3">
+                      {isCashMode ? (
+                        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-extrabold text-sm text-emerald-900">
+                                💵 Cash Payment directly to Partner
+                              </p>
+                              <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
+                                Aapko remaining <strong className="text-emerald-950 font-black text-sm">₹{remainingAmount.toLocaleString('en-IN')}</strong> partner ko physical cash me dena hai. Partner cash collect karke system me verify karega.
+                              </p>
+                            </div>
+                          </div>
+
+                          {isFinalPendingCash ? (
+                            <div className="bg-white/90 p-3 rounded-xl border border-emerald-300 text-xs font-bold text-emerald-800 flex items-center justify-between shadow-2xs">
+                              <span className="flex items-center gap-1.5">
+                                <Clock className="w-4 h-4 text-amber-600 animate-pulse" /> Cash Handover Marked (₹{remainingAmount.toLocaleString('en-IN')})
+                              </span>
+                              <span className="text-[10px] bg-amber-100 text-amber-900 font-extrabold px-2 py-0.5 rounded border border-amber-300">
+                                Partner Verification Pending
+                              </span>
+                            </div>
+                          ) : (
+                            <Button 
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-6 font-extrabold flex items-center justify-center shadow-md text-sm" 
+                              onClick={() => handlePayAtWorkshop(remainingAmount, "FINAL")} 
+                              isLoading={isExtensionProcessing}
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-2" /> Confirm Cash Handed to Partner (₹{remainingAmount.toLocaleString('en-IN')})
+                            </Button>
+                          )}
+
+                          <div className="text-center pt-1 border-t border-emerald-200/60">
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePaymentMode("ONLINE")}
+                              className="text-[11px] text-primary-navy hover:underline font-semibold"
+                            >
+                              Want to pay online via UPI / QR / Card instead? Click here
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Button 
+                            className="w-full bg-success hover:bg-success/90 text-white rounded-xl py-6 font-extrabold flex items-center justify-center shadow-lg text-sm" 
+                            onClick={() => handleInitiatePayment(remainingAmount, "FINAL")} 
+                            isLoading={isExtensionProcessing}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" /> Pay Final Settlement Online (₹{remainingAmount.toLocaleString('en-IN')})
+                          </Button>
+
+                          <div className="text-center pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePaymentMode("CASH")}
+                              className="text-[11px] text-emerald-700 hover:underline font-bold"
+                            >
+                              Giving Cash directly to Partner? Click here to switch to Cash
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

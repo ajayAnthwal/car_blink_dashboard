@@ -274,11 +274,13 @@ export function Header() {
                   </div>
                 ) : (
                   notifications.map((notif: any) => {
+                    const isAdminRole = (currentRole as string) === 'SUPER_ADMIN' || (currentRole as string) === 'ADMIN';
                     const targetLink = getNotificationTargetLink(notif, currentRole);
+                    const defaultHref = isAdminRole ? '/admin/notifications' : `/${currentRole.toLowerCase()}/notifications`;
                     return (
                       <Link
                         key={notif._id || notif.id || Math.random()}
-                        href={targetLink?.href || (currentRole === 'SUPER_ADMIN' ? '/admin/notifications' : `/${currentRole.toLowerCase()}/notifications`)}
+                        href={targetLink?.href || defaultHref}
                         onClick={() => handleNotificationItemClick(notif)}
                         className={`p-4 border-b border-gray-50 hover:bg-gray-50/80 transition-colors duration-200 block group ${notif.isRead ? 'opacity-70' : `${config.accentBgColor}/5`}`}
                       >
@@ -303,7 +305,7 @@ export function Header() {
                 <button onClick={handleMarkAllRead} className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center transition-colors duration-200">
                   <CheckCircle className="w-3.5 h-3.5 mr-1" /> Mark all read
                 </button>
-                <Link href={currentRole === 'SUPER_ADMIN' ? '/admin/notifications' : `/${currentRole.toLowerCase()}/notifications`} className={`text-xs font-semibold ${config.themeColor} hover:opacity-80 transition-opacity duration-200`}>
+                <Link href={((currentRole as string) === 'SUPER_ADMIN' || (currentRole as string) === 'ADMIN') ? '/admin/notifications' : `/${currentRole.toLowerCase()}/notifications`} className={`text-xs font-semibold ${config.themeColor} hover:opacity-80 transition-opacity duration-200`}>
                   View all
                 </Link>
               </div>

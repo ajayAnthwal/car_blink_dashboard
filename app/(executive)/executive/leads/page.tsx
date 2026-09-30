@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus, Search, ChevronLeft, ChevronRight, CheckCircle, Clock } from "lucide-react";
+import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, UserPlus, Search, ChevronLeft, ChevronRight, CheckCircle, Clock, Zap } from "lucide-react";
 import { useSocket } from "@/lib/SocketContext";
 import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
@@ -52,10 +52,10 @@ export default function ExecutiveLeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
   const getStatusQuery = (filter: string) => {
-    if (filter === "ACCEPTED") return "ACCEPTED,CUSTOMER_ACCEPTED";
+    if (filter === "ACCEPTED") return "CUSTOMER_ACCEPTED,ACCEPTED,VERIFIED,IN_PROGRESS,COMPLETED";
     if (filter === "BIDDING") return "PENDING,QUOTED";
-    if (filter === "IN_PROGRESS") return "IN_PROGRESS,COMPLETED";
-    return "PENDING,QUOTED,ACCEPTED,CUSTOMER_ACCEPTED,IN_PROGRESS,COMPLETED";
+    if (filter === "IN_PROGRESS") return "VERIFIED,IN_PROGRESS,COMPLETED";
+    return "PENDING,QUOTED,CUSTOMER_ACCEPTED,ACCEPTED,VERIFIED,IN_PROGRESS,COMPLETED";
   };
 
   // React Query: Fetch Leads
@@ -624,33 +624,33 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                       <div className="flex flex-col space-y-2">
                         <span className={`inline-flex self-start px-2 py-0.5 rounded text-[10px] font-extrabold border ${
                           lead.status === 'VERIFIED' || lead.isVerifiedByPartner
-                            ? 'bg-purple-100 text-purple-800 border-purple-300 animate-pulse'
-                            : lead.status === 'ACCEPTED'
-                            ? 'bg-teal-100 text-teal-800 border-teal-300'
-                            : lead.status === 'CUSTOMER_ACCEPTED'
-                            ? (lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse') 
+                            ? 'bg-purple-100 text-purple-800 border-purple-300'
                             : lead.status === 'IN_PROGRESS' 
                             ? 'bg-blue-100 text-blue-800 border-blue-300' 
                             : lead.status === 'COMPLETED' 
-                            ? 'bg-purple-100 text-purple-800 border-purple-300' 
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                            : lead.status === 'ACCEPTED'
+                            ? 'bg-teal-100 text-teal-800 border-teal-300'
+                            : lead.status === 'CUSTOMER_ACCEPTED'
+                            ? ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) || lead.hasPaidAdvance)
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse') 
                             : lead.assignment?.assignedPartnerIds?.length > 0 
                             ? 'bg-warning/10 text-warning-dark border-warning/20' 
                             : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'
                         }`}>
                           {lead.status === 'VERIFIED' || lead.isVerifiedByPartner
                             ? 'VERIFIED / WORK READY ⚡'
-                            : lead.status === 'ACCEPTED'
-                            ? 'PARTNER ASSIGNED ✓'
-                            : lead.status === 'CUSTOMER_ACCEPTED' 
-                            ? (lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))
-                                ? 'CUSTOMER ACCEPTED & PAID ✓'
-                                : 'AWAITING ADVANCE PAYMENT ⏳') 
                             : lead.status === 'IN_PROGRESS' 
                             ? 'JOB IN PROGRESS 🔧' 
                             : lead.status === 'COMPLETED' 
                             ? 'JOB COMPLETED 🎉' 
+                            : lead.status === 'ACCEPTED'
+                            ? 'PARTNER ASSIGNED ✓'
+                            : lead.status === 'CUSTOMER_ACCEPTED' 
+                            ? ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) || lead.hasPaidAdvance)
+                                ? 'CUSTOMER ACCEPTED & PAID ✓'
+                                : 'AWAITING ADVANCE PAYMENT ⏳') 
                             : lead.assignment?.assignedPartnerIds?.length > 0 
                             ? (lead.bids?.length > 0 ? 'QUOTES RECEIVED' : 'BIDDING REQUESTED') 
                             : 'UNASSIGNED'}
@@ -662,7 +662,20 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           </div>
                         )}
 
-                        {lead.assignment?.assignedPartnerIds?.length > 0 && (
+                        {/* Show Assigned Partner Workshop if assigned or in progress */}
+                        {(lead.status === 'ACCEPTED' || lead.status === 'VERIFIED' || lead.status === 'IN_PROGRESS' || lead.status === 'COMPLETED') && (
+                          (lead.job?.partnerId || lead.assignedPartnerId || lead.acceptedBidId?.partnerId) ? (
+                            <div className="text-[10px] text-emerald-800 bg-emerald-50/90 p-1.5 rounded border border-emerald-200">
+                              <span className="font-semibold block mb-0.5 text-emerald-900">Assigned Partner:</span>
+                              <span className="font-bold">
+                                {lead.job?.partnerId?.businessName || lead.assignedPartnerId?.businessName || lead.acceptedBidId?.partnerId?.businessName || "Workshop Partner"}
+                              </span>
+                            </div>
+                          ) : null
+                        )}
+
+                        {/* Show bidding partners during bidding phase */}
+                        {(lead.status === 'PENDING' || lead.status === 'QUOTED') && lead.assignment?.assignedPartnerIds?.length > 0 && (
                           <div className="text-[10px] text-neutral-600 bg-gray-50 p-1.5 rounded border">
                             <span className="font-semibold block mb-0.5">Requested from:</span>
                             <span className="line-clamp-2">{lead.assignment.assignedPartnerIds.map((p: any) => p.businessName || 'Partner').join(', ')}</span>
@@ -686,21 +699,23 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     {/* Actions */}
                     <TableCell className="align-top py-3.5 min-w-[180px] w-[180px]">
                       <div className="flex flex-col gap-2 items-center">
-                        <Button
-                          size="sm"
-                          className={`w-full text-[11px] font-semibold h-8 whitespace-nowrap shadow-2xs ${
-                            lead.assignment?.assignedPartnerIds?.length > 0 
-                              ? 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200' 
-                              : 'bg-secondary-blue hover:bg-secondary-blue/90 text-white'
-                          }`}
-                          onClick={() => openAssignModal(lead)}
-                        >
-                          <UserPlus className="w-3.5 h-3.5 mr-1" />
-                          <span>{lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More / Forward" : "Forward to Partner"}</span>
-                        </Button>
+                        {(lead.status === 'PENDING' || lead.status === 'QUOTED') && (
+                          <Button
+                            size="sm"
+                            className={`w-full text-[11px] font-semibold h-8 whitespace-nowrap shadow-2xs ${
+                              lead.assignment?.assignedPartnerIds?.length > 0 
+                                ? 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200' 
+                                : 'bg-secondary-blue hover:bg-secondary-blue/90 text-white'
+                            }`}
+                            onClick={() => openAssignModal(lead)}
+                          >
+                            <UserPlus className="w-3.5 h-3.5 mr-1" />
+                            <span>{lead.assignment?.assignedPartnerIds?.length > 0 ? "Assign More / Forward" : "Forward to Partner"}</span>
+                          </Button>
+                        )}
 
                         {lead.status === 'CUSTOMER_ACCEPTED' && (
-                          lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) ? (
+                          ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))) || lead.hasPaidAdvance) ? (
                             <Button
                               size="sm"
                               className="w-full text-[11px] font-bold h-8 bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap shadow-sm"
@@ -729,6 +744,27 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           <div className="w-full text-center text-[11px] font-bold text-teal-800 bg-teal-50 border border-teal-200 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap">
                             <CheckCircle className="w-3.5 h-3.5 text-teal-600" />
                             <span>Partner Assigned</span>
+                          </div>
+                        )}
+
+                        {(lead.status === 'VERIFIED' || lead.isVerifiedByPartner) && lead.status !== 'IN_PROGRESS' && lead.status !== 'COMPLETED' && (
+                          <div className="w-full text-center text-[11px] font-bold text-purple-800 bg-purple-50 border border-purple-200 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap">
+                            <Zap className="w-3.5 h-3.5 text-purple-600" />
+                            <span>PIN Verified / Ready</span>
+                          </div>
+                        )}
+
+                        {lead.status === 'IN_PROGRESS' && (
+                          <div className="w-full text-center text-[11px] font-bold text-blue-800 bg-blue-50 border border-blue-200 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap">
+                            <Wrench className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Job In Progress</span>
+                          </div>
+                        )}
+
+                        {lead.status === 'COMPLETED' && (
+                          <div className="w-full text-center text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Job Completed</span>
                           </div>
                         )}
 

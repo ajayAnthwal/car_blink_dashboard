@@ -40,10 +40,23 @@ export default function NewBookingPage() {
 
   const handleCreateBooking = (data: BookingFormValues) => {
     const doCreateBooking = (lat?: number, lng?: number) => {
+      let combinedDate = new Date(data.preferredDate);
+      if (data.preferredTime) {
+        const timeMatch = data.preferredTime.match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const modifier = timeMatch[3]?.toUpperCase();
+          if (modifier === "PM" && hours < 12) hours += 12;
+          if (modifier === "AM" && hours === 12) hours = 0;
+          combinedDate.setHours(hours, minutes, 0, 0);
+        }
+      }
+
       createBookingMutation.mutate(
         {
           ...data,
-          preferredDate: new Date(data.preferredDate).toISOString(),
+          preferredDate: isNaN(combinedDate.getTime()) ? new Date(data.preferredDate).toISOString() : combinedDate.toISOString(),
           ...(lat && lng ? { latitude: lat, longitude: lng } : {})
         },
         {

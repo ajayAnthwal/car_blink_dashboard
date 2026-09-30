@@ -36,6 +36,19 @@ const bookingSchema = z.object({
 
 export type BookingFormValues = z.infer<typeof bookingSchema>;
 
+export const TIME_SLOTS = [
+  { id: "09:00 AM", label: "09:00 AM - 10:00 AM", period: "Morning" },
+  { id: "10:00 AM", label: "10:00 AM - 11:00 AM", period: "Morning" },
+  { id: "11:00 AM", label: "11:00 AM - 12:00 PM", period: "Morning" },
+  { id: "12:00 PM", label: "12:00 PM - 01:00 PM", period: "Afternoon" },
+  { id: "01:00 PM", label: "01:00 PM - 02:00 PM", period: "Afternoon" },
+  { id: "02:00 PM", label: "02:00 PM - 03:00 PM", period: "Afternoon" },
+  { id: "03:00 PM", label: "03:00 PM - 04:00 PM", period: "Afternoon" },
+  { id: "04:00 PM", label: "04:00 PM - 05:00 PM", period: "Evening" },
+  { id: "05:00 PM", label: "05:00 PM - 06:00 PM", period: "Evening" },
+  { id: "06:00 PM", label: "06:00 PM - 07:00 PM", period: "Evening" },
+];
+
 interface FormOption {
   _id?: string;
   name?: string;
@@ -93,6 +106,7 @@ export function BookingForm({
   const selectedState = watch("state");
   const selectedServiceMode = watch("serviceMode");
   const selectedPaymentMode = watch("paymentMode");
+  const selectedTime = watch("preferredTime");
 
   // Auto-prefill State, City, and Address from saved profile
   useEffect(() => {
@@ -242,38 +256,97 @@ export function BookingForm({
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-neutral-muted/10">
-          <div>
-            <label className="block text-sm font-medium text-neutral-dark mb-1.5 flex items-center">
-              <Calendar className="w-4 h-4 mr-2 text-primary-orange" />
-              Select Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                min={new Date().toISOString().split('T')[0]}
-                {...register("preferredDate")}
-                className="w-full rounded-xl border border-neutral-muted/30 bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange shadow-sm text-neutral-dark"
-                required
-              />
+        <div className="pt-4 border-t border-neutral-muted/10 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-neutral-dark mb-1.5 flex items-center">
+                <Calendar className="w-4 h-4 mr-2 text-primary-orange" />
+                Select Date *
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  {...register("preferredDate")}
+                  className="w-full rounded-xl border border-neutral-muted/30 bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange shadow-sm text-neutral-dark"
+                  required
+                />
+              </div>
+              {errors.preferredDate && <p className="text-red-500 text-xs mt-1">{errors.preferredDate.message}</p>}
             </div>
-            {errors.preferredDate && <p className="text-red-500 text-xs mt-1">{errors.preferredDate.message}</p>}
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-dark mb-1.5 flex items-center justify-between">
+                <span className="flex items-center">
+                  <Clock className="w-4 h-4 mr-2 text-primary-orange" />
+                  Select Time Slot *
+                </span>
+                {selectedTime && (
+                  <span className="text-xs font-bold text-primary-orange bg-primary-orange/10 px-2 py-0.5 rounded-md">
+                    {selectedTime}
+                  </span>
+                )}
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedTime || ""}
+                  onChange={(e) => setValue("preferredTime", e.target.value, { shouldValidate: true })}
+                  className="w-full rounded-xl border border-neutral-muted/30 bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange shadow-sm text-neutral-dark cursor-pointer font-medium"
+                  required
+                >
+                  <option value="">-- Choose Preferred Time Slot --</option>
+                  <optgroup label="🌅 Morning Slots">
+                    {TIME_SLOTS.filter(s => s.period === "Morning").map(s => (
+                      <option key={s.id} value={s.label}>{s.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="☀️ Afternoon Slots">
+                    {TIME_SLOTS.filter(s => s.period === "Afternoon").map(s => (
+                      <option key={s.id} value={s.label}>{s.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🌆 Evening Slots">
+                    {TIME_SLOTS.filter(s => s.period === "Evening").map(s => (
+                      <option key={s.id} value={s.label}>{s.label}</option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+              {errors.preferredTime && <p className="text-red-500 text-xs mt-1">{errors.preferredTime.message}</p>}
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-neutral-dark mb-1.5 flex items-center">
-              <Clock className="w-4 h-4 mr-2 text-primary-orange" />
-              Select Time
-            </label>
-            <div className="relative">
-              <input
-                type="time"
-                {...register("preferredTime")}
-                className="w-full rounded-xl border border-neutral-muted/30 bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange shadow-sm text-neutral-dark"
-                required
-              />
+          {/* Quick-Pick 1-Click Time Slot Chips */}
+          <div className="space-y-2 pt-1 bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-dark flex items-center gap-1.5">
+                <span className="text-primary-orange">⚡</span> Quick Select Workshop Slot:
+              </span>
+              <span className="text-[11px] text-gray-500 font-medium">Click to pick time instantly</span>
             </div>
-            {errors.preferredTime && <p className="text-red-500 text-xs mt-1">{errors.preferredTime.message}</p>}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+              {TIME_SLOTS.map((slot) => {
+                const isSelected = selectedTime === slot.label || selectedTime === slot.id;
+                return (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    onClick={() => setValue("preferredTime", slot.label, { shouldValidate: true })}
+                    className={cn(
+                      "px-3 py-2 rounded-lg text-xs font-semibold border transition-all text-center flex flex-col items-center justify-center gap-0.5",
+                      isSelected
+                        ? "border-primary-orange bg-primary-orange text-white shadow-sm ring-2 ring-primary-orange/30 scale-[1.02]"
+                        : "border-gray-200 bg-white hover:border-primary-orange/50 hover:bg-orange-50/50 text-gray-800"
+                    )}
+                  >
+                    <span className="font-bold">{slot.id}</span>
+                    <span className={cn("text-[10px]", isSelected ? "text-orange-100 font-medium" : "text-gray-400 font-normal")}>
+                      {slot.period}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

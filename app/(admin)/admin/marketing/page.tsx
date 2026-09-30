@@ -43,7 +43,7 @@ export default function AdminMarketingPage() {
       setCode("");
       setDiscountValue("");
       setMaxUses("100");
-    } catch {
+    } catch (error: any) {
       alert(error?.message || "Failed to create coupon.");
     }
   };

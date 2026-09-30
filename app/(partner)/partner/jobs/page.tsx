@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/FileUpload";
-import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car, UserCheck, PlusCircle, HandCoins, Search, Filter, ChevronLeft, ChevronRight, ShieldAlert, Clock, Sparkles, DollarSign, ShieldCheck } from "lucide-react";
+import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car, UserCheck, PlusCircle, HandCoins, Search, Filter, ChevronLeft, ChevronRight, ShieldAlert, Clock, Sparkles, DollarSign, ShieldCheck, Lock, Plus } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   usePartnerJobs,
   usePartnerStaff,
@@ -40,7 +41,7 @@ export default function PartnerJobsPage() {
     };
   }, [page, limit, activeTab]);
 
-  const { data: jobsData, isLoading: isLoadingJobs } = usePartnerJobs(queryParams);
+  const { data: jobsData, isLoading: isLoadingJobs, refetch: refetchJobs } = usePartnerJobs(queryParams);
   const { data: staffList = [], isLoading: isLoadingStaff } = usePartnerStaff();
 
   const allJobsRaw = jobsData?.jobs || [];
@@ -118,71 +119,7 @@ export default function PartnerJobsPage() {
   const [extCost, setExtCost] = useState("");
   const [extReason, setExtReason] = useState("");
 
-  const [invoiceType, setInvoiceType] = useState<"PDF" | "ITEMIZED">("ITEMIZED");
-  const [invoiceItems, setInvoiceItems] = useState<{ description: string; quantity: number; unitPrice: number }[]>([
-    { description: "Car Service & Maintenance", quantity: 1, unitPrice: 1500 }
-  ]);
-  const [invoiceDiscount, setInvoiceDiscount] = useState<number>(0);
-  const [invoiceTax, setInvoiceTax] = useState<number>(0);
-  const [invoiceNotes, setInvoiceNotes] = useState<string>("");
-  const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
-
   const totalPages = Math.ceil(totalJobsCount / limit) || 1;
-
-  const handleInvoiceItemChange = (index: number, field: string, value: any) => {
-    setInvoiceItems(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      const newSubtotal = updated.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
-      setInvoiceTax(Math.round(newSubtotal * 0.18));
-      return updated;
-    });
-  };
-
-  const handleAddInvoiceItem = () => {
-    setInvoiceItems(prev => {
-      const updated = [...prev, { description: "", quantity: 1, unitPrice: 0 }];
-      const newSubtotal = updated.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
-      setInvoiceTax(Math.round(newSubtotal * 0.18));
-      return updated;
-    });
-  };
-
-  const handleRemoveInvoiceItem = (index: number) => {
-    if (invoiceItems.length <= 1) return;
-    setInvoiceItems(prev => {
-      const updated = prev.filter((_, i) => i !== index);
-      const newSubtotal = updated.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
-      setInvoiceTax(Math.round(newSubtotal * 0.18));
-      return updated;
-    });
-  };
-
-  const handleSubmitItemizedInvoice = async (jobId: string) => {
-    setIsSubmittingInvoice(true);
-    try {
-      const { submitPartnerInvoice } = await import("@/lib/services");
-      const subtotal = invoiceItems.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
-      const grandTotal = Math.max(0, subtotal + Number(invoiceTax || 0) - Number(invoiceDiscount || 0));
-
-      await submitPartnerInvoice(jobId, {
-        invoiceType,
-        pdfUrl: invoiceUrl || undefined,
-        items: invoiceItems,
-        subtotal,
-        taxAmount: invoiceTax,
-        discount: invoiceDiscount,
-        grandTotal,
-        notes: invoiceNotes
-      });
-
-      setMessage({ type: "success", text: "Invoice submitted to Executive for review & customer approval!" });
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Failed to submit invoice." });
-    } finally {
-      setIsSubmittingInvoice(false);
-    }
-  };
 
   const handleStartJob = async (jobId: string, verificationCode: string) => {
     if (!verificationCode || verificationCode.trim().length !== 4) {
@@ -747,149 +684,7 @@ export default function PartnerJobsPage() {
 
                       {/* Section 3: Invoice Submission Form */}
                       {(job.status === "IN_PROGRESS" || job.status === "COMPLETED") && (
-                        <div className="bg-white border border-gray-200/80 p-6 rounded-2xl shadow-sm space-y-5">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-                            <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                              <FileText className="w-5 h-5 text-primary-orange" /> Invoice & Bill Submission
-                            </h4>
-
-                            {/* Format Toggle */}
-                            <div className="flex items-center bg-gray-100 p-1 rounded-xl">
-                              <button
-                                onClick={() => setInvoiceType("ITEMIZED")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                  invoiceType === "ITEMIZED" ? "bg-white text-primary-orange shadow-sm" : "text-gray-600 hover:text-gray-900"
-                                }`}
-                              >
-                                Itemized Bill Form
-                              </button>
-                              <button
-                                onClick={() => setInvoiceType("PDF")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                  invoiceType === "PDF" ? "bg-white text-primary-orange shadow-sm" : "text-gray-600 hover:text-gray-900"
-                                }`}
-                              >
-                                Upload PDF Document
-                              </button>
-                            </div>
-                          </div>
-
-                          {invoiceType === "ITEMIZED" ? (
-                            <div className="space-y-4">
-                              <p className="text-xs text-gray-500 font-medium">
-                                Fill out line items for labor and parts. Your bill will be submitted to the Executive for verification.
-                              </p>
-
-                              {/* Line Items */}
-                              <div className="space-y-2">
-                                {invoiceItems.map((item, idx) => (
-                                  <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
-                                    <input
-                                      type="text"
-                                      placeholder="Item Description"
-                                      value={item.description}
-                                      onChange={(e) => handleInvoiceItemChange(idx, "description", e.target.value)}
-                                      className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-orange bg-white font-medium"
-                                    />
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      placeholder="Qty"
-                                      value={item.quantity}
-                                      onChange={(e) => handleInvoiceItemChange(idx, "quantity", e.target.value)}
-                                      className="w-16 px-2 py-2 text-xs text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-orange bg-white font-medium"
-                                    />
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      placeholder="Unit Price (₹)"
-                                      value={item.unitPrice}
-                                      onChange={(e) => handleInvoiceItemChange(idx, "unitPrice", e.target.value)}
-                                      className="w-28 px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-orange bg-white font-medium"
-                                    />
-                                    <span className="text-xs font-bold text-gray-900 w-24 text-right pr-2">
-                                      ₹{(Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)}
-                                    </span>
-                                    {invoiceItems.length > 1 && (
-                                      <button
-                                        onClick={() => handleRemoveInvoiceItem(idx)}
-                                        className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg text-sm font-bold"
-                                      >
-                                        ×
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
-
-                                <Button
-                                  onClick={handleAddInvoiceItem}
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs font-bold text-primary-orange border-primary-orange/30 mt-1"
-                                >
-                                  + Add Item Line
-                                </Button>
-                              </div>
-
-                              {/* Taxes & Discounts */}
-                              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
-                                <div>
-                                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Discount (₹)</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={invoiceDiscount}
-                                    onChange={(e) => setInvoiceDiscount(Number(e.target.value) || 0)}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-emerald-700 bg-white"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Tax / GST 18% (Auto-Calculated ₹)</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={invoiceTax}
-                                    onChange={(e) => setInvoiceTax(Number(e.target.value) || 0)}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 bg-white"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Total Bar */}
-                              <div className="flex justify-between items-center bg-orange-50 p-4 rounded-xl border border-orange-100 font-extrabold text-gray-900">
-                                <span>Grand Total Itemized Amount:</span>
-                                <span className="text-primary-orange text-xl">
-                                  ₹{Math.max(0, invoiceItems.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0) + Number(invoiceTax || 0) - Number(invoiceDiscount || 0))}
-                                </span>
-                              </div>
-
-                              <Button
-                                onClick={() => handleSubmitItemizedInvoice(jobId)}
-                                isLoading={isSubmittingInvoice}
-                                className="w-full bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-3 rounded-xl shadow-sm"
-                              >
-                                Submit Itemized Invoice for Executive Review
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              <FileUpload
-                                folder="invoices"
-                                onUploadSuccess={(url) => setInvoiceUrl(url)}
-                                currentValue={invoiceUrl || job.invoiceUrl}
-                              />
-                              <Button
-                                variant="outline"
-                                className="w-full text-xs font-bold py-2.5 rounded-xl border-gray-300"
-                                disabled={!invoiceUrl}
-                                isLoading={uploadInvoiceMutation.isPending}
-                                onClick={() => handleUploadInvoice(jobId)}
-                              >
-                                {invoiceUrl ? "Save & Submit PDF Invoice" : job.invoiceUrl ? "✓ PDF Invoice Uploaded" : "Save PDF Invoice"}
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                        <JobInvoiceSection job={job} onInvoiceSubmitted={() => refetchJobs()} />
                       )}
 
                       {/* Section 4: Final Job Actions & Cash Verification */}
@@ -1181,6 +976,574 @@ export default function PartnerJobsPage() {
               </Button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Isolated Itemized Invoice Section per Job
+ * Ensures Customer's Actual Quoted Amount is auto-populated and LOCKED on Row 1.
+ * Partners can add extra parts/charges via additional lines.
+ */
+function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSubmitted?: () => void }) {
+  const jobId = job._id || job.id;
+  const bData = job.bookingId || {};
+  const sData = bData.serviceId || {};
+
+  // 1. Calculate actual customer agreed / quoted amount
+  const actualQuotedAmount = useMemo(() => {
+    return Number(
+      job.finalAmount ||
+      job.bidId?.quotedAmount ||
+      bData.acceptedBidId?.quotedAmount ||
+      sData.basePrice ||
+      0
+    );
+  }, [job, bData, sData]);
+
+  const defaultServiceName = sData.name || "Car Service & Maintenance";
+  const existingInvoice = job.invoice;
+  const uploadInvoiceMutation = useUploadInvoiceMutation();
+
+  const [invoiceType, setInvoiceType] = useState<"PDF" | "ITEMIZED">(
+    existingInvoice?.invoiceType || (job.invoiceUrl && !existingInvoice?.items?.length ? "PDF" : "ITEMIZED")
+  );
+
+  const [pdfUrl, setPdfUrl] = useState<string>(
+    existingInvoice?.pdfUrl || job.invoiceUrl || ""
+  );
+
+  // Initialize line items: Row 0 is ALWAYS the customer's actual quoted amount and is locked!
+  const [items, setItems] = useState<{ description: string; quantity: number; unitPrice: number; isBasePackage: boolean }[]>(() => {
+    if (existingInvoice?.items && existingInvoice.items.length > 0) {
+      return existingInvoice.items.map((it: any, idx: number) => ({
+        description: it.description || (idx === 0 ? defaultServiceName : ""),
+        quantity: it.quantity || 1,
+        unitPrice: idx === 0 ? (actualQuotedAmount || it.unitPrice || 0) : (it.unitPrice || 0),
+        isBasePackage: idx === 0
+      }));
+    }
+    return [
+      {
+        description: defaultServiceName,
+        quantity: 1,
+        unitPrice: actualQuotedAmount,
+        isBasePackage: true
+      }
+    ];
+  });
+
+  const [discount, setDiscount] = useState<number | string>(existingInvoice?.discount ?? 0);
+  const [gstMode, setGstMode] = useState<"0" | "5" | "12" | "18" | "custom">(
+    existingInvoice?.taxAmount ? "custom" : "0"
+  );
+  const [tax, setTax] = useState<number | string>(() => {
+    if (existingInvoice?.taxAmount !== undefined) return existingInvoice.taxAmount;
+    return 0;
+  });
+  const [notes, setNotes] = useState<string>(existingInvoice?.notes || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Keep Row 0 locked and sync with actualQuotedAmount if it updates
+  useEffect(() => {
+    if (actualQuotedAmount > 0) {
+      setItems(prev => {
+        if (prev.length === 0) {
+          return [{ description: defaultServiceName, quantity: 1, unitPrice: actualQuotedAmount, isBasePackage: true }];
+        }
+        if (prev[0].unitPrice !== actualQuotedAmount) {
+          const updated = [...prev];
+          updated[0] = { ...updated[0], unitPrice: actualQuotedAmount };
+          return updated;
+        }
+        return prev;
+      });
+    }
+  }, [actualQuotedAmount, defaultServiceName]);
+
+  // Recalculate auto tax if in preset mode
+  const recalculateTaxForSubtotal = (sub: number, mode: "0" | "5" | "12" | "18" | "custom") => {
+    if (mode === "18") setTax(Math.round(sub * 0.18));
+    else if (mode === "12") setTax(Math.round(sub * 0.12));
+    else if (mode === "5") setTax(Math.round(sub * 0.05));
+    else if (mode === "0") setTax(0);
+    // if 'custom', partner's manual tax entry is strictly preserved
+  };
+
+  // Handle line item changes (protecting row 0)
+  const handleItemChange = (index: number, field: string, value: any) => {
+    if (index === 0 && (field === "unitPrice" || field === "quantity" || field === "description")) {
+      return; // Row 0 is locked
+    }
+    setItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      const newSubtotal = updated.reduce((sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0)), 0);
+      recalculateTaxForSubtotal(newSubtotal, gstMode);
+      return updated;
+    });
+  };
+
+  const handleAddExtraLine = () => {
+    setItems(prev => {
+      const updated = [...prev, { description: "", quantity: 1, unitPrice: 0, isBasePackage: false }];
+      const newSubtotal = updated.reduce((sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0)), 0);
+      recalculateTaxForSubtotal(newSubtotal, gstMode);
+      return updated;
+    });
+  };
+
+  const handleRemoveExtraLine = (index: number) => {
+    if (index === 0) return; // Row 0 is locked
+    setItems(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      const newSubtotal = updated.reduce((sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0)), 0);
+      recalculateTaxForSubtotal(newSubtotal, gstMode);
+      return updated;
+    });
+  };
+
+  const handleAddExtension = (ext: any) => {
+    const alreadyAdded = items.some(it => it.description === ext.partName && it.unitPrice === ext.cost);
+    if (alreadyAdded) {
+      toast("This extra part is already included in your bill", { icon: "ℹ️" });
+      return;
+    }
+    setItems(prev => {
+      const updated = [...prev, { description: ext.partName, quantity: 1, unitPrice: Number(ext.cost) || 0, isBasePackage: false }];
+      const newSubtotal = updated.reduce((sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0)), 0);
+      recalculateTaxForSubtotal(newSubtotal, gstMode);
+      return updated;
+    });
+    toast.success(`Added "${ext.partName}" to bill!`);
+  };
+
+  const subtotal = useMemo(() => {
+    return items.reduce((sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0)), 0);
+  }, [items]);
+
+  const extraCharges = useMemo(() => {
+    return items.slice(1).reduce((sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0)), 0);
+  }, [items]);
+
+  const numericTax = tax === "" ? 0 : Math.max(0, Number(tax) || 0);
+  const numericDiscount = discount === "" ? 0 : Math.max(0, Number(discount) || 0);
+  const grandTotal = Math.max(0, subtotal + numericTax - numericDiscount);
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const { submitPartnerInvoice } = await import("@/lib/services");
+      await submitPartnerInvoice(jobId, {
+        invoiceType,
+        pdfUrl: pdfUrl || undefined,
+        items: items.map(it => ({
+          ...it,
+          quantity: Number(it.quantity) || 1,
+          unitPrice: Number(it.unitPrice) || 0
+        })),
+        subtotal,
+        taxAmount: numericTax,
+        discount: numericDiscount,
+        grandTotal,
+        notes
+      });
+      toast.success("Itemized invoice submitted successfully to Executive!");
+      onInvoiceSubmitted?.();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to submit invoice");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUploadPdf = async () => {
+    if (!pdfUrl) return;
+    try {
+      await uploadInvoiceMutation.mutateAsync({ id: jobId, data: { invoiceUrl: pdfUrl } });
+      toast.success("PDF invoice uploaded successfully!");
+      onInvoiceSubmitted?.();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save PDF invoice");
+    }
+  };
+
+  return (
+    <div className="bg-white border border-gray-200/80 p-6 rounded-2xl shadow-sm space-y-5">
+      {/* Header and format switcher */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-primary-orange" />
+          <div>
+            <h4 className="font-bold text-gray-900 text-sm">Invoice &amp; Bill Submission</h4>
+            <p className="text-[11px] text-gray-500">Agreed customer package is locked. Add any additional parts or labor below.</p>
+          </div>
+        </div>
+
+        <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setInvoiceType("ITEMIZED")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              invoiceType === "ITEMIZED" ? "bg-white text-primary-orange shadow-sm" : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Itemized Bill Form
+          </button>
+          <button
+            type="button"
+            onClick={() => setInvoiceType("PDF")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              invoiceType === "PDF" ? "bg-white text-primary-orange shadow-sm" : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Upload PDF Document
+          </button>
+        </div>
+      </div>
+
+      {/* Invoice Status alert if already submitted */}
+      {existingInvoice && (
+        <div className={`p-3.5 rounded-xl border flex items-center justify-between text-xs ${
+          existingInvoice.status === "PAID"
+            ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+            : existingInvoice.status === "FORWARDED_TO_CUSTOMER"
+            ? "bg-blue-50 border-blue-200 text-blue-900"
+            : "bg-amber-50 border-amber-200 text-amber-900"
+        }`}>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-bold">
+              {existingInvoice.status === "PAID"
+                ? "Invoice Paid by Customer 🎉"
+                : existingInvoice.status === "FORWARDED_TO_CUSTOMER"
+                ? "Invoice Approved & Forwarded to Customer"
+                : "Invoice Submitted — Pending Executive Review"}
+            </span>
+          </div>
+          <span className="font-extrabold text-sm">₹{existingInvoice.grandTotal?.toLocaleString("en-IN")}</span>
+        </div>
+      )}
+
+      {invoiceType === "ITEMIZED" ? (
+        <div className="space-y-4">
+          {/* Customer Quoted Amount Protection Banner */}
+          <div className="bg-amber-50/70 border border-amber-200/80 p-3 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <span className="font-extrabold text-amber-950">Customer Quoted Protection:</span> The base service package amount (<strong>₹{actualQuotedAmount}</strong>) is fixed to the customer&apos;s accepted quote and <u>cannot be modified</u>. If additional work or parts were required, use <strong>&quot;+ Add Item Line&quot;</strong> below.
+            </div>
+          </div>
+
+          {/* Line Items List */}
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase px-1">
+              <span className="flex-1">Item / Service Description</span>
+              <span className="w-16 text-center">Qty</span>
+              <span className="w-36 text-left pl-2">Unit Price (₹)</span>
+              <span className="w-24 text-right pr-2">Total</span>
+              <span className="w-8"></span>
+            </div>
+
+            {items.map((item, idx) => {
+              const isBase = idx === 0 || item.isBasePackage;
+
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                    isBase
+                      ? "bg-slate-50 border-slate-300 shadow-2xs"
+                      : "bg-white border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {/* Description */}
+                  <div className="flex-1 relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="Item Description (e.g. Brake Pads, Extra Oil)"
+                      value={item.description}
+                      readOnly={isBase}
+                      disabled={isBase}
+                      onChange={(e) => handleItemChange(idx, "description", e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg font-medium ${
+                        isBase
+                          ? "bg-slate-100 text-slate-800 font-bold border-slate-300 cursor-not-allowed select-none"
+                          : "bg-white border-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-orange"
+                      }`}
+                    />
+                    {isBase && (
+                      <span className="absolute right-2.5 text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded border border-slate-300 flex items-center gap-1 select-none pointer-events-none">
+                        <Lock className="w-2.5 h-2.5" /> Base Service
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Quantity */}
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    value={item.quantity}
+                    readOnly={isBase}
+                    disabled={isBase}
+                    onChange={(e) => handleItemChange(idx, "quantity", Number(e.target.value) || 1)}
+                    className={`w-16 px-2 py-2 text-xs text-center border rounded-lg font-bold ${
+                      isBase
+                        ? "bg-slate-100 text-slate-800 border-slate-300 cursor-not-allowed select-none"
+                        : "bg-white border-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-orange"
+                    }`}
+                  />
+
+                  {/* Unit Price */}
+                  <div className="relative w-36">
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={!isBase && item.unitPrice === 0 ? "" : (item.unitPrice ?? "")}
+                      readOnly={isBase}
+                      disabled={isBase}
+                      onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
+                      className={`w-full pl-7 pr-3 py-2 text-xs border rounded-lg font-extrabold ${
+                        isBase
+                          ? "bg-slate-100 text-slate-900 border-slate-300 cursor-not-allowed select-none"
+                          : "bg-white border-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-orange text-gray-900"
+                      }`}
+                    />
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs select-none">₹</span>
+                    {isBase && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded font-extrabold flex items-center gap-0.5 select-none pointer-events-none">
+                        <Lock className="w-2.5 h-2.5 text-amber-700" /> Locked
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Total Amount */}
+                  <span className="text-xs font-extrabold text-gray-900 w-24 text-right pr-2">
+                    ₹{((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)).toLocaleString("en-IN")}
+                  </span>
+
+                  {/* Action Column */}
+                  <div className="w-8 flex items-center justify-center">
+                    {isBase ? (
+                      <span title="Agreed base package cannot be removed">
+                        <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExtraLine(idx)}
+                        className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg text-sm font-bold transition-colors"
+                        title="Remove extra line item"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Quick add requested extra parts if available */}
+            {job.jobExtensions && job.jobExtensions.length > 0 && (
+              <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200/80 space-y-2 mt-2">
+                <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
+                  <PlusCircle className="w-3.5 h-3.5 text-primary-orange" /> Quick-Add Requested Parts from this Job:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {job.jobExtensions.map((ext: any, extIdx: number) => (
+                    <button
+                      key={extIdx}
+                      type="button"
+                      onClick={() => handleAddExtension(ext)}
+                      className="text-[11px] font-bold bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 px-3 py-1 rounded-lg flex items-center gap-1.5 transition-colors shadow-2xs"
+                    >
+                      <Plus className="w-3 h-3 text-primary-orange" /> Add &ldquo;{ext.partName}&rdquo; (+₹{ext.cost})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleAddExtraLine}
+              size="sm"
+              variant="outline"
+              className="text-xs font-bold text-primary-orange border-primary-orange/40 hover:bg-orange-50 mt-1 flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" /> + Add Item Line
+            </Button>
+          </div>
+
+          {/* Taxes & Discounts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+            {/* Discount */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-bold text-gray-700">Discount (₹)</label>
+                <span className="text-[10px] text-gray-400">Optional</span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={discount}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setDiscount(raw === "" ? "" : Math.max(0, Number(raw)));
+                  }}
+                  onBlur={() => {
+                    if (discount === "") setDiscount(0);
+                  }}
+                  className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-emerald-700 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs select-none">₹</span>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1">Direct discount deducted from total.</p>
+            </div>
+
+            {/* GST / Tax - Manually Editable */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                <div className="flex items-center gap-1.5">
+                  <label className="block text-[11px] font-bold text-gray-700">Tax / GST (₹)</label>
+                  <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded border border-emerald-200">
+                    ✍️ Manually Editable
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => { setTax(0); setGstMode("0"); }}
+                    className={`text-[10px] px-2 py-0.5 rounded font-bold transition-all ${
+                      gstMode === "0" && numericTax === 0
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs font-extrabold"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    0% (No Tax)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const autoTax = Math.round(subtotal * 0.05);
+                      setTax(autoTax);
+                      setGstMode("5");
+                    }}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold transition-all ${
+                      gstMode === "5"
+                        ? "bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs font-extrabold"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    5%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const autoTax = Math.round(subtotal * 0.12);
+                      setTax(autoTax);
+                      setGstMode("12");
+                    }}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold transition-all ${
+                      gstMode === "12"
+                        ? "bg-indigo-100 text-indigo-800 border border-indigo-300 shadow-2xs font-extrabold"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    12%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const autoTax = Math.round(subtotal * 0.18);
+                      setTax(autoTax);
+                      setGstMode("18");
+                    }}
+                    className={`text-[10px] px-2 py-0.5 rounded font-bold transition-all ${
+                      gstMode === "18"
+                        ? "bg-blue-100 text-blue-800 border border-blue-300 shadow-2xs font-extrabold"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    18% (₹{Math.round(subtotal * 0.18)})
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Enter GST in ₹ (e.g. 0, 150, 270)"
+                  value={tax}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setTax(raw);
+                    setGstMode("custom");
+                  }}
+                  onBlur={() => {
+                    if (tax === "") setTax(0);
+                  }}
+                  className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-primary-orange"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs select-none">₹</span>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1 flex items-center justify-between">
+                <span>Directly type any ₹ amount above, or click a % button.</span>
+                {numericTax > 0 && <span className="font-bold text-gray-700">~{((numericTax / (subtotal || 1)) * 100).toFixed(1)}% of subtotal</span>}
+              </p>
+            </div>
+          </div>
+
+          {/* Total Breakdown Bar */}
+          <div className="bg-orange-50/70 p-4 rounded-xl border border-orange-200/80 space-y-2">
+            <div className="flex flex-wrap items-center justify-between text-xs text-gray-600 border-b border-orange-200/60 pb-2 gap-2">
+              <span>Agreed Base Package: <strong className="text-gray-900">₹{actualQuotedAmount.toLocaleString("en-IN")}</strong> <span className="text-[10px] text-amber-700 font-bold">(Locked)</span></span>
+              {extraCharges > 0 && <span>Extra Added Parts: <strong className="text-primary-orange">₹{extraCharges.toLocaleString("en-IN")}</strong></span>}
+              {numericDiscount > 0 && <span>Discount: <strong className="text-emerald-700">-₹{numericDiscount.toLocaleString("en-IN")}</strong></span>}
+              {numericTax > 0 && <span>GST / Tax: <strong className="text-gray-700">+₹{numericTax.toLocaleString("en-IN")}</strong></span>}
+            </div>
+
+            <div className="flex justify-between items-center font-extrabold text-gray-900 pt-1">
+              <span className="text-sm">Grand Total Itemized Amount:</span>
+              <span className="text-primary-orange text-2xl font-black font-heading">
+                ₹{grandTotal.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            isLoading={isSubmitting}
+            className="w-full bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-3 rounded-xl shadow-sm"
+          >
+            Submit Itemized Invoice for Executive Review
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <FileUpload
+            folder="invoices"
+            onUploadSuccess={(url) => setPdfUrl(url)}
+            currentValue={pdfUrl}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full text-xs font-bold py-2.5 rounded-xl border-gray-300"
+            disabled={!pdfUrl}
+            isLoading={uploadInvoiceMutation.isPending}
+            onClick={handleUploadPdf}
+          >
+            {pdfUrl ? "Save & Submit PDF Invoice" : "Upload & Save PDF Invoice"}
+          </Button>
         </div>
       )}
     </div>

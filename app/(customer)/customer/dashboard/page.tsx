@@ -8,7 +8,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCustomerBookings, useCustomerPayments, useCustomerWarranties, useCustomerStatsQuery, useCustomerInvoicesQuery } from "@/features/customer/hooks/useCustomerQueries";
 import { Booking, Payment, Warranty } from "@/lib/types";
 import { getStatusColorTheme, StatusBadge } from "@/components/ui/status-badge";
-import { Car, CalendarCheck, Plus, ArrowRight, Clock, GitCompareArrows, ChevronRight, Wrench, AlertCircle, IndianRupee, ShieldCheck, BellRing, Gift, PiggyBank, FileText, Download, CheckCircle2, Info, Printer } from "lucide-react";
+import { Car, CalendarCheck, Plus, ArrowRight, Clock, GitCompareArrows, ChevronRight, Wrench, AlertCircle, IndianRupee, ShieldCheck, BellRing, Gift, PiggyBank, FileText, Download, CheckCircle2, Info, Printer, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";

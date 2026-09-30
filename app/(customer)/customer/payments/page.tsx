@@ -11,6 +11,7 @@ import { CreditCard, Loader2, CheckCircle, XCircle, PiggyBank } from "lucide-rea
 import { useCustomerBookings, useCustomerPayments, useInitiatePayment } from "@/features/customer/hooks/useCustomerQueries";
 import { verifyPayment } from "@/lib/services";
 import { loadRazorpayScript } from "@/lib/razorpay";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import CustomerSavingsModal from "@/components/customer/CustomerSavingsModal";
 
@@ -120,8 +121,41 @@ export default function PaymentsPage() {
           }
         },
         prefill: {
-          name: "CarBlink Customer",
-          email: "customer@carblink.com"
+          name: user?.fullName || "CarBlink Customer",
+          email: user?.email || "",
+          contact: user?.phone || ""
+        },
+        readonly: {
+          contact: Boolean(user?.phone),
+          email: Boolean(user?.email),
+          name: Boolean(user?.fullName),
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: "Pay via UPI QR / Apps",
+                instruments: [
+                  {
+                    method: "upi",
+                    flows: ["qr", "intent", "collect"]
+                  }
+                ]
+              },
+              other: {
+                name: "Other Payment Modes",
+                instruments: [
+                  { method: "card" },
+                  { method: "netbanking" },
+                  { method: "wallet" }
+                ]
+              }
+            },
+            sequence: ["block.upi", "block.other"],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
         },
         theme: {
           color: "#0a2540"

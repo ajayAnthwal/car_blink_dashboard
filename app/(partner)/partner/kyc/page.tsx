@@ -26,6 +26,7 @@ export default function PartnerKycPage() {
 
   const [documentType, setDocumentType] = useState("GST_CERTIFICATE");
   const [fileUrl, setFileUrl] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();

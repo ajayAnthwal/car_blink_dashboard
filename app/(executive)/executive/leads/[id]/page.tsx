@@ -9,18 +9,35 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, Phone, Mail, Car, Wrench, MapPin, Calendar, Clock, Briefcase, Target, Image as ImageIcon, CheckCircle, Share, ClipboardList, ExternalLink, FileText } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, Car, Wrench, MapPin, Calendar, Clock, Briefcase, Target, Image as ImageIcon, CheckCircle, Share, ClipboardList, ExternalLink, FileText, Star, ThumbsUp, ThumbsDown, Send, Sparkles } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function LeadDetailsPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
   
-  const { data: lead, isLoading, error: queryError } = useExecutiveLeadById(id);
+  const { data: lead, isLoading, error: queryError, refetch: refetchLead } = useExecutiveLeadById(id);
   const clickToCallMutation = useClickToCallMutation();
   
   const [callMessage, setCallMessage] = useState({ type: "", text: "" });
   const [isCalling, setIsCalling] = useState(false);
+  const [isSendingSatisfaction, setIsSendingSatisfaction] = useState(false);
   const error = queryError ? (queryError as Error).message : null;
+
+  const handleSendSatisfaction = async () => {
+    if (!lead) return;
+    setIsSendingSatisfaction(true);
+    try {
+      const { sendSatisfactionTemplate } = await import("@/lib/services");
+      await sendSatisfactionTemplate(lead._id || id);
+      toast.success("Satisfaction Form template sent to customer!");
+      refetchLead();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to send satisfaction form");
+    } finally {
+      setIsSendingSatisfaction(false);
+    }
+  };
 
   const handleCallCustomer = async (phoneNumber: string) => {
     if (!phoneNumber) return;
@@ -116,6 +133,87 @@ export default function LeadDetailsPage() {
           <StatusBadge status={lead.status} />
         </div>
       </div>
+
+      {/* Satisfaction Status Card for Executive */}
+      {(lead.status === "COMPLETED" || (lead.satisfactionStatus && lead.satisfactionStatus !== 'NOT_SENT')) && (
+        <Card className={`rounded-2xl border-2 overflow-hidden shadow-sm ${
+          lead.satisfactionStatus === "SATISFIED"
+            ? "border-emerald-200 bg-emerald-50/40"
+            : lead.satisfactionStatus === "DISSATISFIED"
+            ? "border-red-200 bg-red-50/40"
+            : "border-amber-200 bg-amber-50/40"
+        }`}>
+          <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm flex-shrink-0 ${
+                lead.satisfactionStatus === "SATISFIED"
+                  ? "bg-emerald-600"
+                  : lead.satisfactionStatus === "DISSATISFIED"
+                  ? "bg-red-600"
+                  : "bg-amber-600"
+              }`}>
+                {lead.satisfactionStatus === "SATISFIED" ? (
+                  <ThumbsUp className="w-5 h-5" />
+                ) : lead.satisfactionStatus === "DISSATISFIED" ? (
+                  <ThumbsDown className="w-5 h-5" />
+                ) : (
+                  <Clock className="w-5 h-5" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm sm:text-base font-extrabold text-gray-900">
+                    {lead.satisfactionStatus === "SATISFIED"
+                      ? "Customer Confirmed Satisfied ✓"
+                      : lead.satisfactionStatus === "DISSATISFIED"
+                      ? "Customer Reported Dissatisfaction / Issues ⚠️"
+                      : lead.satisfactionStatus === "PENDING_CUSTOMER"
+                      ? "Satisfaction Form Sent (Pending Customer Response)"
+                      : "Satisfaction Form Not Sent Yet"}
+                  </h4>
+                  {lead.satisfactionRating && (
+                    <span className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-gray-200 text-xs font-bold shadow-xs">
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      {lead.satisfactionRating}/5
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {lead.satisfactionStatus === "SATISFIED"
+                    ? `Customer verified complete satisfaction.${lead.satisfactionFeedback ? ` Remarks: "${lead.satisfactionFeedback}"` : ""}`
+                    : lead.satisfactionStatus === "DISSATISFIED"
+                    ? `Customer reported issues.${lead.satisfactionFeedback ? ` Feedback: "${lead.satisfactionFeedback}"` : ""}`
+                    : lead.satisfactionStatus === "PENDING_CUSTOMER"
+                    ? "Satisfaction template is visible on customer's booking page awaiting their response."
+                    : "Job is completed. You can send the official satisfaction feedback template to the customer."}
+                </p>
+              </div>
+            </div>
+
+            {lead.status === "COMPLETED" && (
+              <Button
+                size="sm"
+                onClick={handleSendSatisfaction}
+                isLoading={isSendingSatisfaction}
+                className={`text-xs font-bold rounded-xl shadow-xs whitespace-nowrap ${
+                  lead.satisfactionStatus === "PENDING_CUSTOMER"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white"
+                    : lead.satisfactionStatus === "SATISFIED" || lead.satisfactionStatus === "DISSATISFIED"
+                    ? "bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300"
+                    : "bg-primary-orange hover:bg-orange-600 text-white"
+                }`}
+              >
+                <Send className="w-3.5 h-3.5 mr-1.5" />
+                {lead.satisfactionStatus === "PENDING_CUSTOMER"
+                  ? "Resend Satisfaction Form"
+                  : lead.satisfactionStatus === "SATISFIED" || lead.satisfactionStatus === "DISSATISFIED"
+                  ? "Send Again"
+                  : "Send Satisfaction Form"}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
@@ -556,7 +654,7 @@ export default function LeadDetailsPage() {
                       </span>
                       {lead.invoice?.taxAmount > 0 && (
                         <span className="text-xs font-semibold text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-200">
-                          Includes 18% GST (₹{lead.invoice.taxAmount})
+                          Includes GST / Tax (+₹{Number(lead.invoice.taxAmount).toLocaleString('en-IN')})
                         </span>
                       )}
                     </div>

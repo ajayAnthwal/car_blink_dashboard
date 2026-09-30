@@ -275,6 +275,11 @@ export const getCustomerInvoiceByBooking = async (bookingId: string) => {
   return response.data;
 };
 
+export const updateBookingPaymentMode = async (bookingId: string, paymentMode: 'CASH' | 'ONLINE') => {
+  const response = await apiClient.patch(`/customer/bookings/${bookingId}/payment-mode`, { paymentMode });
+  return response.data;
+};
+
 // ==========================================
 // CUSTOMER WARRANTY APIs
 // ==========================================

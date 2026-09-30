@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, IndianRupee, HandCoins, AlertCircle, Loader2 } from "lucide-react";
 import { initiatePayment, verifyPayment, markOfflinePayment } from "@/lib/services";
 import { loadRazorpayScript } from "@/lib/razorpay";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 interface PaymentCardProps {
   bookingId: string;
@@ -19,6 +20,7 @@ interface PaymentCardProps {
 }
 
 export function PaymentCard({ bookingId, amount, paymentType, title, description, isPaid, isPendingVerification = false, onSuccess }: PaymentCardProps) {
+  const { user } = useAuth();
   const [isProcessingOnline, setIsProcessingOnline] = useState(false);
   const [isProcessingOffline, setIsProcessingOffline] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -79,8 +81,41 @@ export function PaymentCard({ bookingId, amount, paymentType, title, description
           }
         },
         prefill: {
-          name: "CarBlink Customer",
-          email: "customer@carblink.com",
+          name: user?.fullName || "CarBlink Customer",
+          email: user?.email || "",
+          contact: user?.phone || "",
+        },
+        readonly: {
+          contact: Boolean(user?.phone),
+          email: Boolean(user?.email),
+          name: Boolean(user?.fullName),
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: "Pay via UPI QR / Apps",
+                instruments: [
+                  {
+                    method: "upi",
+                    flows: ["qr", "intent", "collect"]
+                  }
+                ]
+              },
+              other: {
+                name: "Other Payment Modes",
+                instruments: [
+                  { method: "card" },
+                  { method: "netbanking" },
+                  { method: "wallet" }
+                ]
+              }
+            },
+            sequence: ["block.upi", "block.other"],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
         },
         theme: {
           color: "#0a2540",
