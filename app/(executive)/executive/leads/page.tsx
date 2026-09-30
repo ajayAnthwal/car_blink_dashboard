@@ -78,11 +78,15 @@ export default function ExecutiveLeadsPage() {
     socket.on("new_lead", refetchLeads);
     socket.on("quote_received", refetchLeads);
     socket.on("booking_confirmed", refetchLeads);
+    socket.on("job_verified", refetchLeads);
+    socket.on("booking_status_update", refetchLeads);
 
     return () => {
       socket.off("new_lead", refetchLeads);
       socket.off("quote_received", refetchLeads);
       socket.off("booking_confirmed", refetchLeads);
+      socket.off("job_verified", refetchLeads);
+      socket.off("booking_status_update", refetchLeads);
     };
   }, [socket, refetchLeads]);
 
@@ -619,7 +623,9 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     <TableCell className="min-w-[230px] align-top py-3.5">
                       <div className="flex flex-col space-y-2">
                         <span className={`inline-flex self-start px-2 py-0.5 rounded text-[10px] font-extrabold border ${
-                          lead.status === 'ACCEPTED'
+                          lead.status === 'VERIFIED' || lead.isVerifiedByPartner
+                            ? 'bg-purple-100 text-purple-800 border-purple-300 animate-pulse'
+                            : lead.status === 'ACCEPTED'
                             ? 'bg-teal-100 text-teal-800 border-teal-300'
                             : lead.status === 'CUSTOMER_ACCEPTED'
                             ? (lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))
@@ -633,12 +639,14 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                             ? 'bg-warning/10 text-warning-dark border-warning/20' 
                             : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'
                         }`}>
-                          {lead.status === 'ACCEPTED'
+                          {lead.status === 'VERIFIED' || lead.isVerifiedByPartner
+                            ? 'VERIFIED / WORK READY ⚡'
+                            : lead.status === 'ACCEPTED'
                             ? 'PARTNER ASSIGNED ✓'
                             : lead.status === 'CUSTOMER_ACCEPTED' 
                             ? (lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))
                                 ? 'CUSTOMER ACCEPTED & PAID ✓'
-                                : 'AWAITING 15% ADVANCE ⏳') 
+                                : 'AWAITING ADVANCE PAYMENT ⏳') 
                             : lead.status === 'IN_PROGRESS' 
                             ? 'JOB IN PROGRESS 🔧' 
                             : lead.status === 'COMPLETED' 
@@ -647,6 +655,12 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                             ? (lead.bids?.length > 0 ? 'QUOTES RECEIVED' : 'BIDDING REQUESTED') 
                             : 'UNASSIGNED'}
                         </span>
+
+                        {lead.verifiedAt && (
+                          <div className="text-[10px] text-purple-700 bg-purple-50 p-1 rounded border border-purple-200 flex items-center gap-1 font-semibold">
+                            <Clock className="w-3 h-3 text-purple-500" /> Verified: {new Date(lead.verifiedAt).toLocaleTimeString()}
+                          </div>
+                        )}
 
                         {lead.assignment?.assignedPartnerIds?.length > 0 && (
                           <div className="text-[10px] text-neutral-600 bg-gray-50 p-1.5 rounded border">
@@ -702,11 +716,11 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                               variant="outline"
                               className="w-full text-[10px] font-bold h-8 text-amber-800 border-amber-300 bg-amber-50 hover:bg-amber-100 whitespace-nowrap shadow-2xs"
                               onClick={() => {
-                                toast.error("Customer has selected quote but HAS NOT paid the 15% advance token (₹2) yet! 15% advance payment is required to confirm booking.", { duration: 5000 });
+                                toast.error("Customer has selected quote but HAS NOT paid the advance payment yet! Advance payment is required to confirm booking.", { duration: 5000 });
                               }}
                             >
                               <Clock className="w-3.5 h-3.5 mr-1 text-amber-600" />
-                              <span>Awaiting 15% Advance</span>
+                              <span>Awaiting Advance Payment</span>
                             </Button>
                           )
                         )}

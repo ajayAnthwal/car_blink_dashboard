@@ -3,11 +3,12 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useCustomerBookings, useCustomerPayments, useCustomerWarranties, useCustomerStatsQuery, useCustomerInvoicesQuery } from "@/features/customer/hooks/useCustomerQueries";
 import { Booking, Payment, Warranty } from "@/lib/types";
 import { getStatusColorTheme, StatusBadge } from "@/components/ui/status-badge";
-import { Car, CalendarCheck, Plus, ArrowRight, Clock, ChevronRight, Wrench, AlertCircle, IndianRupee, ShieldCheck, BellRing, Gift, PiggyBank, FileText, Download, CheckCircle2, Info, Printer } from "lucide-react";
+import { Car, CalendarCheck, Plus, ArrowRight, Clock, GitCompareArrows, ChevronRight, Wrench, AlertCircle, IndianRupee, ShieldCheck, BellRing, Gift, PiggyBank, FileText, Download, CheckCircle2, Info, Printer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,10 +17,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, L
 import WebsitePromotionalBanners from "@/components/home/WebsitePromotionalBanners";
 import ProfileCompletionScoreWidget from "@/components/customer/ProfileCompletionScoreWidget";
 import CustomerSatisfactionWidget from "@/components/customer/CustomerSatisfactionWidget";
+import CustomerSavingsModal from "@/components/customer/CustomerSavingsModal";
 
 export default function CustomerDashboardPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
 
   const { data: bookingsData, isLoading: loadingBookings } = useCustomerBookings();
   const bookings = bookingsData?.bookings || [];
@@ -110,7 +114,11 @@ export default function CustomerDashboardPage() {
   }, [safePayments]);
 
   const recentBookings = useMemo(() => {
-    return [...safeBookings].sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()).slice(0, 5);
+    return [...safeBookings].sort((a, b) => {
+      const timeA = new Date(a?.createdAt || a?.preferredDate || a?.updatedAt || 0).getTime();
+      const timeB = new Date(b?.createdAt || b?.preferredDate || b?.updatedAt || 0).getTime();
+      return timeB - timeA;
+    }).slice(0, 5);
   }, [safeBookings]);
 
   const quotesWaiting = useMemo(() => {
@@ -135,6 +143,10 @@ export default function CustomerDashboardPage() {
 
       return hasPendingExts || hasPendingParts || isReqPending;
     });
+  }, [safeBookings]);
+
+  const activeBooking = useMemo(() => {
+    return safeBookings.find(b => b && b.status !== 'COMPLETED' && b.status !== 'CANCELLED');
   }, [safeBookings]);
 
   const [todayStr, setTodayStr] = useState("");
@@ -191,7 +203,7 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
-      {/* Action Center Alert: Awaiting 15% Advance Token Payment */}
+      {/* Action Center Alert: Awaiting Confirmation / Advance Payment */}
       {awaiting15PercentAdvance.length > 0 && (
         <div className="bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 border-2 border-amber-300 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md w-full min-w-0">
           <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
@@ -201,23 +213,23 @@ export default function CustomerDashboardPage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <span className="bg-amber-500 text-white font-extrabold text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
-                  AWAITING 15% ADVANCE ⏳
+                  CONFIRMATION PENDING ⏳
                 </span>
                 <span className="text-xs font-bold text-amber-900">
                   {awaiting15PercentAdvance.length} Booking(s) Pending Confirmation
                 </span>
               </div>
               <h3 className="font-bold text-amber-950 text-sm sm:text-lg break-words">
-                Action Required: Pay 15% Advance Token to Confirm Pickup & Service
+                Action Required: Confirm Booking or Pay Advance
               </h3>
               <p className="text-amber-800 text-xs sm:text-sm font-medium break-words mt-0.5">
-                Please pay the 15% advance token to confirm your booking and unlock partner workshop contact details.
+                Confirm via Pay at Workshop (Cash) or Pay Online Advance to unlock partner workshop contact and address.
               </p>
             </div>
           </div>
           <Button asChild className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md text-xs sm:text-sm px-6 py-2.5">
             <Link href={`/customer/bookings/${awaiting15PercentAdvance[0]._id}`}>
-              Pay 15% Advance Now <ArrowRight className="w-4 h-4 ml-2" />
+              Confirm Booking <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
           </Button>
         </div>
@@ -259,6 +271,70 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
+      {/* 🔥 ACTIVE SERVICE & LIVE VEHICLE STATUS TRACKER SECTION */}
+      {activeBooking && (
+        <Card className="bg-gradient-to-r from-slate-900 via-primary-navy to-slate-900 text-white shadow-xl border-primary-orange/30 rounded-3xl overflow-hidden relative group">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary-orange/10 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform"></div>
+          <CardContent className="p-6 md:p-8 relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-3 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-primary-orange/20 text-primary-orange border border-primary-orange/40">
+                    <span className="w-2 h-2 rounded-full bg-primary-orange animate-ping" />
+                    LIVE ACTIVE SERVICE TRACKER
+                  </span>
+                  <span className="text-xs text-white/50 font-mono bg-white/10 px-2.5 py-0.5 rounded-md">
+                    ID: {(activeBooking._id || activeBooking.id || '').substring(0, 10).toUpperCase()}
+                  </span>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-heading">
+                  {typeof activeBooking.serviceId === 'object' ? activeBooking.serviceId.name : 'Car Service Request'}
+                </h2>
+
+                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300 font-medium">
+                  <span className="flex items-center text-white font-bold bg-white/10 px-3 py-1 rounded-xl">
+                    <Car className="w-4 h-4 mr-2 text-primary-orange" />
+                    {typeof activeBooking.vehicleId === 'object' ? `${activeBooking.vehicleId.brand} ${activeBooking.vehicleId.model}` : 'Vehicle'}
+                  </span>
+                  {activeBooking.vehicleId?.registrationNumber && (
+                    <span className="font-mono text-xs bg-white/10 px-2.5 py-1 rounded-xl text-slate-200">
+                      {activeBooking.vehicleId.registrationNumber}
+                    </span>
+                  )}
+                  {activeBooking.preferredDate && (
+                    <span className="flex items-center text-xs text-slate-300">
+                      <Clock className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                      {new Date(activeBooking.preferredDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {activeBooking.status !== 'PENDING' && activeBooking.status !== 'QUOTED' && activeBooking.verificationCode && (
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-2.5 flex items-center gap-3">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-orange-300 tracking-wider block">Workshop PIN</span>
+                      <span className="text-xl font-black font-mono tracking-widest text-white">{activeBooking.verificationCode}</span>
+                    </div>
+                    <span className="text-[11px] text-slate-300 hidden md:inline-block max-w-[130px] leading-tight">
+                      Share with workshop upon arrival
+                    </span>
+                  </div>
+                )}
+                <Button asChild className="bg-primary-orange hover:bg-orange-600 text-white font-bold rounded-2xl py-6 px-6 shadow-lg shadow-primary-orange/20 text-sm">
+                  <Link href={`/customer/bookings/${activeBooking._id || activeBooking.id}`} className="flex items-center justify-center">
+                    <span>Live Tracking & Details</span>
+                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 w-full min-w-0">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">Overview</h1>
@@ -275,7 +351,7 @@ export default function CustomerDashboardPage() {
 
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
-        <Link href="/customer/bookings" className="block group">
+        <Link href={activeBooking ? `/customer/bookings/${activeBooking._id || activeBooking.id}` : "/customer/bookings"} className="block group">
           <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-blue-300 group-hover:border-blue-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-gray-500">Active Bookings</CardTitle>
@@ -354,7 +430,7 @@ export default function CustomerDashboardPage() {
         </Link>
 
         {/* Savings Card */}
-        <Link href="/customer/payments" className="block group">
+        <div onClick={() => setIsSavingsModalOpen(true)} className="block group cursor-pointer">
           <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-teal-300 group-hover:border-teal-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-gray-500">Total Savings</CardTitle>
@@ -373,7 +449,7 @@ export default function CustomerDashboardPage() {
               </span>
             </CardFooter>
           </Card>
-        </Link>
+        </div>
 
         {/* Rewards Card */}
         <Link href="/customer/referrals" className="block group">
@@ -735,7 +811,11 @@ export default function CustomerDashboardPage() {
                 </TableRow>
               ) : (
                 recentBookings.map((booking) => (
-                  <TableRow key={booking._id || booking.id} className="hover:bg-gray-50/50 transition-colors">
+                  <TableRow 
+                    key={booking._id || booking.id} 
+                    onClick={() => router.push(`/customer/bookings/${booking._id || booking.id}`)}
+                    className="hover:bg-orange-50/40 transition-colors cursor-pointer group"
+                  >
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0">
@@ -754,7 +834,7 @@ export default function CustomerDashboardPage() {
                           {booking.assignedPartnerId && typeof booking.assignedPartnerId === 'object' && (
                             <div className="text-[10px] uppercase font-bold tracking-wider text-success mt-1.5 border border-success/30 bg-success/10 px-2 py-0.5 rounded-md inline-flex items-center w-max">
                               <span className="w-1.5 h-1.5 rounded-full bg-success mr-1.5"></span>
-                              Assigned to {booking.assignedPartnerId.businessName} (Partner)
+                              Assigned to {(booking.hasPaidAdvance || booking.payments?.some((p: any) => p.status === 'SUCCESS')) ? booking.assignedPartnerId.businessName : "CarBlink Workshop Partner"}
                             </div>
                           )}
                         </div>
@@ -775,7 +855,7 @@ export default function CustomerDashboardPage() {
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-semibold">
                         <Link href={`/customer/bookings/${booking._id || booking.id}`}>
-                          Details <ChevronRight className="w-4 h-4 ml-1" />
+                          View Live Status <ChevronRight className="w-4 h-4 ml-1" />
                         </Link>
                       </Button>
                     </TableCell>
@@ -915,6 +995,13 @@ export default function CustomerDashboardPage() {
           </div>
         </div>
       )}
+      <CustomerSavingsModal
+        isOpen={isSavingsModalOpen}
+        onClose={() => setIsSavingsModalOpen(false)}
+        bookings={safeBookings}
+        payments={safePayments}
+        totalSavings={stats.totalSavings}
+      />
     </div>
   );
 }

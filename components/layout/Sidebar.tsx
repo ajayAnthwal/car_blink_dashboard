@@ -36,6 +36,7 @@ export function Sidebar({
 
   const { data: bookingsData } = useCustomerBookings();
   const customerBookings = bookingsData?.bookings || [];
+  const quotedBookingsCount = customerBookings.filter((b: any) => b.status === 'QUOTED').length || 0;
 
   const { data: execLeadsData } = useExecutiveLeads();
   const execLeads = execLeadsData?.leads || [];
@@ -79,6 +80,14 @@ export function Sidebar({
               const isActive = isExactActive || (!isDashboard && pathname.startsWith(item.href));
               const Icon = item.icon;
 
+              const isQuoteItem = item.name.includes('Quote');
+              const isLeadsItem = item.name.includes('Leads');
+              const displayBadge = item.badge || 
+                (isQuoteItem && currentRole === 'CUSTOMER' && quotedBookingsCount > 0 ? String(quotedBookingsCount) : null) ||
+                (isLeadsItem && (currentRole === 'EXECUTIVE' || currentRole === 'SUPER_ADMIN') && pendingLeadsCount > 0 ? String(pendingLeadsCount) : null);
+
+              const badgeColorClass = isQuoteItem ? 'bg-orange-500 animate-pulse' : (isLeadsItem ? 'bg-red-500 animate-pulse' : (item.badgeColor || 'bg-blue-500'));
+
               return (
                 <Link
                   key={item.name}
@@ -100,13 +109,13 @@ export function Sidebar({
                       }`}
                     />
                     {!isCollapsed && <span className="ml-3 text-sm flex-1">{item.name}</span>}
-                    {(item.badge || (item.name.includes('Leads') && (currentRole === 'EXECUTIVE' || currentRole === 'SUPER_ADMIN') && pendingLeadsCount > 0)) && !isCollapsed && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${item.name.includes('Leads') ? 'bg-red-500 animate-pulse' : item.badgeColor} shrink-0 ml-1`}>
-                        {item.name.includes('Leads') ? pendingLeadsCount : item.badge}
+                    {displayBadge && !isCollapsed && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${badgeColorClass} shrink-0 ml-1`}>
+                        {displayBadge}
                       </span>
                     )}
-                    {(item.badge || (item.name.includes('Leads') && (currentRole === 'EXECUTIVE' || currentRole === 'SUPER_ADMIN') && pendingLeadsCount > 0)) && isCollapsed && (
-                      <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${item.name.includes('Leads') ? 'bg-red-500' : item.badgeColor}`} />
+                    {displayBadge && isCollapsed && (
+                      <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${badgeColorClass}`} />
                     )}
                   </div>
                 </Link>

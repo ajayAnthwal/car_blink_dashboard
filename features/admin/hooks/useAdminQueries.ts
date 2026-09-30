@@ -50,6 +50,7 @@ import {
   getSuperAdminBookings,
   getSuperAdminBookingDetails,
   cancelSuperAdminBooking,
+  manualAssignSuperAdminBooking,
   onboardVendor,
   createCoupon,
   deleteAdminUser,
@@ -646,6 +647,19 @@ export const useCancelAdminBookingMutation = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "bookings", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "auditLogs"] });
+    }
+  });
+};
+
+export const useManualAssignAdminBookingMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => manualAssignSuperAdminBooking(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "bookings", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "auditLogs"] });
     }
   });
 };

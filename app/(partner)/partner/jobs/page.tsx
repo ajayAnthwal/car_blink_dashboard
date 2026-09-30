@@ -12,6 +12,7 @@ import {
   usePartnerJobs,
   usePartnerStaff,
   useStartJobMutation,
+  useVerifyCustomerCodeMutation,
   useCompleteJobMutation,
   useUploadInvoiceMutation,
   useUploadPhotosMutation,
@@ -25,6 +26,8 @@ import {
 export default function PartnerJobsPage() {
   const [activeTab, setActiveTab] = useState<"ALL" | "IN_PROGRESS" | "NOT_STARTED" | "COMPLETED">("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [quickPinCode, setQuickPinCode] = useState("");
+  const [verifyStatusResult, setVerifyStatusResult] = useState<{ type: "success" | "error" | ""; text: string }>({ type: "", text: "" });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -72,9 +75,32 @@ export default function PartnerJobsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
 
+  const [startJobModal, setStartJobModal] = useState<{ open: boolean; jobId: string; pin: string; error: string }>({
+    open: false,
+    jobId: "",
+    pin: "",
+    error: ""
+  });
+
   const startJobMutation = useStartJobMutation();
+  const verifyCustomerCodeMutation = useVerifyCustomerCodeMutation();
   const completeJobMutation = useCompleteJobMutation();
   const uploadInvoiceMutation = useUploadInvoiceMutation();
+
+  const handleQuickVerifyCode = async () => {
+    if (!quickPinCode || quickPinCode.trim().length !== 4) {
+      setVerifyStatusResult({ type: "error", text: "Please enter a valid 4-digit Customer Verification PIN." });
+      return;
+    }
+    setVerifyStatusResult({ type: "", text: "" });
+    try {
+      const res = await verifyCustomerCodeMutation.mutateAsync({ verificationCode: quickPinCode.trim() });
+      setVerifyStatusResult({ type: "success", text: res?.message || "✓ Customer Verified! Booking status updated to VERIFIED & IN_PROGRESS." });
+      setQuickPinCode("");
+    } catch (err: any) {
+      setVerifyStatusResult({ type: "error", text: err?.message || "✕ Verification Failed. Invalid, expired, or cancelled code." });
+    }
+  };
   const uploadPhotosMutation = useUploadPhotosMutation();
   const assignStaffMutation = useAssignStaffMutation();
   const requestExtensionMutation = useRequestJobExtensionMutation();
@@ -158,13 +184,28 @@ export default function PartnerJobsPage() {
     }
   };
 
-  const handleStartJob = async (id: string) => {
+  const handleStartJobWithPin = async (jobId: string, verificationCode: string) => {
+    if (!verificationCode || verificationCode.trim().length !== 4) {
+      setStartJobModal(prev => ({ ...prev, error: "Please enter a valid 4-digit Customer Verification PIN." }));
+      return;
+    }
     setMessage({ type: "", text: "" });
     try {
-      await startJobMutation.mutateAsync(id);
-      setMessage({ type: "success", text: "Job started successfully!" });
+      const res = await verifyCustomerCodeMutation.mutateAsync({ jobId, verificationCode: verificationCode.trim() });
+      setMessage({ type: "success", text: res?.message || "✓ Customer Verified! Status updated to 'Verified / Work Ready'. Click 'Start Work' to begin." });
+      setStartJobModal({ open: false, jobId: "", pin: "", error: "" });
     } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to start job." });
+      setStartJobModal(prev => ({ ...prev, error: err?.message || "Invalid Customer Verification PIN." }));
+    }
+  };
+
+  const handleStartWorkDirect = async (jobId: string) => {
+    setMessage({ type: "", text: "" });
+    try {
+      await startJobMutation.mutateAsync({ jobId });
+      setMessage({ type: "success", text: "🚀 Work Started! Customer and Executive notified in real-time." });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to start work. Verification PIN required first." });
     }
   };
 
@@ -285,10 +326,12 @@ export default function PartnerJobsPage() {
     switch (status?.toUpperCase()) {
       case "COMPLETED":
         return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><CheckCircle2 className="w-3.5 h-3.5" /> Completed</span>;
+      case "VERIFIED":
+        return <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Verified / Work Ready</span>;
       case "IN_PROGRESS":
-        return <span className="bg-blue-50 text-blue-700 border border-blue-200 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><Clock className="w-3.5 h-3.5 animate-spin" /> In Progress</span>;
+        return <span className="bg-blue-50 text-blue-700 border border-blue-200 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><Clock className="w-3.5 h-3.5 animate-spin" /> Work Started</span>;
       case "NOT_STARTED":
-        return <span className="bg-amber-50 text-amber-700 border border-amber-200 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><PlayCircle className="w-3.5 h-3.5" /> Ready to Start</span>;
+        return <span className="bg-amber-50 text-amber-700 border border-amber-200 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><Clock className="w-3.5 h-3.5" /> Awaiting Verification</span>;
       default:
         return <span className="bg-gray-100 text-gray-700 border border-gray-200 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">{status}</span>;
     }
@@ -325,6 +368,59 @@ export default function PartnerJobsPage() {
           </div>
         </div>
       </div>
+
+      {/* Real-Time Customer Verification Tool */}
+      <Card className="shadow-sm border-2 border-primary-orange/30 rounded-2xl overflow-hidden bg-gradient-to-r from-orange-50/80 via-white to-amber-50/80">
+        <CardContent className="p-4 md:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3 w-full md:w-auto">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 text-primary-orange flex items-center justify-center font-bold shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
+                Real-Time Customer Verification Tool
+              </h4>
+              <p className="text-[11px] text-gray-600 font-medium">
+                Enter Customer 4-digit PIN to verify booking status & authorize service work
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 w-full md:w-auto">
+            <input
+              type="text"
+              maxLength={4}
+              placeholder="Enter 4-Digit PIN"
+              value={quickPinCode}
+              onChange={(e) => setQuickPinCode(e.target.value.replace(/\D/g, ''))}
+              className="px-3 py-2 text-sm font-mono tracking-widest font-bold border-2 border-orange-200 rounded-xl focus:outline-none focus:border-primary-orange text-center w-36 bg-white"
+            />
+            <Button
+              onClick={handleQuickVerifyCode}
+              isLoading={verifyCustomerCodeMutation.isPending}
+              className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl shrink-0"
+            >
+              Verify Customer
+            </Button>
+          </div>
+        </CardContent>
+
+        {verifyStatusResult.text && (
+          <div className={`px-5 py-2.5 text-xs font-bold border-t flex items-center justify-between ${
+            verifyStatusResult.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-red-50 text-red-800 border-red-200"
+          }`}>
+            <div className="flex items-center gap-2">
+              {verifyStatusResult.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <ShieldAlert className="w-4 h-4 text-red-600 font-bold" />}
+              <span>{verifyStatusResult.text}</span>
+            </div>
+            <button onClick={() => setVerifyStatusResult({ type: "", text: "" })} className="text-[11px] underline opacity-70 hover:opacity-100">
+              Dismiss
+            </button>
+          </div>
+        )}
+      </Card>
 
       {/* Global Alert Message */}
       {message.text && (
@@ -794,14 +890,57 @@ export default function PartnerJobsPage() {
                       {/* Section 4: Final Job Actions & Cash Verification */}
                       <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-md space-y-4">
                         <h4 className="font-bold text-sm text-gray-200 border-b border-gray-800 pb-3 flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Final Job Status & Completion Actions
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Job Status & Work Start Actions
                         </h4>
 
-                        {job.status === "NOT_STARTED" && (
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs text-gray-300 font-medium">Customer confirmed booking. Ready to start service?</p>
-                            <Button onClick={() => handleStartJob(jobId)} isLoading={startJobMutation.isPending} className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs">
-                              <PlayCircle className="w-4 h-4 mr-1.5" /> Start Job Now
+                        {/* Mandatory Gate: Not Verified yet */}
+                        {job.status !== "IN_PROGRESS" && job.status !== "COMPLETED" && !(bData.isVerifiedByPartner || job.status === "VERIFIED") && (
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl">
+                            <div className="space-y-1">
+                              <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                                <ShieldAlert className="w-4 h-4 text-amber-400" /> Customer Verification Required (Work Start Locked 🔒)
+                              </p>
+                              <p className="text-[11px] text-gray-300">
+                                Enter Customer 4-digit PIN to verify handover. "Start Work" button remains disabled until customer is verified.
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                onClick={() => setStartJobModal({ open: true, jobId, pin: "", error: "" })}
+                                className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl"
+                              >
+                                <ShieldCheck className="w-4 h-4 mr-1.5" /> Verify PIN
+                              </Button>
+                              <Button
+                                disabled={true}
+                                className="bg-gray-800 text-gray-500 border border-gray-700 font-bold text-xs rounded-xl cursor-not-allowed opacity-60"
+                                title="Verify Customer PIN first to enable Work Start"
+                              >
+                                <PlayCircle className="w-4 h-4 mr-1.5 text-gray-500" /> Start Work (Locked)
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Verified / Work Ready State */}
+                        {job.status !== "IN_PROGRESS" && job.status !== "COMPLETED" && (bData.isVerifiedByPartner || job.status === "VERIFIED") && (
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl">
+                            <div className="space-y-1">
+                              <p className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Customer Verified — Status: Verified / Work Ready
+                              </p>
+                              <p className="text-[11px] text-gray-300">
+                                Customer vehicle handover verified. Click "Start Work" below to begin active service.
+                              </p>
+                            </div>
+
+                            <Button
+                              onClick={() => handleStartWorkDirect(jobId)}
+                              isLoading={startJobMutation.isPending}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-6 py-3 rounded-xl shadow-lg"
+                            >
+                              <PlayCircle className="w-4 h-4 mr-1.5" /> Start Work Now 🚀
                             </Button>
                           </div>
                         )}
@@ -973,6 +1112,69 @@ export default function PartnerJobsPage() {
             >
               Next <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Verification PIN Modal */}
+      {startJobModal.open && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6 border border-gray-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center space-x-3 text-gray-900">
+              <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-primary-orange">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold font-heading text-gray-900">Customer Verification PIN</h3>
+                <p className="text-xs text-gray-500 font-medium">Enter 4-digit PIN provided by customer</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-orange-50/70 border border-orange-200/60 rounded-2xl text-xs text-slate-700">
+              <p className="font-bold text-primary-orange mb-1 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" /> Mandatory Verification System
+              </p>
+              Customer vehicle service cannot start without verifying the customer's unique 4-digit PIN.
+            </div>
+
+            {startJobModal.error && (
+              <div className="p-3 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-bold flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                <span>{startJobModal.error}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[11px] font-extrabold text-gray-500 uppercase tracking-wider mb-2">
+                4-DIGIT CUSTOMER PIN
+              </label>
+              <Input
+                type="text"
+                maxLength={4}
+                placeholder="• • • •"
+                value={startJobModal.pin}
+                onChange={(e) => setStartJobModal(prev => ({ ...prev, pin: e.target.value.replace(/\D/g, ''), error: "" }))}
+                className="text-center text-3xl font-mono tracking-[0.5em] py-4 rounded-2xl border-2 border-gray-200 focus:border-primary-orange font-bold text-gray-900 bg-gray-50/50"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <Button
+                variant="outline"
+                className="rounded-xl border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-bold"
+                onClick={() => setStartJobModal({ open: false, jobId: "", pin: "", error: "" })}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-primary-orange hover:bg-orange-600 text-white font-bold rounded-xl px-6 text-xs"
+                isLoading={startJobMutation.isPending}
+                onClick={() => handleStartJob(startJobModal.jobId, startJobModal.pin)}
+              >
+                Verify PIN & Start Work
+              </Button>
+            </div>
           </div>
         </div>
       )}

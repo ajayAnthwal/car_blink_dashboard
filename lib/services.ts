@@ -461,8 +461,13 @@ export const getPartnerJobs = async (status?: string, page = 1, limit = 10) => {
   return response.data;
 };
 
-export const startJob = async (id: string) => {
-  const response = await apiClient.patch(`/partner/jobs/${id}/start`);
+export const startJob = async (id: string, verificationCode?: string) => {
+  const response = await apiClient.patch(`/partner/jobs/${id}/start`, { verificationCode });
+  return response.data;
+};
+
+export const verifyCustomerCode = async (data: { verificationCode: string; jobId?: string }) => {
+  const response = await apiClient.post("/partner/verify-customer", data);
   return response.data;
 };
 
@@ -1137,6 +1142,11 @@ export const getSuperAdminBookingDetails = async (id: string) => {
 
 export const cancelSuperAdminBooking = async (id: string, reason: string) => {
   const response = await apiClient.put(`/super-admin/bookings/${id}/cancel`, { reason });
+  return response.data;
+};
+
+export const manualAssignSuperAdminBooking = async (id: string, data: any) => {
+  const response = await apiClient.post(`/super-admin/bookings/${id}/manual-assign`, data);
   return response.data;
 };
 

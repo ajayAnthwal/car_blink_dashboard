@@ -1,24 +1,46 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAdminPartnerDetails, useUpdateAdminPartnerKycMutation } from "@/features/admin/hooks/useAdminQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSocket } from "@/lib/SocketContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, ArrowLeft, CheckCircle, XCircle, FileText, User, MapPin, Star, Wrench, Wallet, IndianRupee } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle, XCircle, FileText, User, MapPin, Star, Wrench, Wallet, IndianRupee, ShieldCheck, Clock } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function AdminPartnerDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
   
   const { data: partner, isLoading } = useAdminPartnerDetails(id as string);
   const updateKycMutation = useUpdateAdminPartnerKycMutation();
   
   const [rejectReason, setRejectReason] = useState("");
 
+  useEffect(() => {
+    if (!socket || !id) return;
+    const handlePartnerEvent = (payload: any) => {
+      if (payload?.partnerId === id) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "partners", id] });
+      }
+    };
+
+    socket.on("partner_status_updated", handlePartnerEvent);
+    socket.on("kyc_status_changed", handlePartnerEvent);
+
+    return () => {
+      socket.off("partner_status_updated", handlePartnerEvent);
+      socket.off("kyc_status_changed", handlePartnerEvent);
+    };
+  }, [socket, id, queryClient]);
+
   const handleUpdateKyc = async (status: 'APPROVED' | 'REJECTED') => {
     if (status === 'REJECTED' && !rejectReason.trim()) {
-      alert("Please provide a reason for rejecting the KYC.");
+      toast.error("Please provide a reason for rejecting the KYC.");
       return;
     }
     
@@ -27,9 +49,9 @@ export default function AdminPartnerDetailsPage() {
 
     try {
       await updateKycMutation.mutateAsync({ id: id as string, status, remarks: rejectReason });
-      alert(`Partner KYC ${status.toLowerCase()} successfully.`);
-    } catch (error: unknown) {
-      alert(error?.message || "Failed to update KYC status.");
+      toast.success(`Partner KYC ${status.toLowerCase()} successfully.`);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to update KYC status.");
     }
   };
 
@@ -44,6 +66,8 @@ export default function AdminPartnerDetailsPage() {
 
   if (!partner) return <div className="p-8 text-center text-red-500 font-bold">Partner not found.</div>;
 
+  const isExecutiveVerified = partner.executiveVerificationStatus === 'APPROVED';
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in pb-12 p-4">
       <button 
@@ -57,19 +81,31 @@ export default function AdminPartnerDetailsPage() {
         <div>
           <h1 className="text-3xl font-bold font-heading text-primary-navy">{partner.businessName}</h1>
           <p className="text-gray-500 mt-1 font-medium flex items-center gap-2">
-            <MapPin className="w-4 h-4" /> {partner.cityId?.name}
+            <MapPin className="w-4 h-4" /> {partner.cityId?.name || partner.businessAddress}
           </p>
         </div>
-        <div className="flex flex-col items-end">
-          <span className={`px-4 py-1.5 rounded-full text-sm font-bold shadow-sm ${
-            partner.verificationStatus === 'APPROVED' ? 'bg-green-100 text-green-700' :
-            partner.verificationStatus === 'REJECTED' ? 'bg-red-100 text-red-700' :
-            'bg-yellow-100 text-yellow-700'
-          }`}>
-            KYC: {partner.verificationStatus}
-          </span>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
+              isExecutiveVerified 
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                : 'bg-amber-100 text-amber-800 border border-amber-300'
+            }`}>
+              {isExecutiveVerified ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Clock className="w-3.5 h-3.5 text-amber-600" />}
+              Stage 1 (Executive): {partner.executiveVerificationStatus || 'PENDING'}
+            </span>
+
+            <span className={`px-4 py-1.5 rounded-full text-sm font-bold shadow-sm ${
+              partner.verificationStatus === 'APPROVED' ? 'bg-green-100 text-green-700' :
+              partner.verificationStatus === 'REJECTED' ? 'bg-red-100 text-red-700' :
+              'bg-yellow-100 text-yellow-700'
+            }`}>
+              Stage 2 (Admin): {partner.verificationStatus}
+            </span>
+          </div>
+
           {partner.rejectionReason && (
-            <p className="text-xs text-red-600 font-medium mt-2 max-w-xs text-right">
+            <p className="text-xs text-red-600 font-medium mt-1 max-w-xs text-right">
               Reason: {partner.rejectionReason}
             </p>
           )}

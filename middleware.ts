@@ -1,10 +1,31 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+function getDashboardForRole(role: string | null): string {
+  if (!role) return "/login";
+  const r = role.toUpperCase();
+  switch (r) {
+    case "CUSTOMER":
+      return "/customer/dashboard";
+    case "PARTNER":
+      return "/partner/dashboard";
+    case "EXECUTIVE":
+      return "/executive/dashboard";
+    case "ACCOUNTS":
+      return "/accounts/dashboard";
+    case "SUPER_ADMIN":
+    case "ADMIN":
+      return "/admin/dashboard";
+    default:
+      return "/login";
+  }
+}
+
 export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("accessToken")?.value || request.cookies.get("car_blink_access_token")?.value;
   let userRole: string | null = null;
   
+  // 1. Cryptographically verified role from JWT token
   if (accessToken) {
     try {
       const payloadBase64 = accessToken.split('.')[1];
@@ -23,13 +44,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // 2. Cookie fallback if JWT payload parsing failed
   if (!userRole) {
     userRole = request.cookies.get("role")?.value || request.cookies.get("user_role")?.value || null;
   }
 
   const { pathname, searchParams } = request.nextUrl;
 
-  // Handle SSO ?token= query parameter (or aliases) across any route
+  // Handle SSO ?token= query parameter across any route
   const ssoToken = searchParams.get("token") || 
                    searchParams.get("accessToken") || 
                    searchParams.get("access_token") || 
@@ -53,18 +75,9 @@ export function middleware(request: NextRequest) {
           
           let targetPath = pathname;
           if (targetPath === "/login" || targetPath === "/") {
-            switch (payload.role) {
-              case "CUSTOMER": targetPath = "/customer/dashboard"; break;
-              case "PARTNER": targetPath = "/partner/dashboard"; break;
-              case "EXECUTIVE": targetPath = "/executive/dashboard"; break;
-              case "ACCOUNTS": targetPath = "/accounts/dashboard"; break;
-              case "SUPER_ADMIN":
-              case "ADMIN": targetPath = "/admin/dashboard"; break;
-              default: targetPath = "/customer/dashboard"; break;
-            }
+            targetPath = getDashboardForRole(payload.role);
           }
           
-          // Construct clean redirect URL without token query params to prevent infinite redirect loop
           const cleanUrl = new URL(targetPath, request.url);
           searchParams.forEach((val, key) => {
             if (!["token", "accessToken", "access_token", "authToken", "jwt", "sso", "t"].includes(key)) {
@@ -76,7 +89,7 @@ export function middleware(request: NextRequest) {
           const cookieOpts = {
             path: "/",
             domain: domain,
-            maxAge: 30 * 86400,
+            maxAge: 365 * 86400,
             sameSite: "lax" as const,
           };
           response.cookies.set("accessToken", ssoToken, cookieOpts);
@@ -103,39 +116,48 @@ export function middleware(request: NextRequest) {
   }
 
   const isLoggedIn = !!accessToken && !!userRole;
+  const correctDashboard = getDashboardForRole(userRole);
+  const normalizedRole = userRole ? userRole.toUpperCase() : "";
 
-  // Protect role-specific routes
-  if (pathname.startsWith("/customer") && (!isLoggedIn || userRole !== "CUSTOMER")) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Strictly enforce role-specific route boundaries with zero leakage
+  if (pathname.startsWith("/customer")) {
+    if (!isLoggedIn) return NextResponse.redirect(new URL("/login", request.url));
+    if (normalizedRole !== "CUSTOMER") {
+      return NextResponse.redirect(new URL(correctDashboard, request.url));
+    }
   }
   
-  if (pathname.startsWith("/partner") && (!isLoggedIn || userRole !== "PARTNER")) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  if (pathname.startsWith("/executive") && (!isLoggedIn || userRole !== "EXECUTIVE")) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  if (pathname.startsWith("/accounts") && (!isLoggedIn || userRole !== "ACCOUNTS")) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  if ((pathname.startsWith("/admin") || pathname.startsWith("/super-admin")) && (!isLoggedIn || (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN"))) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // Redirect logged-in users away from auth pages to their respective dashboards
-  if (isLoggedIn && (pathname === "/login" || pathname === "/register" || pathname === "/verify-otp")) {
-    switch (userRole) {
-      case "CUSTOMER": return NextResponse.redirect(new URL("/customer/dashboard", request.url));
-      case "PARTNER": return NextResponse.redirect(new URL("/partner/dashboard", request.url));
-      case "EXECUTIVE": return NextResponse.redirect(new URL("/executive/dashboard", request.url));
-      case "ACCOUNTS": return NextResponse.redirect(new URL("/accounts/dashboard", request.url));
-      case "SUPER_ADMIN":
-      case "ADMIN": return NextResponse.redirect(new URL("/admin/dashboard", request.url));
-      default: return NextResponse.redirect(new URL("/login", request.url));
+  if (pathname.startsWith("/partner")) {
+    if (!isLoggedIn) return NextResponse.redirect(new URL("/login", request.url));
+    if (normalizedRole !== "PARTNER") {
+      return NextResponse.redirect(new URL(correctDashboard, request.url));
     }
+  }
+
+  if (pathname.startsWith("/executive")) {
+    if (!isLoggedIn) return NextResponse.redirect(new URL("/login", request.url));
+    if (normalizedRole !== "EXECUTIVE") {
+      return NextResponse.redirect(new URL(correctDashboard, request.url));
+    }
+  }
+
+  if (pathname.startsWith("/accounts")) {
+    if (!isLoggedIn) return NextResponse.redirect(new URL("/login", request.url));
+    if (normalizedRole !== "ACCOUNTS") {
+      return NextResponse.redirect(new URL(correctDashboard, request.url));
+    }
+  }
+
+  if (pathname.startsWith("/admin") || pathname.startsWith("/super-admin")) {
+    if (!isLoggedIn) return NextResponse.redirect(new URL("/login", request.url));
+    if (normalizedRole !== "SUPER_ADMIN" && normalizedRole !== "ADMIN") {
+      return NextResponse.redirect(new URL(correctDashboard, request.url));
+    }
+  }
+
+  // Redirect authenticated users trying to access auth pages straight to their dashboard
+  if (isLoggedIn && (pathname === "/login" || pathname === "/register" || pathname === "/verify-otp")) {
+    return NextResponse.redirect(new URL(correctDashboard, request.url));
   }
 
   return NextResponse.next();

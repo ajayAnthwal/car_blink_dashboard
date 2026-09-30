@@ -106,7 +106,17 @@ export const usePartnerLeads = () => {
 };
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension, deleteJobPhoto, markOfflinePayment, withdrawBid, createDuesOrder, verifyDuesPayment, requestWithdrawal, getStaff, verifyOfflinePayment } from "@/lib/services";
+import { startJob, completeJob, uploadJobInvoice, uploadJobPhotos, assignStaffToJob, requestJobExtension, deleteJobPhoto, markOfflinePayment, withdrawBid, createDuesOrder, verifyDuesPayment, requestWithdrawal, getStaff, verifyOfflinePayment, verifyCustomerCode } from "@/lib/services";
+
+export const useVerifyCustomerCodeMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { verificationCode: string; jobId?: string }) => verifyCustomerCode(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "jobs"] });
+    },
+  });
+};
 
 export const useCreateDuesOrderMutation = () => {
   return useMutation({
@@ -137,7 +147,11 @@ export const useRequestWithdrawalMutation = () => {
 export const useStartJobMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (jobId: string) => startJob(jobId),
+    mutationFn: (data: string | { jobId: string; verificationCode?: string }) => {
+      const jobId = typeof data === "string" ? data : data.jobId;
+      const verificationCode = typeof data === "string" ? undefined : data.verificationCode;
+      return startJob(jobId, verificationCode);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["partner", "jobs"] });
     },

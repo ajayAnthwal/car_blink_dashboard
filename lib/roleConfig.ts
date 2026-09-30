@@ -43,7 +43,8 @@ import {
   MapPin,
   Sliders,
   Wallet,
-  Receipt
+  Receipt,
+  Info
 } from "lucide-react";
 import { Role } from "@/lib/constants";
 
@@ -86,16 +87,18 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         items: [
           { name: "New Booking Request", href: "/customer/bookings/new", icon: Calendar },
           { name: "My Bookings", href: "/customer/bookings", icon: CalendarCheck },
+          { name: "Check Quote / My Quotes", href: "/customer/quotes", icon: MessageSquareQuote },
           { name: "My Garage", href: "/customer/garage", icon: Car },
           { name: "My Invoices", href: "/customer/invoices", icon: Receipt },
           { name: "My Warranties", href: "/customer/warranty", icon: ShieldCheck },
         ],
       },
       {
-        label: "Account",
+        label: "Company & Account",
         items: [
+          { name: "About CarBlink", href: "/customer/about", icon: Info },
           { name: "My Reviews", href: "/customer/reviews", icon: Star },
-          { name: "Queries", href: "/customer/support", icon: HelpCircle },
+          { name: "Queries & Support", href: "/customer/support", icon: HelpCircle },
           { name: "Profile", href: "/customer/profile", icon: User },
         ],
       },

@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote, Tag } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote, Tag, ExternalLink } from "lucide-react";
 import { PaymentCard } from "@/components/payment/PaymentCard";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { verifyPayment } from "@/lib/services";
@@ -90,16 +90,16 @@ export default function CustomerBookingDetailsPage() {
     };
   }, [socket, id]);
 
-  const handleSelectQuote = async (quoteParam: any) => {
+  const handleSelectQuoteWithOption = async (quoteParam: any, payAmount: number, paymentType: "ADVANCE" | "FULL" = "ADVANCE") => {
     const bidId = typeof quoteParam === 'string' ? quoteParam : (quoteParam?._id || quoteParam?.id);
     const quoteAmount = typeof quoteParam === 'object' ? quoteParam?.quotedAmount : 0;
     setIsAccepting(bidId);
     setMessage({ type: "", text: "" });
     try {
       await selectQuoteMutation.mutateAsync({ bookingId: id, bidId });
-      const advance15Val = Math.round(Number(quoteAmount || baseAmount) * 0.15);
-      setMessage({ type: "success", text: `Quote selected! Please pay the 15% advance token (₹${advance15Val}) to confirm booking & unlock partner shop details.` });
-      await handleInitiatePayment(advance15Val, "ADVANCE");
+      const finalPayAmt = Math.round(Number(payAmount || quoteAmount || baseAmount));
+      setMessage({ type: "success", text: `Quote selected successfully! Proceeding to pay ₹${finalPayAmt} to confirm booking.` });
+      await handleInitiatePayment(finalPayAmt, paymentType);
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to accept quote" });
     } finally {
@@ -152,6 +152,39 @@ export default function CustomerBookingDetailsPage() {
     }
   };
 
+  const handlePayAtWorkshop = async (payAmount: number, type: string = "ADVANCE") => {
+    if (!booking) return;
+    setIsExtensionProcessing(true);
+    setMessage({ type: "", text: "" });
+    try {
+      const payload: any = {
+        bookingId: booking._id || booking.id,
+        amount: payAmount,
+        paymentType: type,
+        useRewardPoints: useRewardPoints,
+      };
+      if (couponCode.trim()) {
+        payload.couponCode = couponCode.trim();
+      }
+      const res = await initiatePaymentMutation.mutateAsync(payload);
+      const paymentData = res?.data || res;
+      const { orderId } = paymentData;
+
+      await verifyPayment({
+        paymentId: "pay_cash_" + Date.now(),
+        orderId: orderId || "order_cash_" + Date.now(),
+        signature: "pay_at_workshop_cod_confirmed",
+      });
+
+      setMessage({ type: "success", text: "✓ Pay at Workshop / COD selected! Your booking is confirmed." });
+      refetchBooking();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to confirm Pay at Workshop." });
+    } finally {
+      setIsExtensionProcessing(false);
+    }
+  };
+
   const handleInitiatePayment = async (amount: number, type: string = "ADVANCE") => {
     if (!booking) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -188,7 +221,7 @@ export default function CustomerBookingDetailsPage() {
               orderId: orderId || "order_sim_" + Date.now(),
               signature: "dummy_signature",
             });
-            setMessage({ type: "success", text: "Payment successful!" });
+            setMessage({ type: "success", text: "Payment successful! Booking confirmed." });
             refetchBooking();
           } catch (verr: any) {
             setMessage({ type: "error", text: "Payment verification failed." });
@@ -213,7 +246,7 @@ export default function CustomerBookingDetailsPage() {
               orderId: response.razorpay_order_id,
               signature: response.razorpay_signature,
             });
-            setMessage({ type: "success", text: "Payment successful!" });
+            setMessage({ type: "success", text: "Payment successful! Booking confirmed." });
             refetchBooking();
           } catch (err: any) {
             setMessage({ type: "error", text: "Payment verification failed." });
@@ -222,17 +255,30 @@ export default function CustomerBookingDetailsPage() {
           }
         },
         prefill: {
-          name: "CarBlink Customer",
-          email: "customer@carblink.com",
+          name: booking.customerId?.fullName || "CarBlink Customer",
+          email: booking.customerId?.email || "customer@carblink.com",
+          contact: booking.customerId?.phone || "",
         },
         theme: {
           color: "#0a2540",
         },
+        modal: {
+          ondismiss: function () {
+            setIsExtensionProcessing(false);
+            setMessage({
+              type: "error",
+              text: "⚠️ Payment popup closed. If bank payment was declined or cancelled, you can retry payment below or select 'Pay at Workshop / COD'."
+            });
+          }
+        }
       };
 
       const rzp = new (window as any).Razorpay(options);
       rzp.on("payment.failed", function (response: any) {
-        setMessage({ type: "error", text: response.error?.description || "Payment failed" });
+        setMessage({ 
+          type: "error", 
+          text: `❌ Payment Declined (${response.error?.description || "Bank decline"}). Retry online or select Pay at Workshop.` 
+        });
         setIsExtensionProcessing(false);
       });
       rzp.open();
@@ -268,12 +314,15 @@ export default function CustomerBookingDetailsPage() {
         return <Badge className="bg-primary-orange/20 text-primary-orange hover:bg-primary-orange/30 border-none px-3 py-1">Quotes Available</Badge>;
       case 'ASSIGNED':
         return <Badge className="bg-secondary-blue/20 text-secondary-blue hover:bg-secondary-blue/30 border-none px-3 py-1">Assigned</Badge>;
+      case 'VERIFIED':
+        return <Badge className="bg-emerald-500/20 text-emerald-700 hover:bg-emerald-500/30 border-none px-3 py-1 font-bold">✓ Booking Verified</Badge>;
+      case 'WORK_STARTED':
       case 'IN_PROGRESS':
-        return <Badge className="bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30 border-none px-3 py-1">In Progress</Badge>;
+        return <Badge className="bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30 border-none px-3 py-1 font-bold">Work Started</Badge>;
       case 'COMPLETED':
-        return <Badge className="bg-success/20 text-success hover:bg-success/30 border-none px-3 py-1">Completed</Badge>;
+        return <Badge className="bg-success/20 text-success hover:bg-success/30 border-none px-3 py-1 font-bold">Completed</Badge>;
       case 'CANCELLED':
-        return <Badge className="bg-danger/20 text-danger hover:bg-danger/30 border-none px-3 py-1">Cancelled</Badge>;
+        return <Badge className="bg-danger/20 text-danger hover:bg-danger/30 border-none px-3 py-1 font-bold">Cancelled</Badge>;
       default:
         return <Badge className="bg-neutral-muted/20 text-neutral-dark hover:bg-neutral-muted/30 border-none px-3 py-1">{status}</Badge>;
     }
@@ -314,6 +363,7 @@ export default function CustomerBookingDetailsPage() {
   
   const totalPaidAmount = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
   const hasPaidAdvance = isAdvancePaid || isFullPaid || totalPaidAmount > 0;
+  const isConfirmed = hasPaidAdvance || (booking?.status !== 'PENDING' && booking?.status !== 'QUOTED' && booking?.status !== 'CANCELLED');
   const hasPaidFinal = isFinalPaid || isFullPaid;
 
   const acceptedQuoteAmount = quotes.find(q => q._id === booking.acceptedBidId || q._id === (booking.acceptedBidId as any)?._id)?.quotedAmount || (booking.acceptedBidId as any)?.quotedAmount || 0;
@@ -401,6 +451,226 @@ export default function CustomerBookingDetailsPage() {
               <Button className="bg-danger hover:bg-danger/90 text-white rounded-xl px-6" onClick={handleCancelBooking} isLoading={isCancelling}>
                 Confirm Cancellation
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Customer Verification Code PIN Card */}
+      {booking.verificationCode && (
+        <Card className="shadow-lg border-2 border-primary-orange/30 rounded-3xl overflow-hidden bg-gradient-to-r from-orange-50 via-white to-amber-50 relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary-orange/10 rounded-bl-full pointer-events-none"></div>
+          <CardContent className="p-6 md:p-8 space-y-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-2 text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start space-x-2">
+                  <ShieldCheck className="w-6 h-6 text-primary-orange" />
+                  <span className="text-xs font-bold text-primary-orange uppercase tracking-wider bg-primary-orange/10 px-3 py-1 rounded-full border border-primary-orange/20">
+                    Mandatory Customer Verification
+                  </span>
+                </div>
+                <h3 className="text-xl md:text-2xl font-extrabold text-slate-900">
+                  Customer Workshop Visit & Handover PIN
+                </h3>
+                <p className="text-xs md:text-sm text-slate-600 max-w-lg font-medium">
+                  When you visit the workshop, show this secret 4-digit PIN to the partner. Partner cannot start work on your car until you provide and verify this PIN.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center justify-center bg-white p-5 rounded-2xl border-2 border-primary-orange/30 shadow-md min-w-[220px]">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">
+                  4-DIGIT VERIFICATION CODE
+                </span>
+                <div className="text-4xl font-black font-mono tracking-[0.4em] text-primary-navy pl-2 my-1">
+                  {booking.verificationCode}
+                </div>
+                {booking.isVerifiedByPartner ? (
+                  <span className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified by Partner
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                    <Clock className="w-3.5 h-3.5" /> Share Upon Workshop Arrival
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* 3-Step Handover Guide */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-orange-200/60">
+              <div className="bg-white/80 p-3.5 rounded-2xl border border-orange-100 flex items-start space-x-3">
+                <span className="w-6 h-6 rounded-full bg-primary-orange text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+                <div>
+                  <h5 className="text-xs font-bold text-slate-900">Visit Workshop</h5>
+                  <p className="text-[11px] text-slate-500 font-medium">Bring your vehicle to the designated partner workshop.</p>
+                </div>
+              </div>
+              <div className="bg-white/80 p-3.5 rounded-2xl border border-orange-100 flex items-start space-x-3">
+                <span className="w-6 h-6 rounded-full bg-primary-orange text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                <div>
+                  <h5 className="text-xs font-bold text-slate-900">Give Verification PIN</h5>
+                  <p className="text-[11px] text-slate-500 font-medium">Show this 4-digit code ({booking.verificationCode}) to the workshop manager.</p>
+                </div>
+              </div>
+              <div className="bg-white/80 p-3.5 rounded-2xl border border-orange-100 flex items-start space-x-3">
+                <span className="w-6 h-6 rounded-full bg-primary-orange text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+                <div>
+                  <h5 className="text-xs font-bold text-slate-900">Work Authorization</h5>
+                  <p className="text-[11px] text-slate-500 font-medium">Partner verifies PIN to authorize & start service work.</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Interactive 5-Stage Service Workflow Progress Tracker */}
+      <Card className="shadow-lg border-secondary-blue/20 rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 via-primary-navy to-slate-900 text-white relative">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-secondary-blue/10 rounded-full blur-3xl pointer-events-none"></div>
+        <CardContent className="p-6 md:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/10">
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-primary-orange/20 text-primary-orange border border-primary-orange/30 mb-2">
+                <span className="w-2 h-2 rounded-full bg-primary-orange animate-ping" /> LIVE SERVICE STATUS
+              </span>
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Active Vehicle Service Tracker</h2>
+              <p className="text-sm text-slate-300 mt-1">Real-time status updates from assigned executive & workshop partner</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 text-right">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">CURRENT STAGE</span>
+              <span className="text-base font-bold text-primary-orange">{booking.status ? booking.status.replace(/_/g, ' ') : 'PENDING'}</span>
+            </div>
+          </div>
+
+          {/* 8-Stage Workflow Progress Stepper */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 relative z-10">
+            {(() => {
+              const s = (booking.status || "PENDING").toUpperCase();
+              const isPaid = hasPaidAdvance || totalPaidAmount > 0;
+              const isFullPaid = remainingAmount === 0 && totalPaidAmount > 0;
+
+              const stages = [
+                {
+                  stage: 1,
+                  title: "1. Booking Requested",
+                  sub: "Request submitted & under review",
+                  isPassed: true,
+                  isActive: s === "PENDING",
+                },
+                {
+                  stage: 2,
+                  title: "2. Partner Assigned",
+                  sub: "Verified workshop assigned",
+                  isPassed: ["ASSIGNED", "PARTNER_ASSIGNED", "QUOTED", "CUSTOMER_ACCEPTED", "AWAITING_15_PERCENT_ADVANCE", "CONFIRMED", "VERIFIED", "INSPECTION", "DIAGNOSIS", "WORK_STARTED", "IN_PROGRESS", "REPAIRING", "QUALITY_CHECK", "COMPLETED"].includes(s) || !!booking.assignedPartnerId,
+                  isActive: s === "ASSIGNED" || s === "PARTNER_ASSIGNED",
+                },
+                {
+                  stage: 3,
+                  title: "3. Quote / Payment Pending",
+                  sub: "Quote review & advance payment",
+                  isPassed: ["CONFIRMED", "VERIFIED", "INSPECTION", "DIAGNOSIS", "WORK_STARTED", "IN_PROGRESS", "REPAIRING", "QUALITY_CHECK", "COMPLETED"].includes(s) || isPaid,
+                  isActive: ["QUOTED", "CUSTOMER_ACCEPTED", "AWAITING_15_PERCENT_ADVANCE"].includes(s) || (!isPaid && ["ASSIGNED", "CONFIRMED"].includes(s)),
+                },
+                {
+                  stage: 4,
+                  title: "4. Booking Verified",
+                  sub: "Schedule & booking confirmed",
+                  isPassed: ["INSPECTION", "DIAGNOSIS", "WORK_STARTED", "IN_PROGRESS", "REPAIRING", "QUALITY_CHECK", "COMPLETED"].includes(s),
+                  isActive: ["CONFIRMED", "VERIFIED"].includes(s),
+                },
+                {
+                  stage: 5,
+                  title: "5. Work Started",
+                  sub: "Vehicle inspection & diagnosis",
+                  isPassed: ["WORK_STARTED", "IN_PROGRESS", "REPAIRING", "QUALITY_CHECK", "COMPLETED"].includes(s),
+                  isActive: ["INSPECTION", "DIAGNOSIS", "WORK_STARTED"].includes(s),
+                },
+                {
+                  stage: 6,
+                  title: "6. Work in Progress",
+                  sub: "Active repairs & quality check",
+                  isPassed: ["REPAIRING", "QUALITY_CHECK", "COMPLETED"].includes(s),
+                  isActive: ["IN_PROGRESS", "REPAIRING", "QUALITY_CHECK"].includes(s),
+                },
+                {
+                  stage: 7,
+                  title: "7. Service Completed",
+                  sub: "Vehicle ready for delivery",
+                  isPassed: s === "COMPLETED",
+                  isActive: s === "COMPLETED" && !isFullPaid,
+                },
+                {
+                  stage: 8,
+                  title: "8. Payment / Closure",
+                  sub: "Final payment & booking closed",
+                  isPassed: s === "COMPLETED" && isFullPaid,
+                  isActive: s === "COMPLETED" && isFullPaid,
+                }
+              ];
+
+              return stages.map((st) => (
+                <div
+                  key={st.stage}
+                  className={`p-3.5 rounded-2xl border transition-all ${
+                    st.isActive
+                      ? "bg-gradient-to-br from-primary-orange/30 to-primary-orange/10 border-primary-orange shadow-lg shadow-primary-orange/20 ring-2 ring-primary-orange/40"
+                      : st.isPassed
+                      ? "bg-white/10 border-emerald-500/40 text-emerald-300"
+                      : "bg-white/5 border-white/10 text-slate-500 opacity-60"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
+                      st.isActive
+                        ? "bg-primary-orange text-white shadow-md animate-pulse"
+                        : st.isPassed
+                        ? "bg-emerald-500 text-white"
+                        : "bg-white/10 text-slate-400"
+                    }`}>
+                      {st.isPassed ? "✓" : st.stage}
+                    </span>
+                    {st.isActive && (
+                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-primary-orange bg-primary-orange/20 px-2 py-0.5 rounded-full">
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-bold text-xs text-white mb-0.5">{st.title}</h4>
+                  <p className="text-[10px] text-slate-300 font-medium leading-tight">{st.sub}</p>
+                </div>
+              ));
+            })()}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Complete Vehicle Details Card */}
+      {booking.vehicleId && typeof booking.vehicleId === 'object' && (
+        <Card className="shadow-sm border-neutral-muted/10 rounded-3xl overflow-hidden bg-white">
+          <CardHeader className="bg-slate-50 border-b border-gray-100 pb-4">
+            <CardTitle className="text-lg font-bold text-gray-900 flex items-center">
+              <Car className="w-5 h-5 mr-2.5 text-secondary-blue" />
+              Registered Vehicle Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">BRAND & MODEL</span>
+                <span className="text-base font-extrabold text-gray-900">{booking.vehicleId.brand} {booking.vehicleId.model}</span>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">REGISTRATION NO.</span>
+                <span className="text-base font-extrabold text-primary-navy font-mono">{booking.vehicleId.registrationNumber || 'N/A'}</span>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">FUEL TYPE</span>
+                <span className="text-base font-bold text-gray-800">{booking.vehicleId.fuelType || 'Petrol/Diesel'}</span>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">TRANSMISSION</span>
+                <span className="text-base font-bold text-gray-800">{booking.vehicleId.transmission || 'Manual'}</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -618,8 +888,10 @@ export default function CustomerBookingDetailsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {quotes.map((quote: any) => {
                   const quoteId = quote._id || quote.id;
-                  const adv15Amount = Math.round(Number(quote.quotedAmount || 0) * 0.15);
-                  const isUnlocked = hasPaidAdvance || ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(booking.status);
+                  const quoteTotal = Math.round(Number(quote.quotedAmount || 0));
+                  const quotePartial = Math.round(quoteTotal * 0.15);
+                  const quoteRemaining = Math.max(0, quoteTotal - quotePartial);
+                  const isUnlocked = hasPaidAdvance;
 
                   return (
                     <Card key={quoteId} className="border-secondary-blue/20 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden rounded-3xl relative">
@@ -636,15 +908,15 @@ export default function CustomerBookingDetailsPage() {
                               <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> 
                               {isUnlocked
                                 ? "Verified Partner Details Unlocked"
-                                : "Verified Partner (Shop Name, Address & Contact Unlocked Upon 15% Payment)"}
+                                : "Verified Partner (Shop Name, Address & Contact Unlocked Upon Payment)"}
                             </div>
                           </div>
                           <div className="text-right bg-white px-3 py-1 rounded-xl shadow-sm border border-neutral-muted/10">
-                            <span className="text-2xl font-extrabold text-primary-orange tracking-tight">₹{quote.quotedAmount}</span>
+                            <span className="text-2xl font-extrabold text-primary-orange tracking-tight">₹{quoteTotal}</span>
                           </div>
                         </div>
                       </div>
-                      <CardContent className="p-6 space-y-5">
+                      <CardContent className="p-6 space-y-4">
                         {quote.estimatedDuration && (
                           <div className="flex items-center text-sm text-neutral-dark font-medium bg-neutral-bg p-3 rounded-xl">
                             <Clock className="w-4 h-4 mr-3 text-secondary-blue" />
@@ -659,19 +931,35 @@ export default function CustomerBookingDetailsPage() {
                           </div>
                         )}
 
-                        <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-200 text-xs font-semibold text-primary-navy flex items-center justify-between">
-                          <span>15% Advance Token Required:</span>
-                          <span className="font-extrabold text-primary-orange text-sm">₹{adv15Amount}</span>
+                        <div className="p-3.5 bg-blue-50/90 rounded-2xl border border-blue-200 text-xs space-y-1 text-primary-navy">
+                          <div className="flex justify-between items-center font-bold">
+                            <span>Advance / Partial Amount:</span>
+                            <span className="font-extrabold text-primary-orange text-sm">₹{quotePartial}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-600">
+                            Remaining balance ₹{quoteRemaining} payable at workshop after service completion.
+                          </p>
                         </div>
 
-                        <Button
-                          className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold shadow-md transition-colors text-sm"
-                          onClick={() => handleSelectQuote(quote)}
-                          isLoading={isAccepting === quoteId}
-                          disabled={isAccepting !== null && isAccepting !== quoteId}
-                        >
-                          Accept & Pay 15% Advance (₹{adv15Amount}) <ChevronRight className="w-5 h-5 ml-2" />
-                        </Button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          <Button
+                            className="w-full bg-primary-navy hover:bg-slate-900 text-white rounded-xl py-5 font-bold shadow-md transition-all text-xs"
+                            onClick={() => handleSelectQuoteWithOption(quote, quotePartial, "ADVANCE")}
+                            isLoading={isAccepting === quoteId}
+                            disabled={isAccepting !== null && isAccepting !== quoteId}
+                          >
+                            Pay Partial Amount (₹{quotePartial})
+                          </Button>
+
+                          <Button
+                            className="w-full bg-primary-orange hover:bg-orange-600 text-white rounded-xl py-5 font-bold shadow-md transition-all text-xs"
+                            onClick={() => handleSelectQuoteWithOption(quote, quoteTotal, "FULL")}
+                            isLoading={isAccepting === quoteId}
+                            disabled={isAccepting !== null && isAccepting !== quoteId}
+                          >
+                            Pay Full Amount (₹{quoteTotal})
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -693,49 +981,94 @@ export default function CustomerBookingDetailsPage() {
 
         {/* Right Column: Support & Summary */}
         <div className="space-y-6">
-          {(hasPaidAdvance || ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(booking.status)) && booking.assignedPartnerId && (
-            <Card className="shadow-lg border-success/30 overflow-hidden rounded-3xl relative bg-gradient-to-br from-white to-success/5">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-success/10 rounded-bl-full -z-10"></div>
-              <div className="bg-success/10 px-6 py-4 border-b border-success/20 flex justify-between items-center">
-                <h3 className="font-extrabold text-success-dark flex items-center text-lg">
-                  <CheckCircle2 className="w-5 h-5 mr-2" /> Unlocked Partner Details
-                </h3>
-                <span className="text-xs bg-success/20 text-success-dark px-3 py-1 rounded-full font-bold">15% Paid & Confirmed</span>
-              </div>
-              <CardContent className="p-6">
-                <div className="mb-6 text-center pt-2">
-                  <div className="w-20 h-20 bg-white rounded-full mx-auto mb-3 border-4 border-success/20 flex items-center justify-center shadow-md">
-                    <Car className="w-8 h-8 text-success" />
+          {booking.assignedPartnerId && (
+            hasPaidAdvance ? (
+              <Card className="shadow-lg border-success/30 overflow-hidden rounded-3xl relative bg-gradient-to-br from-white to-success/5">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-success/10 rounded-bl-full -z-10"></div>
+                <div className="bg-success/10 px-6 py-4 border-b border-success/20 flex justify-between items-center">
+                  <h3 className="font-extrabold text-success-dark flex items-center text-lg">
+                    <CheckCircle2 className="w-5 h-5 mr-2" /> Unlocked Partner Details
+                  </h3>
+                  <span className="text-xs bg-success/20 text-success-dark px-3 py-1 rounded-full font-bold">Payment Confirmed</span>
+                </div>
+                <CardContent className="p-6">
+                  <div className="mb-6 text-center pt-2">
+                    <div className="w-20 h-20 bg-white rounded-full mx-auto mb-3 border-4 border-success/20 flex items-center justify-center shadow-md">
+                      <Car className="w-8 h-8 text-success" />
+                    </div>
+                    <p className="font-extrabold text-primary-navy text-2xl">{booking.assignedPartnerId.businessName || "Verified Service Partner"}</p>
+                    <p className="text-sm text-neutral-muted font-medium mt-1">CarBlink Certified Partner</p>
                   </div>
-                  <p className="font-extrabold text-primary-navy text-2xl">{booking.assignedPartnerId.businessName || "Verified Service Partner"}</p>
-                  <p className="text-sm text-neutral-muted font-medium mt-1">CarBlink Certified Partner</p>
-                </div>
 
-                <div className="space-y-3">
-                  {(booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone) && (
-                    <a href={`tel:${booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone}`} className="flex items-center text-sm font-semibold text-primary-navy bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm hover:border-secondary-blue/40 transition-all">
-                      <Phone className="w-4 h-4 mr-3 text-secondary-blue" />
-                      <span>Phone: <span className="font-bold text-base">{booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone}</span></span>
-                    </a>
-                  )}
-                  {booking.assignedPartnerId.businessAddress && (
-                    <div className="flex items-start text-sm font-medium text-neutral-dark bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm">
-                      <MapPin className="w-4 h-4 mr-3 text-primary-orange flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="text-xs text-neutral-muted block font-semibold">Workshop Address:</span>
-                        <span className="font-bold text-primary-navy text-sm">{booking.assignedPartnerId.businessAddress}</span>
+                  <div className="space-y-3">
+                    {(booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone) && (
+                      <a href={`tel:${booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone}`} className="flex items-center text-sm font-semibold text-primary-navy bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm hover:border-secondary-blue/40 transition-all">
+                        <Phone className="w-4 h-4 mr-3 text-secondary-blue" />
+                        <span>Phone: <span className="font-bold text-base">{booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone}</span></span>
+                      </a>
+                    )}
+                    {booking.assignedPartnerId.businessAddress && (
+                      (() => {
+                        const coords = booking.assignedPartnerId.location?.coordinates;
+                        const mapsUrl = (coords && Array.isArray(coords) && coords.length === 2 && (coords[0] !== 0 || coords[1] !== 0))
+                          ? `https://www.google.com/maps?q=${coords[1]},${coords[0]}`
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${booking.assignedPartnerId.businessName || ''} ${booking.assignedPartnerId.businessAddress}`.trim())}`;
+
+                        return (
+                          <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Click to open exact workshop location on Google Maps"
+                            className="flex items-start text-sm font-medium text-neutral-dark bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm hover:border-primary-orange/50 hover:shadow-md transition-all group"
+                          >
+                            <MapPin className="w-4 h-4 mr-3 text-primary-orange flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-neutral-muted font-semibold">Workshop Address (Google Maps):</span>
+                                <ExternalLink className="w-3.5 h-3.5 text-primary-orange opacity-70 group-hover:opacity-100" />
+                              </div>
+                              <span className="font-bold text-primary-navy text-sm underline decoration-primary-orange/40 group-hover:decoration-primary-orange">
+                                {booking.assignedPartnerId.businessAddress}
+                              </span>
+                              <span className="text-[10px] text-emerald-600 block mt-0.5 font-semibold">
+                                ✓ Verified Location • Click to open Google Maps
+                              </span>
+                            </div>
+                          </a>
+                        );
+                      })()
+                    )}
+                    {(booking.assignedPartnerId.email || booking.assignedPartnerId.userId?.email) && (
+                      <div className="flex items-center text-sm font-medium text-neutral-dark bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm">
+                        <Mail className="w-4 h-4 mr-3 text-secondary-blue" />
+                        <span>{booking.assignedPartnerId.email || booking.assignedPartnerId.userId?.email}</span>
                       </div>
-                    </div>
-                  )}
-                  {(booking.assignedPartnerId.email || booking.assignedPartnerId.userId?.email) && (
-                    <div className="flex items-center text-sm font-medium text-neutral-dark bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm">
-                      <Mail className="w-4 h-4 mr-3 text-secondary-blue" />
-                      <span>{booking.assignedPartnerId.email || booking.assignedPartnerId.userId?.email}</span>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="shadow-md border-amber-200 bg-amber-50/50 overflow-hidden rounded-3xl relative">
+                <div className="bg-amber-100/80 px-6 py-4 border-b border-amber-200 flex justify-between items-center">
+                  <h3 className="font-extrabold text-amber-950 flex items-center text-sm sm:text-base">
+                    🔒 Partner Details Locked
+                  </h3>
+                  <span className="text-[10px] sm:text-xs bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full font-bold">
+                    Payment Required
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-700">
+                    <ShieldCheck className="w-7 h-7" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-base">Workshop Contact & Location Locked</h4>
+                  <p className="text-slate-600 text-xs sm:text-sm max-w-sm mx-auto leading-relaxed">
+                    Partner workshop name, phone number, and exact address will unlock automatically as soon as you complete advance/partial or full payment.
+                  </p>
+                </CardContent>
+              </Card>
+            )
           )}
 
           {/* Billing & Payments Section */}
@@ -858,37 +1191,80 @@ export default function CustomerBookingDetailsPage() {
                     </div>
                   )}
 
-                  {/* Clear Payment Stage Notice */}
+                  {/* Clear Payment Stage & Customer Preference Notice */}
                   {remainingAmount > 0 && (
-                    <div className="p-3 rounded-xl border text-xs font-semibold flex items-center justify-between bg-blue-50/60 border-blue-200 text-primary-navy mb-4">
-                      <span className="flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-primary-orange flex-shrink-0" />
-                        {booking.status === 'COMPLETED' 
-                          ? "Job Completed — Pay Final Remaining Settlement"
-                          : hasPaidAdvance 
-                            ? "Advance Paid — Balance due after service completion"
-                            : "Advance Token required to confirm pickup & start service"}
-                      </span>
+                    <div className="space-y-3 mb-4">
+                      <div className="p-3 rounded-xl border text-xs font-semibold flex items-center justify-between bg-blue-50/60 border-blue-200 text-primary-navy">
+                        <span className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-primary-orange flex-shrink-0" />
+                          {booking.status === 'COMPLETED' 
+                            ? "Job Completed — Pay Final Remaining Settlement"
+                            : hasPaidAdvance 
+                              ? "Advance Paid — Balance due after service completion"
+                              : "Advance Token required to confirm pickup & start service"}
+                        </span>
+                      </div>
+
+                      {/* Customer Selected Payment Mode Preference */}
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700">Booking Payment Preference:</span>
+                        <Badge variant="outline" className={booking.paymentMode === 'CASH' ? "bg-emerald-50 text-emerald-700 border-emerald-300 font-bold" : "bg-blue-50 text-blue-700 border-blue-300 font-bold"}>
+                          {booking.paymentMode === 'CASH' ? "💵 CASH / PAY AT WORKSHOP" : "💳 ONLINE PAYMENT"}
+                        </Badge>
+                      </div>
                     </div>
                   )}
 
                   {/* If Advance is needed (Before Completion and Not Paid Yet) */}
                   {(!hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED') && (
                     <div className="space-y-3">
+                      {booking.paymentMode === 'CASH' ? (
+                        <>
+                          {/* Featured Primary for Cash Preference */}
+                          <Button 
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-6 font-extrabold text-sm shadow-md" 
+                            onClick={() => handlePayAtWorkshop(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
+                            isLoading={isExtensionProcessing}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2 text-white" /> Confirm Pay at Workshop / Cash (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            className="w-full border-primary-navy/20 hover:bg-primary-navy/5 text-primary-navy rounded-xl py-5 font-semibold text-xs" 
+                            onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
+                            isLoading={isExtensionProcessing}
+                          >
+                            <IndianRupee className="w-4 h-4 mr-1.5" /> Pay Online (Razorpay / UPI)
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          {/* Featured Primary for Online Preference */}
+                          <Button 
+                            className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold flex items-center justify-center shadow-md transition-all text-sm" 
+                            onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
+                            isLoading={isExtensionProcessing}
+                          >
+                            <IndianRupee className="w-4 h-4 mr-1.5" /> Pay Online Partial Amount (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            className="w-full border-emerald-300 bg-emerald-50/50 hover:bg-emerald-100 text-emerald-800 rounded-xl py-5 font-bold text-xs shadow-2xs" 
+                            onClick={() => handlePayAtWorkshop(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
+                            isLoading={isExtensionProcessing}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" /> Pay at Workshop / Cash (Skip Online Payment)
+                          </Button>
+                        </>
+                      )}
+
                       <Button 
-                        className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-bold flex items-center justify-center shadow-md transition-all text-sm" 
-                        onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
-                        isLoading={isExtensionProcessing}
-                      >
-                        <IndianRupee className="w-4 h-4 mr-1.5" /> Pay Advance Token (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        className="w-full border-primary-navy/20 hover:bg-primary-navy/5 text-primary-navy rounded-xl py-5 font-semibold text-xs" 
+                        variant="ghost"
+                        className="w-full text-slate-500 hover:bg-slate-100 rounded-xl py-3 font-semibold text-xs" 
                         onClick={() => handleInitiatePayment(remainingAmount, "FULL")} 
                         isLoading={isExtensionProcessing}
                       >
-                        Pay Full Amount Upfront (₹{remainingAmount.toLocaleString('en-IN')})
+                        Pay Full Amount Online (₹{remainingAmount.toLocaleString('en-IN')})
                       </Button>
                     </div>
                   )}

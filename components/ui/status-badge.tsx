@@ -72,7 +72,7 @@ export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
       <Badge 
         className={`uppercase text-[10px] font-extrabold tracking-wider border-amber-300 bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-0.5 shadow-2xs ${className}`}
       >
-        AWAITING 15% ADVANCE ⏳
+        AWAITING ADVANCE PAYMENT ⏳
       </Badge>
     );
   }

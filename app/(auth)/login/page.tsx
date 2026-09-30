@@ -153,7 +153,14 @@ function LoginContent() {
       }
       const data = await loginUser({ identifier, password });
 
-      const { user, tokens } = data;
+      const payload = data?.data || data;
+      const user = payload?.user || data?.user;
+      const tokens = payload?.tokens || data?.tokens;
+
+      if (!user || !user.role || !tokens?.accessToken) {
+        throw new Error("Invalid credentials or server response.");
+      }
+
       const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
       const cookieDomain = typeof window !== "undefined" && window.location.hostname.endsWith("carblink.in") ? "; domain=.carblink.in" : "";
 
@@ -165,7 +172,7 @@ function LoginContent() {
         document.cookie = `role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
         document.cookie = `user_role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
       }
-      await login(user, tokens.accessToken, tokens.refreshToken);
+      await login(user, tokens.accessToken, tokens.refreshToken || tokens.accessToken);
 
       const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
       if (typeof window !== "undefined") {
@@ -189,6 +196,28 @@ function LoginContent() {
       return;
     }
     setIsLoading(true);
+
+    // Trusted device check: If this mobile number was verified on this device and valid session exists, skip repeated OTP
+    if (typeof window !== "undefined") {
+      const trustedPhone = localStorage.getItem("car_blink_trusted_phone");
+      const existingToken = localStorage.getItem("car_blink_access_token");
+      if (trustedPhone && trustedPhone === cleanPhone && existingToken) {
+        try {
+          setApiAccessToken(existingToken);
+          const userProfile = await getCurrentUserProfile();
+          const resolvedUser = userProfile?.role ? userProfile : (userProfile?.data?.role ? userProfile.data : (userProfile?.data || userProfile?.user || userProfile));
+          if (resolvedUser && resolvedUser.role) {
+            await login(resolvedUser, existingToken, existingToken);
+            const targetRoute = ROLE_ROUTES[resolvedUser.role] || "/customer/dashboard";
+            window.location.href = targetRoute;
+            return;
+          }
+        } catch (err) {
+          // Token expired or invalid, proceed to send OTP as normal
+        }
+      }
+    }
+
     try {
       await sendSignupOtp({ phone: cleanPhone });
       setOtpStep(2);
@@ -213,8 +242,10 @@ function LoginContent() {
     try {
       const cleanPhone = otpPhone.replace(/[^0-9]/g, '');
       const res = await verifyOtp({ identifier: cleanPhone, otp: cleanOtp });
-      const { user, tokens } = res?.data || res;
-      if (!user || !tokens?.accessToken) {
+      const payload = res?.data || res;
+      const user = payload?.user || res?.user;
+      const tokens = payload?.tokens || res?.tokens;
+      if (!user || !user.role || !tokens?.accessToken) {
         throw new Error("Invalid verification response");
       }
       const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
@@ -228,7 +259,7 @@ function LoginContent() {
         document.cookie = `role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
         document.cookie = `user_role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
       }
-      await login(user, tokens.accessToken, tokens.refreshToken);
+      await login(user, tokens.accessToken, tokens.refreshToken || tokens.accessToken);
       const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
       if (typeof window !== "undefined") {
         window.location.href = targetRoute;

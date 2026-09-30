@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getCookieOpts = () => {
-    const opts: any = { path: "/", expires: 7 };
+    const opts: any = { path: "/", expires: 365 };
     if (typeof window !== "undefined" && window.location.hostname.endsWith("carblink.in")) {
       opts.domain = ".carblink.in";
     }
@@ -95,6 +95,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (newRefreshToken) {
       localStorage.setItem("car_blink_refresh_token", newRefreshToken);
+    }
+
+    if (newUser?.phone) {
+      const cleanPhone = newUser.phone.replace(/[^0-9]/g, '');
+      localStorage.setItem("car_blink_trusted_phone", cleanPhone);
+      Cookies.set("car_blink_trusted_phone", cleanPhone, getCookieOpts());
     }
     
     // Store in cookie for server-side verification

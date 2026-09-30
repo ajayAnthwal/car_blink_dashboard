@@ -175,6 +175,18 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       window.dispatchEvent(new CustomEvent("refetch_payments"));
     });
 
+    // 6. Listen to partner approval & registration events
+    newSocket.on("partner_verified", (payload) => {
+      console.log("[SOCKET] Partner Verified Event Received:", payload);
+      triggerToast("🎉 Account Approved!", payload?.message || "Your CarBlink Partner Account is Approved! Console unlocked.", 'lead', 9000);
+    });
+
+    newSocket.on("partner_registered", (payload) => {
+      console.log("[SOCKET] Partner Registered Event Received:", payload);
+      const name = payload?.partner?.businessName || "New Workshop";
+      triggerToast("🏢 New Partner Registered", `Workshop Partner "${name}" registered. Verification Pending.`, 'info', 7000);
+    });
+
     setSocket(newSocket);
 
     return () => {

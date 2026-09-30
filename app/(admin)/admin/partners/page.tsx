@@ -1,15 +1,36 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAdminPartners } from "@/features/admin/hooks/useAdminQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSocket } from "@/lib/SocketContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, Store, ChevronRight, FileText } from "lucide-react";
 
 export default function AdminPartnersPage() {
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
   const [statusFilter, setStatusFilter] = useState("");
   
+  useEffect(() => {
+    if (!socket) return;
+    const handlePartnerEvent = () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "partners"] });
+    };
+
+    socket.on("partner_registered", handlePartnerEvent);
+    socket.on("partner_status_updated", handlePartnerEvent);
+    socket.on("kyc_status_changed", handlePartnerEvent);
+
+    return () => {
+      socket.off("partner_registered", handlePartnerEvent);
+      socket.off("partner_status_updated", handlePartnerEvent);
+      socket.off("kyc_status_changed", handlePartnerEvent);
+    };
+  }, [socket, queryClient]);
+
   const { data: partnersData, isLoading } = useAdminPartners(1, 50, statusFilter);
   const partners = partnersData?.docs || partnersData?.data || partnersData || [];
 

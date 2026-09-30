@@ -468,8 +468,11 @@ export const useNotifications = () => {
     queryKey: ["customer", "notifications"],
     queryFn: async () => {
       const res = await getNotifications();
-      return Array.isArray(res?.data?.docs) ? res.data.docs 
-           : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+      return Array.isArray(res?.data?.notifications) ? res.data.notifications
+           : (Array.isArray(res?.notifications) ? res.notifications
+           : (Array.isArray(res?.data?.docs) ? res.data.docs 
+           : (Array.isArray(res?.data) ? res.data 
+           : (Array.isArray(res) ? res : []))));
     },
   });
 };

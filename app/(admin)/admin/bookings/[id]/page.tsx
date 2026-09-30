@@ -3,9 +3,9 @@
 
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAdminBookingDetails, useCancelAdminBookingMutation } from "@/features/admin/hooks/useAdminQueries";
+import { useAdminBookingDetails, useCancelAdminBookingMutation, useManualAssignAdminBookingMutation, useAdminUsers, useAdminAuditLogs } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, Calendar, User, Wrench, ArrowLeft, Ban, MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee, Phone, Mail, Info, Camera } from "lucide-react";
+import { Loader2, Calendar, User, Wrench, ArrowLeft, Ban, MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee, Phone, Mail, Info, Camera, Zap, ShieldAlert, History } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function AdminBookingDetailsPage() {
@@ -13,10 +13,61 @@ export default function AdminBookingDetailsPage() {
   const router = useRouter();
   const { data: bookingRes, isLoading } = useAdminBookingDetails(id as string);
   const cancelMutation = useCancelAdminBookingMutation();
+  const manualAssignMutation = useManualAssignAdminBookingMutation();
   
+  const { data: partnersData } = useAdminUsers(1, 100, "PARTNER");
+  const { data: executivesData } = useAdminUsers(1, 100, "EXECUTIVE");
+  const { data: auditLogsRes } = useAdminAuditLogs();
+
   const [cancelReason, setCancelReason] = useState("");
+  
+  // Manual Bypass Form state
+  const [selectedPartnerId, setSelectedPartnerId] = useState("");
+  const [selectedExecutiveId, setSelectedExecutiveId] = useState("");
+  const [forcedStatus, setForcedStatus] = useState("");
+  const [customAmount, setCustomAmount] = useState("");
+  const [overridePayment, setOverridePayment] = useState(false);
+  const [bypassReason, setBypassReason] = useState("");
 
   const booking = bookingRes?.data?._id ? bookingRes.data : (bookingRes?._id ? bookingRes : (bookingRes?.data || bookingRes));
+
+  const partners = partnersData?.docs || partnersData?.users || partnersData?.data || (Array.isArray(partnersData) ? partnersData : []);
+  const executives = executivesData?.docs || executivesData?.users || executivesData?.data || (Array.isArray(executivesData) ? executivesData : []);
+  
+  const allLogs = auditLogsRes?.data?.docs || auditLogsRes?.data || auditLogsRes?.docs || auditLogsRes || [];
+  const bookingAuditLogs = Array.isArray(allLogs) 
+    ? allLogs.filter((l: any) => l.payload?.bookingId === id || l.endpoint?.includes(id as string))
+    : [];
+
+  const handleManualBypass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bypassReason.trim()) {
+      toast.error("Audit requirement: Please enter reason/notes for this manual override!");
+      return;
+    }
+
+    const payload: any = {
+      reason: bypassReason.trim(),
+      overridePayment
+    };
+    if (selectedPartnerId) payload.partnerId = selectedPartnerId;
+    if (selectedExecutiveId) payload.executiveId = selectedExecutiveId;
+    if (forcedStatus) payload.status = forcedStatus;
+    if (customAmount && !isNaN(Number(customAmount))) payload.quotedAmount = Number(customAmount);
+
+    try {
+      await manualAssignMutation.mutateAsync({ id: id as string, data: payload });
+      toast.success("⚡ Super Admin manual bypass executed successfully & logged to audit!");
+      setBypassReason("");
+      setSelectedPartnerId("");
+      setSelectedExecutiveId("");
+      setForcedStatus("");
+      setCustomAmount("");
+      setOverridePayment(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to execute manual bypass.");
+    }
+  };
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) {
@@ -429,6 +480,176 @@ export default function AdminBookingDetailsPage() {
           </Card>
         </div>
       </div>
+
+      {/* ⚡ Super Admin Manual Override / Workflow Bypass Panel */}
+      <Card className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white shadow-xl rounded-3xl border border-indigo-800/40 overflow-hidden mt-10">
+        <CardHeader className="bg-indigo-900/40 border-b border-indigo-700/30 pb-5">
+          <CardTitle className="text-xl font-extrabold flex items-center gap-2.5 text-amber-400">
+            <Zap className="w-6 h-6 text-amber-400 animate-pulse" /> 
+            Super Admin Manual Booking & Workflow Bypass
+          </CardTitle>
+          <p className="text-slate-300 text-xs mt-1">
+            If a technical glitch, payment failure, or workflow issue blocks this booking, Super Admin can forcefully assign partners, override status, or bypass payment rules. Every action is automatically logged.
+          </p>
+        </CardHeader>
+        <CardContent className="p-6 md:p-8 space-y-6">
+          <form onSubmit={handleManualBypass} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Assign Service Partner</label>
+                <select
+                  value={selectedPartnerId}
+                  onChange={(e) => setSelectedPartnerId(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="">-- Keep Current / No Change --</option>
+                  {partners.map((p: any) => (
+                    <option key={p._id || p.id} value={p._id || p.id}>
+                      {p.businessName || p.fullName || "Partner"} ({p.phone || "No Phone"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Assign Field Executive</label>
+                <select
+                  value={selectedExecutiveId}
+                  onChange={(e) => setSelectedExecutiveId(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="">-- Keep Current / No Change --</option>
+                  {executives.map((ex: any) => (
+                    <option key={ex._id || ex.id} value={ex._id || ex.id}>
+                      {ex.fullName || "Executive"} ({ex.phone || "No Phone"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Force Booking Status</label>
+                <select
+                  value={forcedStatus}
+                  onChange={(e) => setForcedStatus(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="">-- Keep Current ({booking.status}) --</option>
+                  <option value="ACCEPTED">ACCEPTED (Partner Assigned)</option>
+                  <option value="CUSTOMER_ACCEPTED">CUSTOMER_ACCEPTED (Quote Selected)</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS (Job Underway)</option>
+                  <option value="COMPLETED">COMPLETED (Job Finished)</option>
+                  <option value="PENDING">PENDING (Open Bidding)</option>
+                  <option value="QUOTED">QUOTED (Quotes Received)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Custom Quote Price (₹)</label>
+                <input
+                  type="number"
+                  placeholder="Override Amount e.g. 1500"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+            </div>
+
+            <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="overridePaymentCheck"
+                  checked={overridePayment}
+                  onChange={(e) => setOverridePayment(e.target.checked)}
+                  className="w-5 h-5 text-amber-400 rounded cursor-pointer"
+                />
+                <label htmlFor="overridePaymentCheck" className="text-sm font-bold text-white cursor-pointer">
+                  Bypass Payment Gateway Requirement (Mark Advance Payment as PAID)
+                </label>
+              </div>
+              <span className="text-xs text-amber-400 font-mono bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+                Offline / Technical Exception Mode
+              </span>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">
+                Mandatory Admin Notes / Reason for Audit Log <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                rows={2}
+                required
+                placeholder="State why this manual override / bypass was performed (e.g. Customer payment stuck on Razorpay, manual cash collected by garage)..."
+                value={bypassReason}
+                onChange={(e) => setBypassReason(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={manualAssignMutation.isPending}
+                className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-black px-8 py-4 rounded-xl shadow-lg transition-all flex items-center gap-2 text-sm uppercase tracking-wider"
+              >
+                {manualAssignMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Executing Bypass...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" /> Execute Manual Override & Log Action
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* 📜 Action Logs & Audit Trail for this Booking */}
+      <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200 mt-8 rounded-3xl overflow-hidden">
+        <CardHeader className="bg-gray-50/80 border-b border-gray-100 pb-4">
+          <CardTitle className="text-lg font-bold text-primary-navy flex items-center gap-2">
+            <History className="w-5 h-5 text-secondary-blue" /> Action History & Audit Log Trail
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          {bookingAuditLogs.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <Clock className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm font-medium">No manual admin overrides logged for this booking yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {bookingAuditLogs.map((log: any) => (
+                <div key={log._id} className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-primary-navy text-sm">{log.action}</span>
+                      <span className="text-[10px] uppercase font-bold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full">
+                        {log.userRole || 'SUPER_ADMIN'}
+                      </span>
+                    </div>
+                    {log.payload?.reason && (
+                      <p className="text-xs text-gray-700 font-medium">Reason: &quot;{log.payload.reason}&quot;</p>
+                    )}
+                    {log.payload?.summary && (
+                      <p className="text-xs text-gray-500 font-mono">Details: {log.payload.summary}</p>
+                    )}
+                  </div>
+                  <div className="text-right text-xs text-gray-400 font-medium whitespace-nowrap">
+                    <p className="font-semibold text-gray-600">{log.userId?.fullName || log.userId || 'Super Admin'}</p>
+                    <p>{new Date(log.createdAt).toLocaleString()}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {isCancellable && (
         <Card className="bg-red-50/50 border-red-200 shadow-sm mt-10 overflow-hidden">

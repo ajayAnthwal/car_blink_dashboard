@@ -20,6 +20,11 @@ export default function RegisterPage() {
     email: "",
     phone: "",
     password: "",
+    businessName: "",
+    ownerName: "",
+    gstNumber: "",
+    msmeNumber: "",
+    address: "",
   });
   const [role, setRole] = useState<Role>(ROLES.CUSTOMER);
   const [otp, setOtp] = useState("");
@@ -43,7 +48,7 @@ export default function RegisterPage() {
     return () => clearInterval(timer);
   }, [step, resendTimer]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name === "phone") {
       const clean = value.replace(/[^0-9]/g, '');
@@ -65,8 +70,19 @@ export default function RegisterPage() {
     }
 
     if (!formData.fullName.trim()) {
-      setError("Please enter your full name");
+      setError("Please enter your full name / contact person name");
       return;
+    }
+
+    if (role === ROLES.PARTNER) {
+      if (!formData.businessName.trim()) {
+        setError("Partner Requirement: Please enter your Workshop / Business Name.");
+        return;
+      }
+      if (!formData.address.trim()) {
+        setError("Partner Requirement: Please enter your Workshop Address.");
+        return;
+      }
     }
 
     if (!formData.password || formData.password.length < 6) {
@@ -117,14 +133,24 @@ export default function RegisterPage() {
 
     try {
       const cleanEmail = formData.email && formData.email.trim() ? formData.email.trim() : undefined;
-      const res = await registerUser({
+      const payload: any = {
         fullName: formData.fullName.trim(),
         email: cleanEmail,
         phone: formData.phone.trim(),
         password: formData.password,
         role: role,
         otp: cleanOtp
-      });
+      };
+
+      if (role === ROLES.PARTNER) {
+        payload.businessName = formData.businessName.trim();
+        payload.ownerName = (formData.ownerName.trim() || formData.fullName.trim());
+        payload.address = formData.address.trim();
+        if (formData.gstNumber.trim()) payload.gstNumber = formData.gstNumber.trim().toUpperCase();
+        if (formData.msmeNumber.trim()) payload.msmeNumber = formData.msmeNumber.trim().toUpperCase();
+      }
+
+      const res = await registerUser(payload);
 
       const userObj = res?.data?.user || res?.user || res?.data || res;
       const tokensObj = res?.data?.tokens || res?.tokens;
@@ -271,6 +297,85 @@ export default function RegisterPage() {
               </button>
             </div>
           </div>
+
+          {/* Detailed Partner Business Inputs (Before OTP Verification) */}
+          {role === ROLES.PARTNER && (
+            <div className="p-5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-4 animate-in fade-in">
+              <div className="flex items-center space-x-2 text-primary-navy font-bold text-sm border-b border-blue-200 pb-2">
+                <Wrench className="w-4 h-4 text-primary-orange" />
+                <span>Partner Business & Legal Details</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Workshop / Garage Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="businessName"
+                  placeholder="e.g. SpeedX Motors & Detailing Studio"
+                  value={formData.businessName}
+                  onChange={handleChange}
+                  required
+                  className="h-11 bg-white border-blue-200 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Owner / Contact Person Name
+                </label>
+                <Input
+                  name="ownerName"
+                  placeholder="e.g. Ramesh Chandra (Owner)"
+                  value={formData.ownerName}
+                  onChange={handleChange}
+                  className="h-11 bg-white border-blue-200 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    GST Number (Optional)
+                  </label>
+                  <Input
+                    name="gstNumber"
+                    placeholder="e.g. 07AAAAA0000A1Z5"
+                    value={formData.gstNumber}
+                    onChange={handleChange}
+                    className="h-11 bg-white border-blue-200 font-mono text-xs uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    MSME / Udyam No. (Optional)
+                  </label>
+                  <Input
+                    name="msmeNumber"
+                    placeholder="e.g. UDYAM-DL-00-0123456"
+                    value={formData.msmeNumber}
+                    onChange={handleChange}
+                    className="h-11 bg-white border-blue-200 font-mono text-xs uppercase"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Workshop / Business Address <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="address"
+                  rows={2}
+                  placeholder="Complete Workshop Address, Area, Landmark, City, Pincode"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-xl border border-blue-200 bg-white p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-navy"
+                />
+              </div>
+            </div>
+          )}
 
           <Button 
             type="submit" 

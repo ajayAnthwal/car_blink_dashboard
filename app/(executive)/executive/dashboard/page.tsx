@@ -8,7 +8,8 @@ import {
   usePendingFollowUps, 
   useEscalations, 
   useExecutiveLeads, 
-  useWebsiteLeads 
+  useWebsiteLeads,
+  usePartnerStatus
 } from "@/features/executive/hooks/useExecutiveQueries";
 import { useSocket } from "@/lib/SocketContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PhoneCall, AlertTriangle, Target, ArrowRight, Clock, User, Activity, CheckCircle2, ChevronRight, Sparkles, X } from "lucide-react";
+import { PhoneCall, AlertTriangle, Target, ArrowRight, Clock, User, Activity, CheckCircle2, ChevronRight, Sparkles, X, Building2, Briefcase } from "lucide-react";
 import { 
   BarChart, 
   Bar, 
@@ -43,8 +44,9 @@ export default function ExecutiveDashboardPage() {
   const { data: escalationsData, isLoading: loadingEscalations } = useEscalations({ page: 1, limit: 100 });
   const { data: leadsData, isLoading: loadingLeads } = useExecutiveLeads({ page: 1, limit: 100 });
   const { data: websiteLeadsData, isLoading: loadingWebsiteLeads } = useWebsiteLeads({ page: 1, limit: 100 });
+  const { data: pendingPartnersData, isLoading: loadingPendingPartners } = usePartnerStatus(1, 100, "verificationStatus=PENDING");
 
-  // Real-time socket refresh + Live Lead & Bid Alert Triggers
+  // Real-time socket refresh + Live Lead, Partner Registration & Bid Alert Triggers
   useEffect(() => {
     if (!socket) return;
     const refreshLeads = (payload?: any) => {
@@ -85,6 +87,59 @@ export default function ExecutiveDashboardPage() {
       }
     };
 
+    const handleJobVerifiedAlert = (payload?: any) => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+      if (payload) {
+        const pName = payload?.partnerName || "Partner Workshop";
+        const vTime = payload?.verifiedAt ? new Date(payload.verifiedAt).toLocaleString() : new Date().toLocaleString();
+        setLiveLeadAlert({
+          id: payload?.bookingId || Date.now().toString(),
+          name: `Booking #${(payload?.bookingId || payload?.bookingReference || "").substring(0, 8).toUpperCase()}`,
+          partnerName: pName,
+          verifiedAt: vTime,
+          bookingReference: payload?.bookingId || payload?.bookingReference || "N/A",
+          jobStatus: payload?.displayStatus || "Verified / Work Ready",
+          message: `Customer Verification PIN verified by ${pName} at ${vTime}. Job Status: Verified / Work Ready.`,
+          timestamp: new Date(),
+          isLive: true,
+          isVerification: true,
+          bookingId: payload?.bookingId
+        });
+      }
+    };
+
+    const handlePartnerReg = (payload?: any) => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "partner-status"] });
+      if (payload) {
+        setLiveLeadAlert({
+          id: payload?.partnerId || Date.now().toString(),
+          name: payload?.businessName || payload?.title || "New Workshop Partner",
+          phone: payload?.phone || "",
+          ownerName: payload?.ownerName || "",
+          message: payload?.message || `New Workshop Partner "${payload?.businessName || 'Partner'}" has registered and is pending verification.`,
+          timestamp: new Date(),
+          isLive: true,
+          isPartnerRegistration: true,
+          partnerId: payload?.partnerId
+        });
+      }
+    };
+
+    const handleNewNotification = (notif?: any) => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "partner-status"] });
+      const title = (notif?.title || "").toLowerCase();
+      const cat = (notif?.category || notif?.type || "").toLowerCase();
+      if (title.includes("partner") || cat.includes("partner")) {
+        const meta = notif?.metadata || notif?.data || {};
+        handlePartnerReg({
+          partnerId: meta.partnerId,
+          businessName: notif.title || meta.businessName,
+          phone: meta.phone,
+          message: notif.message,
+        });
+      }
+    };
+
     const refreshEscalations = () => {
       queryClient.invalidateQueries({ queryKey: ["executive", "escalations"] });
     };
@@ -95,6 +150,10 @@ export default function ExecutiveDashboardPage() {
     socket.on("new_lead", refreshLeads);
     socket.on("new_bid", handleLiveBid);
     socket.on("quote_received", handleLiveBid);
+    socket.on("job_verified", handleJobVerifiedAlert);
+    socket.on("new_partner_registered", handlePartnerReg);
+    socket.on("notification:new", handleNewNotification);
+    socket.on("booking_status_update", refreshLeads);
     socket.on("booking_confirmed", refreshLeads);
     socket.on("new_escalation", refreshEscalations);
     socket.on("escalation_updated", refreshEscalations);
@@ -104,6 +163,10 @@ export default function ExecutiveDashboardPage() {
       socket.off("new_lead", refreshLeads);
       socket.off("new_bid", handleLiveBid);
       socket.off("quote_received", handleLiveBid);
+      socket.off("job_verified", handleJobVerifiedAlert);
+      socket.off("new_partner_registered", handlePartnerReg);
+      socket.off("notification:new", handleNewNotification);
+      socket.off("booking_status_update", refreshLeads);
       socket.off("booking_confirmed", refreshLeads);
       socket.off("new_escalation", refreshEscalations);
       socket.off("escalation_updated", refreshEscalations);
@@ -117,10 +180,35 @@ export default function ExecutiveDashboardPage() {
   const esc = Array.isArray(escalationsData?.escalations) ? escalationsData.escalations : (Array.isArray(escalationsData) ? escalationsData : []);
   const lds = Array.isArray(leadsData?.leads) ? leadsData.leads : (Array.isArray(leadsData) ? leadsData : []);
   const wLds = Array.isArray(websiteLeadsData?.leads) ? websiteLeadsData.leads : (Array.isArray(websiteLeadsData) ? websiteLeadsData : []);
+  
+  const pData = pendingPartnersData as any;
+  const pendingPartners = Array.isArray(pData?.partners) 
+    ? pData.partners 
+    : (Array.isArray(pData?.docs) ? pData.docs : (Array.isArray(pData) ? pData : []));
 
-  // Derived Latest Incoming Lead Banner
+  // Derived Latest Incoming Lead / Partner Registration Banner
   const latestNewLead = React.useMemo(() => {
     if (liveLeadAlert) return liveLeadAlert;
+
+    // 1. Check for unverified pending partners
+    const unverifiedPartners = pendingPartners.filter((p: any) => !p.isVerified || p.verificationStatus === "PENDING");
+    let latestPartnerItem: any = null;
+    if (unverifiedPartners.length > 0) {
+      const latestP = [...unverifiedPartners].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      latestPartnerItem = {
+        id: latestP._id || latestP.id,
+        name: latestP.businessName || latestP.ownerName || "New Workshop Partner",
+        ownerName: latestP.ownerName || "",
+        phone: latestP.phone || latestP.userId?.phone || "",
+        source: "Partner Registration",
+        city: latestP.businessAddress || "",
+        message: `Workshop "${latestP.businessName || 'Partner'}" (${latestP.ownerName || 'Owner'}) registered and is pending verification.`,
+        timestamp: latestP.createdAt ? new Date(latestP.createdAt) : new Date(),
+        isLive: false,
+        isPartnerRegistration: true,
+        partnerId: latestP._id
+      };
+    }
 
     const websiteLeadsList = Array.isArray(wLds?.docs) ? wLds.docs : (Array.isArray(wLds?.data) ? wLds.data : (Array.isArray(wLds) ? wLds : []));
     const platformLeadsList = Array.isArray(lds?.docs) ? lds.docs : (Array.isArray(lds?.data) ? lds.data : (Array.isArray(lds) ? lds : []));
@@ -167,14 +255,10 @@ export default function ExecutiveDashboardPage() {
       };
     }
 
-    if (latestWebItem && latestPlatformItem) {
-      const timeWeb = new Date(latestWebItem.timestamp).getTime();
-      const timePlat = new Date(latestPlatformItem.timestamp).getTime();
-      return timeWeb >= timePlat ? latestWebItem : latestPlatformItem;
-    }
-
-    return latestWebItem || latestPlatformItem || null;
-  }, [liveLeadAlert, wLds, lds]);
+    const items = [latestPartnerItem, latestWebItem, latestPlatformItem].filter(Boolean);
+    if (items.length === 0) return null;
+    return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+  }, [liveLeadAlert, pendingPartners, wLds, lds]);
 
   // Compute Stats
   const stats = React.useMemo(() => {
@@ -184,14 +268,16 @@ export default function ExecutiveDashboardPage() {
     
     const openEsc = esc.filter((e: unknown) => ['OPEN', 'IN_PROGRESS'].includes(e.status)).length;
     const awaitingAssg = lds.filter((l: unknown) => ['PENDING', 'QUOTED'].includes(l.status)).length;
+    const pendingPartnersCount = pendingPartners.filter((p: any) => !p.isVerified || p.verificationStatus === "PENDING").length;
 
     return {
       totalLeadsToday: leadsToday + websiteLeadsToday,
       openEscalations: openEsc,
       pendingFollowUps: fUps.length,
-      leadsAwaitingAssignment: awaitingAssg
+      leadsAwaitingAssignment: awaitingAssg,
+      pendingPartnersCount
     };
-  }, [lds, wLds, esc, fUps]);
+  }, [lds, wLds, esc, fUps, pendingPartners]);
 
   // Prepare Leads by Status (Bar Chart)
   const leadsBarChartData = React.useMemo(() => {
@@ -289,10 +375,14 @@ export default function ExecutiveDashboardPage() {
         </div>
       </div>
 
-      {/* ⚡ Live Incoming Lead / Partner Bid Alert Banner */}
+      {/* ⚡ Live Incoming Lead / Verification / Partner Registration / Bid Alert Banner */}
       {latestNewLead && (
         <div className={`rounded-2xl p-5 shadow-xl text-white relative overflow-hidden animate-in slide-in-from-top-4 duration-500 border ${
-          latestNewLead.isBid 
+          latestNewLead.isPartnerRegistration
+            ? 'bg-gradient-to-r from-purple-700 via-indigo-700 to-slate-900 shadow-purple-700/20 border-purple-400/40'
+            : latestNewLead.isVerification
+            ? 'bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 shadow-blue-700/20 border-blue-400/40'
+            : latestNewLead.isBid 
             ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 shadow-teal-600/20 border-teal-400/40' 
             : 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 shadow-orange-500/20 border-orange-400/40'
         }`}>
@@ -301,48 +391,54 @@ export default function ExecutiveDashboardPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
             <div className="flex items-start space-x-3.5">
               <div className="bg-white/20 backdrop-blur-md p-3 rounded-xl shrink-0 text-white mt-0.5 shadow-inner">
-                <Sparkles className="w-6 h-6 animate-pulse" />
+                {latestNewLead.isPartnerRegistration ? <Building2 className="w-6 h-6 animate-bounce text-purple-200" /> : latestNewLead.isVerification ? <CheckCircle2 className="w-6 h-6 animate-pulse text-emerald-300" /> : <Sparkles className="w-6 h-6 animate-pulse" />}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 bg-white ${
-                    latestNewLead.isBid ? 'text-teal-700' : 'text-orange-600'
+                    latestNewLead.isPartnerRegistration ? 'text-purple-800 font-black' : (latestNewLead.isVerification ? 'text-blue-700 font-black' : (latestNewLead.isBid ? 'text-teal-700' : 'text-orange-600'))
                   }`}>
-                    <span className={`w-2 h-2 rounded-full animate-ping ${latestNewLead.isBid ? 'bg-teal-600' : 'bg-orange-600'}`}></span>
-                    {latestNewLead.isBid ? "LIVE PARTNER BID PLACED" : (latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING")}
+                    <span className={`w-2 h-2 rounded-full animate-ping ${latestNewLead.isPartnerRegistration ? 'bg-purple-600' : (latestNewLead.isVerification ? 'bg-emerald-500' : (latestNewLead.isBid ? 'bg-teal-600' : 'bg-orange-600'))}`}></span>
+                    {latestNewLead.isPartnerRegistration ? "🤝 NEW PARTNER REGISTERED (VERIFICATION PENDING)" : (latestNewLead.isVerification ? "✓ CUSTOMER VERIFICATION COMPLETED" : (latestNewLead.isBid ? "LIVE PARTNER BID PLACED" : (latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING")))}
                   </span>
                   <span className="text-xs text-white/80 font-medium">
-                    {(() => {
-                      if (!latestNewLead.timestamp) return "Just now";
-                      try {
-                        const d = new Date(latestNewLead.timestamp);
-                        if (isNaN(d.getTime())) return "Just now";
-                        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                      } catch {
-                        return "Just now";
-                      }
-                    })()}
+                    {latestNewLead.timestamp ? new Date(latestNewLead.timestamp).toLocaleTimeString() : "Just now"}
                   </span>
                 </div>
+
                 <h3 className="font-heading font-black text-lg md:text-xl text-white mt-1">
-                  {latestNewLead.name} {latestNewLead.phone ? `(${latestNewLead.phone})` : ""}
+                  {latestNewLead.name}
                 </h3>
-                <p className="text-xs md:text-sm text-white/90 font-medium mt-0.5 line-clamp-1">
-                  {latestNewLead.isBid ? (
-                    latestNewLead.message
-                  ) : (
-                    <><strong className="text-white font-bold">Source:</strong> {latestNewLead.source} • <strong className="text-white font-bold">Location:</strong> {latestNewLead.city || "Not specified"} • {latestNewLead.message}</>
-                  )}
-                </p>
+
+                {latestNewLead.isPartnerRegistration ? (
+                  <p className="text-xs md:text-sm text-white/90 font-medium mt-0.5">
+                    {latestNewLead.message}
+                  </p>
+                ) : latestNewLead.isVerification ? (
+                  <div className="flex flex-wrap gap-4 text-xs text-slate-200 mt-1 font-medium bg-white/10 p-2.5 rounded-xl border border-white/10">
+                    <span><strong>Booking Ref:</strong> #{latestNewLead.bookingReference}</span>
+                    <span><strong>Partner / Workshop:</strong> {latestNewLead.partnerName}</span>
+                    <span><strong>Verified At:</strong> {latestNewLead.verifiedAt}</span>
+                    <span className="text-emerald-300 font-extrabold"><strong>Job Status:</strong> {latestNewLead.jobStatus}</span>
+                  </div>
+                ) : (
+                  <p className="text-xs md:text-sm text-white/90 font-medium mt-0.5 line-clamp-1">
+                    {latestNewLead.isBid ? (
+                      latestNewLead.message
+                    ) : (
+                      <><strong className="text-white font-bold">Source:</strong> {latestNewLead.source} • <strong className="text-white font-bold">Location:</strong> {latestNewLead.city || "Not specified"} • {latestNewLead.message}</>
+                    )}
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="flex items-center space-x-3 self-end md:self-center shrink-0 w-full md:w-auto">
               <Button asChild size="default" className={`font-bold shadow-lg transition-all w-full md:w-auto bg-white ${
-                latestNewLead.isBid ? 'text-teal-700 hover:bg-teal-50' : 'text-orange-600 hover:bg-orange-50'
+                latestNewLead.isPartnerRegistration ? 'text-purple-800 hover:bg-purple-50' : (latestNewLead.isVerification ? 'text-blue-700 hover:bg-blue-50' : (latestNewLead.isBid ? 'text-teal-700 hover:bg-teal-50' : 'text-orange-600 hover:bg-orange-50'))
               }`}>
-                <Link href={latestNewLead.isBid ? "/executive/leads" : (latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads")}>
-                  {latestNewLead.isBid ? "Review Bids & Assign Partner" : "View Lead & Convert"} <ArrowRight className="w-4 h-4 ml-1.5" />
+                <Link href={latestNewLead.isPartnerRegistration ? `/executive/partner-status` : (latestNewLead.isVerification ? `/executive/leads` : (latestNewLead.isBid ? "/executive/leads" : (latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads")))}>
+                  {latestNewLead.isPartnerRegistration ? "Review & Verify Partner" : (latestNewLead.isVerification ? "View Booking & Monitor Status" : (latestNewLead.isBid ? "Review Bids & Assign Partner" : "View Lead & Convert"))} <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Link>
               </Button>
               {latestNewLead.isLive && (
@@ -378,7 +474,7 @@ export default function ExecutiveDashboardPage() {
       )}
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <Link href="/executive/leads" className="block group">
           <Card className="shadow-subtle border-gray-100 hover:border-blue-300 group-hover:border-blue-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -429,8 +525,27 @@ export default function ExecutiveDashboardPage() {
               <div className="text-3xl font-bold text-gray-900 font-heading">{stats.pendingFollowUps}</div>
             </CardContent>
             <CardFooter className="pt-1 pb-4">
-              <span className="flex items-center text-xs font-semibold text-warning group-hover:text-orange-600 transition-colors">
+              <span className="flex items-center text-xs font-semibold text-warning-dark group-hover:text-amber-700 transition-colors">
                 Take action <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
+
+        <Link href="/executive/partner-status" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-purple-300 group-hover:border-purple-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-purple-600 transition-colors">Pending Partners</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+                <Building2 className="w-5 h-5 text-purple-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.pendingPartnersCount}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-purple-600 group-hover:text-purple-700 transition-colors">
+                Review & verify <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
               </span>
             </CardFooter>
           </Card>

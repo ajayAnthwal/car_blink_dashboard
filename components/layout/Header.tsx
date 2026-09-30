@@ -45,7 +45,13 @@ export function Header() {
   const fetchNotifications = React.useCallback(async () => {
     try {
       const res = await getNotifications();
-      const docs = Array.isArray(res) ? res : (res?.notifications || res?.docs || res?.data || []);
+      const docs = Array.isArray(res) 
+        ? res 
+        : (Array.isArray(res?.data?.notifications) ? res.data.notifications 
+        : (Array.isArray(res?.notifications) ? res.notifications 
+        : (Array.isArray(res?.docs) ? res.docs 
+        : (Array.isArray(res?.data?.docs) ? res.data.docs 
+        : (Array.isArray(res?.data) ? res.data : [])))));
       setNotifications(docs);
     } catch (err) {
       console.error("Failed to load notifications in header", err);
@@ -91,6 +97,8 @@ export function Header() {
     socket.on("new_lead", handleRefetch);
     socket.on("new_bid", handleRefetch);
     socket.on("booking_confirmed", handleRefetch);
+    socket.on("new_partner_registered", handleRefetch);
+    socket.on("partner_registered", handleRefetch);
 
     return () => {
       socket.off("notification:new", handleNewNotification);
@@ -99,6 +107,8 @@ export function Header() {
       socket.off("new_lead", handleRefetch);
       socket.off("new_bid", handleRefetch);
       socket.off("booking_confirmed", handleRefetch);
+      socket.off("new_partner_registered", handleRefetch);
+      socket.off("partner_registered", handleRefetch);
     };
   }, [socket, fetchNotifications]);
 

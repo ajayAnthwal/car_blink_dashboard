@@ -18,6 +18,7 @@ export async function sanitizeSession(queryClient?: any): Promise<void> {
       const keysToRemove = [
         "car_blink_access_token",
         "car_blink_refresh_token",
+        "car_blink_trusted_phone",
         "carBlink_token",
         "carBlink_user",
         "user_role",

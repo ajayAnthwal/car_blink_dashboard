@@ -30,9 +30,14 @@ function VerifyOTPContent() {
 
     try {
       const data = await verifyOtp({ identifier, otp });
-      
-      const { user, tokens } = data;
-      await login(user, tokens.accessToken, tokens.refreshToken);
+      const payload = data?.data || data;
+      const user = payload?.user || data?.user;
+      const tokens = payload?.tokens || data?.tokens;
+
+      if (!user || !user.role || !tokens?.accessToken) {
+        throw new Error("Invalid verification response from server");
+      }
+      await login(user, tokens.accessToken, tokens.refreshToken || tokens.accessToken);
       
       const route = ROLE_ROUTES[user.role] || "/customer/dashboard";
       if (typeof window !== "undefined") {

@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 export async function setSessionCookie(token: string, role?: string) {
   const isProd = process.env.NODE_ENV === "production";
   const domain = isProd ? ".carblink.in" : undefined;
+  const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 
   cookies().set("accessToken", token, {
     httpOnly: true,
@@ -13,7 +14,7 @@ export async function setSessionCookie(token: string, role?: string) {
     sameSite: "lax",
     path: "/",
     ...(domain ? { domain } : {}),
-    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    maxAge: ONE_YEAR_SECONDS,
   });
   cookies().set("car_blink_access_token", token, {
     httpOnly: true,
@@ -21,7 +22,7 @@ export async function setSessionCookie(token: string, role?: string) {
     sameSite: "lax",
     path: "/",
     ...(domain ? { domain } : {}),
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: ONE_YEAR_SECONDS,
   });
 
   if (role) {
@@ -31,7 +32,7 @@ export async function setSessionCookie(token: string, role?: string) {
       sameSite: "lax",
       path: "/",
       ...(domain ? { domain } : {}),
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: ONE_YEAR_SECONDS,
     });
     cookies().set("user_role", role, {
       httpOnly: false,
@@ -39,7 +40,7 @@ export async function setSessionCookie(token: string, role?: string) {
       sameSite: "lax",
       path: "/",
       ...(domain ? { domain } : {}),
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: ONE_YEAR_SECONDS,
     });
   }
 }

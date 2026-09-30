@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CreditCard, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { CreditCard, Loader2, CheckCircle, XCircle, PiggyBank } from "lucide-react";
 import { useCustomerBookings, useCustomerPayments, useInitiatePayment } from "@/features/customer/hooks/useCustomerQueries";
 import { verifyPayment } from "@/lib/services";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { useQueryClient } from "@tanstack/react-query";
+import CustomerSavingsModal from "@/components/customer/CustomerSavingsModal";
 
 interface Booking {
   _id: string;
@@ -31,9 +32,10 @@ interface Payment {
 }
 
 export default function PaymentsPage() {
+  const queryClient = useQueryClient();
   const { data: bookingsData, isLoading: isLoadingBookings } = useCustomerBookings();
-  const { data: paymentsData, isLoading: isLoadingPayments } = useCustomerPayments();
-  
+  const { data: paymentsData, isLoading: isLoadingPayments, refetch: refetchPayments } = useCustomerPayments();
+
   const initiatePaymentMutation = useInitiatePayment();
 
   const bookings = (bookingsData?.bookings || []) as Booking[];
@@ -44,7 +46,8 @@ export default function PaymentsPage() {
   const [paymentType, setPaymentType] = useState("ADVANCE");
   const [couponCode, setCouponCode] = useState("");
   const [useRewardPoints, setUseRewardPoints] = useState(false);
-  
+  const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+
   const [message, setMessage] = useState({ type: "", text: "" });
 
   const handleInitiatePayment = async (e: React.FormEvent) => {
@@ -53,7 +56,7 @@ export default function PaymentsPage() {
 
     try {
       const isScriptLoaded = await loadRazorpayScript();
-      
+
       const payload: any = {
         bookingId,
         amount: Number(amount),
@@ -122,12 +125,20 @@ export default function PaymentsPage() {
         },
         theme: {
           color: "#0a2540"
+        },
+        modal: {
+          ondismiss: function () {
+            setMessage({
+              type: "error",
+              text: "⚠️ Payment popup closed. If payment failed or was declined, you can retry anytime."
+            });
+          }
         }
       };
 
       const rzp = new (window as any).Razorpay(options);
       rzp.on("payment.failed", function (failRes: any) {
-        setMessage({ type: "error", text: failRes.error?.description || "Payment failed" });
+        setMessage({ type: "error", text: failRes.error?.description || "Payment was declined by bank. Please retry." });
       });
       rzp.open();
     } catch (err: any) {
@@ -158,11 +169,10 @@ export default function PaymentsPage() {
       <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Payments & Invoices</h2>
 
       {message.text && (
-        <div className={`p-3 rounded-lg text-sm border ${
-          message.type === "success" 
-            ? "bg-success/10 text-success border-success/20" 
+        <div className={`p-3 rounded-lg text-sm border ${message.type === "success"
+            ? "bg-success/10 text-success border-success/20"
             : "bg-danger/10 text-danger border-danger/20"
-        }`}>
+          }`}>
           {message.text}
         </div>
       )}
@@ -183,9 +193,9 @@ export default function PaymentsPage() {
                 label="Booking"
                 value={bookingId}
                 onChange={(e) => setBookingId(e.target.value)}
-                options={bookings.map(b => ({ 
-                  value: b._id, 
-                  label: `${b.vehicleId?.brand} ${b.vehicleId?.model} - ${b.serviceId?.name}` 
+                options={bookings.map(b => ({
+                  value: b._id,
+                  label: `${b.vehicleId?.brand} ${b.vehicleId?.model} - ${b.serviceId?.name}`
                 }))}
                 disabled={bookings.length === 0}
                 required
@@ -219,11 +229,11 @@ export default function PaymentsPage() {
                 onChange={(e) => setCouponCode(e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center space-x-2 py-2">
-              <input 
-                type="checkbox" 
-                id="useRewardPointsGlobal" 
+              <input
+                type="checkbox"
+                id="useRewardPointsGlobal"
                 className="w-4 h-4 text-primary-navy"
                 checked={useRewardPoints}
                 onChange={(e) => setUseRewardPoints(e.target.checked)}
@@ -242,6 +252,33 @@ export default function PaymentsPage() {
               <p className="text-xs text-neutral-muted">You need at least one booking to make a payment.</p>
             )}
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Total Savings & Discounts Banner */}
+      <Card className="bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 text-white shadow-md rounded-3xl border border-teal-500/30 overflow-hidden">
+        <CardContent className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-teal-500/20 text-teal-400 rounded-2xl border border-teal-500/30">
+              <PiggyBank className="w-8 h-8" />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-teal-300 bg-teal-400/20 px-2.5 py-0.5 rounded-full border border-teal-400/30 inline-block mb-1">
+                TRANSPARENT SAVINGS GUARANTEE
+              </span>
+              <h3 className="text-xl font-bold font-heading text-white">Service-Linked Savings Breakdown</h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                View 10% OEM market discounts, applied promo codes & reward points for every service booking.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setIsSavingsModalOpen(true)}
+            className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-6 py-3 rounded-2xl flex items-center gap-2 shadow-lg shrink-0 w-full sm:w-auto"
+          >
+            <PiggyBank className="w-4 h-4" />
+            View Savings Breakdown
+          </Button>
         </CardContent>
       </Card>
 
@@ -268,7 +305,7 @@ export default function PaymentsPage() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h4 className="font-heading font-bold text-gray-900 text-xl tracking-tight">
-                          ₹{payment.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          ₹{payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </h4>
                         <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(payment.status)}`}>
                           {payment.status}
@@ -300,6 +337,14 @@ export default function PaymentsPage() {
           </div>
         )}
       </div>
+
+      {/* Customer Savings Breakdown Modal */}
+      <CustomerSavingsModal
+        isOpen={isSavingsModalOpen}
+        onClose={() => setIsSavingsModalOpen(false)}
+        bookings={bookings}
+        payments={payments}
+      />
     </div>
   );
 }

@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      const res = await forgotPassword({ identifier: rawInput });
+      const res = await forgotPassword({ identifier: isEmail ? rawInput : (cleanIdentifier || rawInput) });
       const serverMsg = res?.data?.message || res?.message || "Reset code has been sent.";
       setSuccess(serverMsg);
       

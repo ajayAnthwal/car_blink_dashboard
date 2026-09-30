@@ -72,7 +72,14 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     return { label: "View Leads & Bookings", href: "/executive/leads" };
   }
 
-  // 5. Website Leads & Callbacks
+  // 5. Partner Registration & Status
+  if (payload.partnerId || titleLower.includes("partner") || msgLower.includes("partner")) {
+    if (userRole === "EXECUTIVE" || userRole === "SUPER_ADMIN" || userRole === "ADMIN") {
+      return { label: "Review & Verify Partner", href: "/executive/partner-status" };
+    }
+  }
+
+  // 6. Website Leads & Callbacks
   if (titleLower.includes("website lead") || titleLower.includes("callback")) {
     return { label: "View Website Leads", href: "/executive/website-leads" };
   }
@@ -191,29 +198,30 @@ export function NotificationDetailsModal({
                   </div>
                 )}
 
-                {payload.bookingId && (
+                {payload.bookingReference && (
                   <div>
-                    <span className="text-gray-500 font-bold text-[10px] uppercase block">Booking ID</span>
+                    <span className="text-gray-500 font-bold text-[10px] uppercase block">Booking Ref</span>
                     <span className="font-mono font-bold text-gray-800 text-[11px] truncate block mt-0.5">
-                      #{payload.bookingId}
+                      #{payload.bookingReference}
                     </span>
                   </div>
                 )}
 
-                {payload.invoiceId && (
+                {payload.verifiedAt && (
                   <div>
-                    <span className="text-gray-500 font-bold text-[10px] uppercase block">Invoice ID</span>
-                    <span className="font-mono font-bold text-gray-800 text-[11px] truncate block mt-0.5">
-                      #{payload.invoiceId}
+                    <span className="text-gray-500 font-bold text-[10px] uppercase block">Verified At</span>
+                    <span className="font-semibold text-gray-900 text-xs mt-0.5 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-blue-500" />
+                      {new Date(payload.verifiedAt).toLocaleString()}
                     </span>
                   </div>
                 )}
 
-                {payload.leadId && (
+                {(payload.displayStatus || payload.status) && (
                   <div>
-                    <span className="text-gray-500 font-bold text-[10px] uppercase block">Lead ID</span>
-                    <span className="font-mono font-bold text-gray-800 text-[11px] truncate block mt-0.5">
-                      #{payload.leadId}
+                    <span className="text-gray-500 font-bold text-[10px] uppercase block">Job Status</span>
+                    <span className="font-extrabold text-purple-700 text-xs mt-0.5 block">
+                      {payload.displayStatus || payload.status}
                     </span>
                   </div>
                 )}
