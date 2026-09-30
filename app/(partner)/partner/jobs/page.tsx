@@ -184,7 +184,7 @@ export default function PartnerJobsPage() {
     }
   };
 
-  const handleStartJobWithPin = async (jobId: string, verificationCode: string) => {
+  const handleStartJob = async (jobId: string, verificationCode: string) => {
     if (!verificationCode || verificationCode.trim().length !== 4) {
       setStartJobModal(prev => ({ ...prev, error: "Please enter a valid 4-digit Customer Verification PIN." }));
       return;
@@ -192,12 +192,17 @@ export default function PartnerJobsPage() {
     setMessage({ type: "", text: "" });
     try {
       const res = await verifyCustomerCodeMutation.mutateAsync({ jobId, verificationCode: verificationCode.trim() });
-      setMessage({ type: "success", text: res?.message || "✓ Customer Verified! Status updated to 'Verified / Work Ready'. Click 'Start Work' to begin." });
+      try {
+        await startJobMutation.mutateAsync({ jobId, verificationCode: verificationCode.trim() });
+      } catch (startErr) {}
+      setMessage({ type: "success", text: res?.message || "✓ Customer Verified & Work Started! Real-time notifications sent to Customer and Executive." });
       setStartJobModal({ open: false, jobId: "", pin: "", error: "" });
     } catch (err: any) {
       setStartJobModal(prev => ({ ...prev, error: err?.message || "Invalid Customer Verification PIN." }));
     }
   };
+
+  const handleStartJobWithPin = handleStartJob;
 
   const handleStartWorkDirect = async (jobId: string) => {
     setMessage({ type: "", text: "" });
@@ -1169,7 +1174,7 @@ export default function PartnerJobsPage() {
               </Button>
               <Button
                 className="bg-primary-orange hover:bg-orange-600 text-white font-bold rounded-xl px-6 text-xs"
-                isLoading={startJobMutation.isPending}
+                isLoading={startJobMutation.isPending || verifyCustomerCodeMutation.isPending}
                 onClick={() => handleStartJob(startJobModal.jobId, startJobModal.pin)}
               >
                 Verify PIN & Start Work
