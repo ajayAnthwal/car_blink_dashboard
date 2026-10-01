@@ -156,10 +156,7 @@ export default function PartnerJobsPage() {
     setMessage({ type: "", text: "" });
     try {
       const hasInvoice = job.invoiceUrl || job.invoice || job.hasInvoice || invoiceUrl;
-
-      if (!hasInvoice && invoiceItems.length > 0 && invoiceItems.some(i => i.description && Number(i.unitPrice) > 0)) {
-        await handleSubmitItemizedInvoice(job._id || job.id);
-      } else if (!hasInvoice) {
+      if (!hasInvoice) {
         setMessage({ type: "error", text: "Please submit an itemized bill form or upload an invoice document before completing the job." });
         return;
       }

@@ -20,7 +20,7 @@ export default function PartnerWarrantyPage() {
   const completedJobs = jobsData?.jobs || [];
 
   const { data: warrantiesData, isLoading: isLoadingWarranties } = usePartnerWarranties();
-  const issuedWarranties = warrantiesData || [];
+  const issuedWarranties = Array.isArray(warrantiesData) ? warrantiesData : (warrantiesData?.warranties || []);
 
   const isLoading = isLoadingJobs || isLoadingWarranties;
   const issueMutation = useIssueWarrantyMutation();
@@ -170,10 +170,10 @@ export default function PartnerWarrantyPage() {
                       {warranty.bookingId?.serviceId?.name || "Service Warranty"}
                     </h4>
                     <p className="text-xs text-neutral-muted mt-0.5">
-                      {warranty.bookingId?.vehicleId?.brand} {warranty.bookingId?.vehicleId?.model} - Customer: {warranty.customerId?.firstName} {warranty.customerId?.lastName}
+                      {warranty.bookingId?.vehicleId?.brand} {warranty.bookingId?.vehicleId?.model} - Customer: {warranty.customerId?.fullName || warranty.customerId?.firstName || "Customer"} {warranty.customerId?.lastName || ""}
                     </p>
                     <p className="text-xs text-neutral-muted mt-0.5">
-                      Valid till: {new Date(warranty.expiryDate || new Date()).toLocaleDateString()}
+                      Valid till: {warranty.expiryDate && !isNaN(new Date(warranty.expiryDate).getTime()) ? new Date(warranty.expiryDate).toLocaleDateString() : "Active"}
                     </p>
                   </div>
                 </div>

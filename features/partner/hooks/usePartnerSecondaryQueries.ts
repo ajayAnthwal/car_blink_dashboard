@@ -140,7 +140,7 @@ export const usePartnerWarranties = () => {
     queryKey: ["partner", "warranties"],
     queryFn: async () => {
       const res = await getPartnerWarranties();
-      const dataArray = res?.data?.docs || res?.data || res?.docs || [];
+      const dataArray = res?.data?.warranties || res?.warranties || res?.data?.docs || res?.data || res?.docs || [];
       return Array.isArray(dataArray) ? dataArray : [];
     },
   });

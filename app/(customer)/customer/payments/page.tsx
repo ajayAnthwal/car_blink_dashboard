@@ -34,6 +34,7 @@ interface Payment {
 
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { data: bookingsData, isLoading: isLoadingBookings } = useCustomerBookings();
   const { data: paymentsData, isLoading: isLoadingPayments, refetch: refetchPayments } = useCustomerPayments();
 
