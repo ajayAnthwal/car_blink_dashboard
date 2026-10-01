@@ -26,6 +26,7 @@ import { verifyPayment } from "@/lib/services";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function CustomerBookingDetailsPage() {
   const { id } = useParams() as { id: string };
@@ -1321,7 +1322,7 @@ export default function CustomerBookingDetailsPage() {
 
         {/* Right Column: Support & Summary */}
         <div className="space-y-6">
-          {booking.assignedPartnerId && (
+          {booking.assignedPartnerId && typeof booking.assignedPartnerId === 'object' && (
             hasPaidAdvance ? (
               <Card className="shadow-lg border-success/30 overflow-hidden rounded-3xl relative bg-gradient-to-br from-white to-success/5">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-success/10 rounded-bl-full -z-10"></div>
@@ -1336,23 +1337,23 @@ export default function CustomerBookingDetailsPage() {
                     <div className="w-20 h-20 bg-white rounded-full mx-auto mb-3 border-4 border-success/20 flex items-center justify-center shadow-md">
                       <Car className="w-8 h-8 text-success" />
                     </div>
-                    <p className="font-extrabold text-primary-navy text-2xl">{booking.assignedPartnerId.businessName || "Verified Service Partner"}</p>
+                    <p className="font-extrabold text-primary-navy text-2xl">{booking.assignedPartnerId?.businessName || "Verified Service Partner"}</p>
                     <p className="text-sm text-neutral-muted font-medium mt-1">CarBlink Certified Partner</p>
                   </div>
 
                   <div className="space-y-3">
-                    {(booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone) && (
-                      <a href={`tel:${booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone}`} className="flex items-center text-sm font-semibold text-primary-navy bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm hover:border-secondary-blue/40 transition-all">
+                    {(booking.assignedPartnerId?.phone || booking.assignedPartnerId?.userId?.phone) && (
+                      <a href={`tel:${booking.assignedPartnerId?.phone || booking.assignedPartnerId?.userId?.phone}`} className="flex items-center text-sm font-semibold text-primary-navy bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm hover:border-secondary-blue/40 transition-all">
                         <Phone className="w-4 h-4 mr-3 text-secondary-blue" />
-                        <span>Phone: <span className="font-bold text-base">{booking.assignedPartnerId.phone || booking.assignedPartnerId.userId?.phone}</span></span>
+                        <span>Phone: <span className="font-bold text-base">{booking.assignedPartnerId?.phone || booking.assignedPartnerId?.userId?.phone}</span></span>
                       </a>
                     )}
-                    {booking.assignedPartnerId.businessAddress && (
+                    {booking.assignedPartnerId?.businessAddress && (
                       (() => {
-                        const coords = booking.assignedPartnerId.location?.coordinates;
+                        const coords = booking.assignedPartnerId?.location?.coordinates;
                         const mapsUrl = (coords && Array.isArray(coords) && coords.length === 2 && (coords[0] !== 0 || coords[1] !== 0))
                           ? `https://www.google.com/maps?q=${coords[1]},${coords[0]}`
-                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${booking.assignedPartnerId.businessName || ''} ${booking.assignedPartnerId.businessAddress}`.trim())}`;
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${booking.assignedPartnerId?.businessName || ''} ${booking.assignedPartnerId?.businessAddress}`.trim())}`;
 
                         return (
                           <a
@@ -1369,7 +1370,7 @@ export default function CustomerBookingDetailsPage() {
                                 <ExternalLink className="w-3.5 h-3.5 text-primary-orange opacity-70 group-hover:opacity-100" />
                               </div>
                               <span className="font-bold text-primary-navy text-sm underline decoration-primary-orange/40 group-hover:decoration-primary-orange">
-                                {booking.assignedPartnerId.businessAddress}
+                                {booking.assignedPartnerId?.businessAddress}
                               </span>
                               <span className="text-[10px] text-emerald-600 block mt-0.5 font-semibold">
                                 ✓ Verified Location • Click to open Google Maps
@@ -1379,10 +1380,10 @@ export default function CustomerBookingDetailsPage() {
                         );
                       })()
                     )}
-                    {(booking.assignedPartnerId.email || booking.assignedPartnerId.userId?.email) && (
+                    {(booking.assignedPartnerId?.email || booking.assignedPartnerId?.userId?.email) && (
                       <div className="flex items-center text-sm font-medium text-neutral-dark bg-white p-3.5 rounded-xl border border-neutral-muted/10 shadow-sm">
                         <Mail className="w-4 h-4 mr-3 text-secondary-blue" />
-                        <span>{booking.assignedPartnerId.email || booking.assignedPartnerId.userId?.email}</span>
+                        <span>{booking.assignedPartnerId?.email || booking.assignedPartnerId?.userId?.email}</span>
                       </div>
                     )}
                   </div>

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Wrench, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, PlayCircle, MapPin, Calendar, Car, UserCheck, PlusCircle, HandCoins, Search, Filter, ChevronLeft, ChevronRight, ShieldAlert, Clock, Sparkles, DollarSign, ShieldCheck, Lock, Plus } from "lucide-react";
 import toast from "react-hot-toast";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   usePartnerJobs,
   usePartnerStaff,
@@ -453,12 +454,12 @@ export default function PartnerJobsPage() {
       ) : (
         <div className="space-y-4">
           {jobs.map((job: any) => {
-            const jobId = job._id || job.id;
+            const jobId = job._id || job.id || "";
             const isExpanded = expandedId === jobId;
-            const bData = job.bookingId || {};
-            const vData = bData.vehicleId || {};
-            const sData = bData.serviceId || {};
-            const cData = bData.cityId || {};
+            const bData = typeof job.bookingId === 'object' && job.bookingId ? job.bookingId : {};
+            const vData = typeof bData.vehicleId === 'object' && bData.vehicleId ? bData.vehicleId : {};
+            const sData = typeof bData.serviceId === 'object' && bData.serviceId ? bData.serviceId : {};
+            const cData = typeof bData.cityId === 'object' && bData.cityId ? bData.cityId : {};
 
             return (
               <Card key={jobId} className={`transition-all duration-300 border bg-white overflow-hidden shadow-sm hover:shadow-md ${
@@ -477,7 +478,7 @@ export default function PartnerJobsPage() {
                             {sData.name || "Car Service Job"}
                           </h3>
                           <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded font-bold">
-                            #{jobId.substring(jobId.length - 6).toUpperCase()}
+                            #{(jobId || "").slice(-6).toUpperCase()}
                           </span>
                         </div>
                         {getStatusBadge(job.status)}
@@ -487,7 +488,7 @@ export default function PartnerJobsPage() {
                       <div className="flex flex-wrap gap-4 text-xs text-gray-600 font-medium">
                         <span className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
                           <Car className="w-3.5 h-3.5 text-primary-orange" />
-                          <strong className="text-gray-900">{vData.brand} {vData.model}</strong> ({vData.registrationNumber || "Vehicle"})
+                          <strong className="text-gray-900">{vData.brand || "Vehicle"} {vData.model || ""}</strong> ({vData.registrationNumber || "N/A"})
                         </span>
 
                         {cData.name && (
@@ -498,7 +499,9 @@ export default function PartnerJobsPage() {
 
                         <span className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
                           <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-                          {bData.preferredDate ? new Date(bData.preferredDate).toLocaleDateString() : "Date N/A"}
+                          {bData.preferredDate && !isNaN(new Date(bData.preferredDate).getTime())
+                            ? new Date(bData.preferredDate).toLocaleDateString()
+                            : "Date N/A"}
                         </span>
 
                         {job.hasInvoice && (
@@ -516,6 +519,7 @@ export default function PartnerJobsPage() {
 
                   {/* Expanded Workstation Panel */}
                   {isExpanded && (
+                    <ErrorBoundary>
                     <div className="p-6 border-t border-gray-100 bg-slate-50/50 space-y-6 animate-in fade-in">
                       {/* Section 1: Photos Uploads (Before & After) */}
                       {(job.status === "IN_PROGRESS" || job.status === "COMPLETED") && (
@@ -536,7 +540,7 @@ export default function PartnerJobsPage() {
                               className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-50 file:text-primary-orange hover:file:bg-orange-100 cursor-pointer"
                             />
 
-                            {job.beforePhotos && job.beforePhotos.length > 0 && (
+                            {Array.isArray(job.beforePhotos) && job.beforePhotos.length > 0 && (
                               <div className="flex gap-2 overflow-x-auto py-1">
                                 {job.beforePhotos.map((url: string, idx: number) => (
                                   <div key={idx} className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-gray-200 group">
@@ -579,7 +583,7 @@ export default function PartnerJobsPage() {
                               className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
                             />
 
-                            {job.afterPhotos && job.afterPhotos.length > 0 && (
+                            {Array.isArray(job.afterPhotos) && job.afterPhotos.length > 0 && (
                               <div className="flex gap-2 overflow-x-auto py-1">
                                 {job.afterPhotos.map((url: string, idx: number) => (
                                   <div key={idx} className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-gray-200 group">
@@ -622,9 +626,9 @@ export default function PartnerJobsPage() {
                               onChange={(e) => setMechanicId(e.target.value)}
                               options={[
                                 { value: "", label: "Select a Staff Mechanic..." },
-                                ...staffList.map((staff: any) => ({
-                                  value: staff._id || staff.id,
-                                  label: `${staff.name} (${staff.role || "Mechanic"})`
+                                ...(Array.isArray(staffList) ? staffList : []).map((staff: any) => ({
+                                  value: staff?._id || staff?.id || "",
+                                  label: `${staff?.name || "Staff"} (${staff?.role || "Mechanic"})`
                                 }))
                               ]}
                               className="text-xs rounded-xl border-gray-200"
@@ -813,7 +817,9 @@ export default function PartnerJobsPage() {
 
                             {/* Offline Cash Payment Block */}
                             {(() => {
-                              const finalPayment = job.payments?.find((p: any) => (p.paymentType === 'FINAL' || p.paymentType === 'FULL'));
+                              const finalPayment = Array.isArray(job.payments)
+                                ? job.payments.find((p: any) => (p?.paymentType === 'FINAL' || p?.paymentType === 'FULL'))
+                                : null;
                               const isFinalPaid = finalPayment?.status === 'SUCCESS';
                               const isFinalPending = finalPayment?.status === 'PENDING' && finalPayment?.provider === 'CASH';
 
@@ -864,6 +870,7 @@ export default function PartnerJobsPage() {
                         )}
                       </div>
                     </div>
+                    </ErrorBoundary>
                   )}
                 </CardContent>
               </Card>
@@ -988,19 +995,20 @@ export default function PartnerJobsPage() {
  * Partners can add extra parts/charges via additional lines.
  */
 function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSubmitted?: () => void }) {
-  const jobId = job._id || job.id;
-  const bData = job.bookingId || {};
-  const sData = bData.serviceId || {};
+  const jobId = job._id || job.id || "";
+  const bData = typeof job.bookingId === 'object' && job.bookingId ? job.bookingId : {};
+  const sData = typeof bData.serviceId === 'object' && bData.serviceId ? bData.serviceId : {};
 
   // 1. Calculate actual customer agreed / quoted amount
   const actualQuotedAmount = useMemo(() => {
-    return Number(
+    const val = Number(
       job.finalAmount ||
       job.bidId?.quotedAmount ||
       bData.acceptedBidId?.quotedAmount ||
       sData.basePrice ||
       0
     );
+    return isNaN(val) ? 0 : val;
   }, [job, bData, sData]);
 
   const defaultServiceName = sData.name || "Car Service & Maintenance";
@@ -1012,16 +1020,16 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
   );
 
   const [pdfUrl, setPdfUrl] = useState<string>(
-    existingInvoice?.pdfUrl || job.invoiceUrl || ""
+    typeof existingInvoice?.pdfUrl === 'string' ? existingInvoice.pdfUrl : (typeof job.invoiceUrl === 'string' ? job.invoiceUrl : "")
   );
 
   // Initialize line items: Row 0 is ALWAYS the customer's actual quoted amount and is locked!
   const [items, setItems] = useState<{ description: string; quantity: number; unitPrice: number; isBasePackage: boolean }[]>(() => {
-    if (existingInvoice?.items && existingInvoice.items.length > 0) {
+    if (Array.isArray(existingInvoice?.items) && existingInvoice.items.length > 0) {
       return existingInvoice.items.map((it: any, idx: number) => ({
-        description: it.description || (idx === 0 ? defaultServiceName : ""),
-        quantity: it.quantity || 1,
-        unitPrice: idx === 0 ? (actualQuotedAmount || it.unitPrice || 0) : (it.unitPrice || 0),
+        description: it?.description || (idx === 0 ? defaultServiceName : ""),
+        quantity: Number(it?.quantity) || 1,
+        unitPrice: idx === 0 ? (actualQuotedAmount || Number(it?.unitPrice) || 0) : (Number(it?.unitPrice) || 0),
         isBasePackage: idx === 0
       }));
     }
@@ -1162,7 +1170,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
   const handleUploadPdf = async () => {
     if (!pdfUrl) return;
     try {
-      await uploadInvoiceMutation.mutateAsync({ id: jobId, data: { invoiceUrl: pdfUrl } });
+      await uploadInvoiceMutation.mutateAsync({ jobId, payload: { invoiceUrl: pdfUrl } });
       toast.success("PDF invoice uploaded successfully!");
       onInvoiceSubmitted?.();
     } catch (err: any) {
@@ -1348,20 +1356,20 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
             })}
 
             {/* Quick add requested extra parts if available */}
-            {job.jobExtensions && job.jobExtensions.length > 0 && (
+            {Array.isArray(job.jobExtensions) && job.jobExtensions.length > 0 && (
               <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200/80 space-y-2 mt-2">
                 <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
                   <PlusCircle className="w-3.5 h-3.5 text-primary-orange" /> Quick-Add Requested Parts from this Job:
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {job.jobExtensions.map((ext: any, extIdx: number) => (
+                  {job.jobExtensions.filter((ext: any) => typeof ext === 'object' && ext?.partName).map((ext: any, extIdx: number) => (
                     <button
                       key={extIdx}
                       type="button"
                       onClick={() => handleAddExtension(ext)}
                       className="text-[11px] font-bold bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 px-3 py-1 rounded-lg flex items-center gap-1.5 transition-colors shadow-2xs"
                     >
-                      <Plus className="w-3 h-3 text-primary-orange" /> Add &ldquo;{ext.partName}&rdquo; (+₹{ext.cost})
+                      <Plus className="w-3 h-3 text-primary-orange" /> Add &ldquo;{ext.partName}&rdquo; (+₹{Number(ext.cost) || 0})
                     </button>
                   ))}
                 </div>
