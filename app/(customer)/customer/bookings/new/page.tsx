@@ -39,7 +39,11 @@ export default function NewBookingPage() {
   const [formResetKey, setFormResetKey] = useState(0);
 
   const handleCreateBooking = (data: BookingFormValues) => {
+    let executed = false;
     const doCreateBooking = (lat?: number, lng?: number) => {
+      if (executed) return;
+      executed = true;
+
       let combinedDate = new Date(data.preferredDate);
       if (data.preferredTime) {
         const timeMatch = data.preferredTime.match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
@@ -53,10 +57,14 @@ export default function NewBookingPage() {
         }
       }
 
+      const isoDate = !isNaN(combinedDate.getTime())
+        ? combinedDate.toISOString()
+        : (!isNaN(new Date(data.preferredDate).getTime()) ? new Date(data.preferredDate).toISOString() : new Date().toISOString());
+
       createBookingMutation.mutate(
         {
           ...data,
-          preferredDate: isNaN(combinedDate.getTime()) ? new Date(data.preferredDate).toISOString() : combinedDate.toISOString(),
+          preferredDate: isoDate,
           ...(lat && lng ? { latitude: lat, longitude: lng } : {})
         },
         {
@@ -76,18 +84,26 @@ export default function NewBookingPage() {
       );
     };
 
-    if ("geolocation" in navigator) {
+    // Fast 1.5s fallback so booking NEVER hangs indefinitely on browser geolocation prompt
+    const fallbackTimer = setTimeout(() => {
+      doCreateBooking();
+    }, 1500);
+
+    if (typeof window !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          clearTimeout(fallbackTimer);
           doCreateBooking(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
+          clearTimeout(fallbackTimer);
           console.warn("Geolocation failed", error);
           doCreateBooking();
         },
-        { timeout: 8000 }
+        { timeout: 1500, enableHighAccuracy: false }
       );
     } else {
+      clearTimeout(fallbackTimer);
       doCreateBooking();
     }
   };

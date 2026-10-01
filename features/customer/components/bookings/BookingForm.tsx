@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { Store, Truck, CreditCard, Banknote, MapPin, PenLine, Navigation, Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import toast from "react-hot-toast";
 
 const bookingSchema = z.object({
   vehicleId: z.string().min(1, "Vehicle is required"),
@@ -136,18 +137,44 @@ export function BookingForm({
   }, [selectedState, onStateChange]);
 
   const handleFormSubmit = (data: BookingFormValues) => {
-    const dateTime = new Date(`${data.preferredDate}T${data.preferredTime}`);
-    const resolvedCityId = data.cityId || (user as any)?.cityId || (cities.length > 0 ? cities[0]._id : "6a56fe37cd289f213b596a00");
+    let combinedDate = new Date(data.preferredDate);
+    if (data.preferredTime) {
+      const timeMatch = data.preferredTime.match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+      if (timeMatch) {
+        let hours = parseInt(timeMatch[1], 10);
+        const minutes = parseInt(timeMatch[2], 10);
+        const modifier = timeMatch[3]?.toUpperCase();
+        if (modifier === "PM" && hours < 12) hours += 12;
+        if (modifier === "AM" && hours === 12) hours = 0;
+        combinedDate.setHours(hours, minutes, 0, 0);
+      }
+    }
+    const finalDateStr = !isNaN(combinedDate.getTime()) 
+      ? combinedDate.toISOString() 
+      : new Date().toISOString();
+
+    const resolvedCityId = data.cityId || (user as any)?.cityId || (cities && cities.length > 0 ? cities[0]._id : "6a56fe37cd289f213b596a00");
     const submitData = {
       ...data,
       cityId: resolvedCityId,
-      preferredDate: dateTime.toISOString(),
+      preferredDate: finalDateStr,
     };
     onSubmit(submitData);
   };
 
+  const onInvalid = (validationErrors: any) => {
+    console.error("Form validation errors:", validationErrors);
+    const firstKey = Object.keys(validationErrors)[0];
+    const firstError = validationErrors[firstKey];
+    if (firstError?.message) {
+      toast.error(firstError.message);
+    } else {
+      toast.error("Please fill all required fields correctly.");
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
+    <form onSubmit={handleSubmit(handleFormSubmit, onInvalid)} className="space-y-8">
       {/* SECTION 1: Service Details */}
       <div className="bg-neutral-white p-4 md:p-6 rounded-2xl shadow-subtle border border-neutral-muted/10 space-y-6">
         <div className="flex items-center space-x-2 border-b border-neutral-muted/10 pb-4">
