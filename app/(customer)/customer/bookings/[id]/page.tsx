@@ -116,7 +116,14 @@ export default function CustomerBookingDetailsPage() {
 
   // Auto-focus directly on Advance Payment Section when payment is needed
   useEffect(() => {
-    if (typeof window !== 'undefined' && booking && !hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED') {
+    if (typeof window === 'undefined' || !booking || booking.status === 'COMPLETED') return;
+
+    const isAdvPaid = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS' && p.amount > 0);
+    const isFlPaid = booking.payments?.some((p: any) => p.paymentType === 'FULL' && p.status === 'SUCCESS' && p.amount > 0);
+    const totalPaid = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
+    const isPaid = isAdvPaid || isFlPaid || totalPaid > 0;
+
+    if (!isPaid) {
       const timer = setTimeout(() => {
         const payEl = document.getElementById('advance-payment-section');
         if (payEl) {
@@ -125,7 +132,7 @@ export default function CustomerBookingDetailsPage() {
       }, 350);
       return () => clearTimeout(timer);
     }
-  }, [booking?._id, hasPaidAdvance, remainingAmount]);
+  }, [booking?._id, booking?.status, booking?.payments]);
 
   useEffect(() => {
     if (!socket || !id) return;

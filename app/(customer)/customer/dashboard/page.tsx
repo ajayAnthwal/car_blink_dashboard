@@ -228,7 +228,7 @@ export default function CustomerDashboardPage() {
             </div>
           </div>
           <Button asChild className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md text-xs sm:text-sm px-6 py-2.5">
-            <Link href={`/customer/bookings/${awaiting15PercentAdvance[0]._id}#advance-payment-section`}>
+            <Link href={`/customer/bookings/${awaiting15PercentAdvance[0]?._id || awaiting15PercentAdvance[0]?.id || ''}#advance-payment-section`}>
               Confirm Booking <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
           </Button>
