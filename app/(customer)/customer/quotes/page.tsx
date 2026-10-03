@@ -313,7 +313,7 @@ function BookingQuoteCard({
                                 variant="outline"
                                 className="border-green-300 text-green-700 hover:bg-green-50 rounded-xl text-xs font-bold"
                               >
-                                <Link href={`/customer/bookings/${booking._id}`}>
+                                <Link href={`/customer/bookings/${booking._id}#advance-payment-section`}>
                                   View Booking Details <ArrowRight className="w-3.5 h-3.5 ml-1" />
                                 </Link>
                               </Button>
@@ -367,7 +367,7 @@ export default function QuotesPage() {
         text: `Quote of ₹${bid.quotedAmount} selected! Redirecting to booking confirmation...`
       });
       setTimeout(() => {
-        router.push(`/customer/bookings/${booking._id}`);
+        router.push(`/customer/bookings/${booking._id}#advance-payment-section`);
       }, 700);
     } catch (err: unknown) {
       setMessage({
