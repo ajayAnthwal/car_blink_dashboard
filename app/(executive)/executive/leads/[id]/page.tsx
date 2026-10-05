@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, Phone, Mail, Car, Wrench, MapPin, Calendar, Clock, Briefcase, Target, Image as ImageIcon, CheckCircle, Share, ClipboardList, ExternalLink, FileText, Star, ThumbsUp, ThumbsDown, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, Car, Wrench, MapPin, Calendar, Clock, Briefcase, Target, Image as ImageIcon, CheckCircle, Share, ClipboardList, ExternalLink, FileText, Star, ThumbsUp, ThumbsDown, Send, Sparkles, CreditCard, Banknote, ShieldCheck, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function LeadDetailsPage() {
@@ -96,6 +96,47 @@ export default function LeadDetailsPage() {
   
   const hasCoordinates = lead.location?.coordinates?.length === 2;
   const coordinatesStr = hasCoordinates ? `${lead.location.coordinates[1].toFixed(4)}, ${lead.location.coordinates[0].toFixed(4)}` : null;
+
+  const payments = Array.isArray(lead.payments) ? lead.payments : [];
+  const acceptedBid = (lead.bids || []).find((b: any) => 
+    b._id === lead.acceptedBidId || 
+    b._id === (lead.acceptedBidId as any)?._id || 
+    b.status === 'ACCEPTED'
+  );
+  const quotedAmount = acceptedBid?.quotedAmount || (typeof lead.acceptedBidId === 'object' ? (lead.acceptedBidId as any)?.quotedAmount : 0) || 0;
+  const totalPayableAmount = lead.finalAmount || lead.job?.finalAmount || quotedAmount || 0;
+
+  const advancePayment = payments.find((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS') || 
+                         payments.find((p: any) => p.paymentType === 'ADVANCE');
+
+  const finalPayment = payments.find((p: any) => (p.paymentType === 'FINAL' || p.paymentType === 'FULL') && p.status === 'SUCCESS') || 
+                       payments.find((p: any) => (p.paymentType === 'FINAL' || p.paymentType === 'FULL'));
+
+  const totalPaidAmount = payments
+    .filter((p: any) => p.status === 'SUCCESS')
+    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
+  const remainingBalance = Math.max(0, totalPayableAmount - totalPaidAmount);
+
+  const getProviderInfo = (payment: any, fallbackMode?: string) => {
+    const isCash = payment?.provider === 'CASH' || 
+                   payment?.providerOrderId?.startsWith('CASH_') || 
+                   (!payment?.provider && fallbackMode === 'CASH');
+    if (isCash) {
+      return {
+        label: "Cash to Partner at Workshop",
+        shortLabel: "Cash",
+        icon: "💵",
+        badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200"
+      };
+    }
+    return {
+      label: "Online (Razorpay / UPI / Card)",
+      shortLabel: "Online",
+      icon: "💳",
+      badgeClass: "bg-blue-50 text-blue-800 border-blue-200"
+    };
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 relative">
@@ -571,6 +612,315 @@ export default function LeadDetailsPage() {
               )}
             </div>
             
+          </CardContent>
+        </Card>
+
+        {/* Payment Breakdown & Settlement Mode Details for Executive */}
+        <Card className="shadow-subtle border-gray-100 md:col-span-2 overflow-hidden">
+          <CardHeader className="pb-3 border-b border-gray-50 bg-gradient-to-r from-slate-50/80 via-white to-slate-50/50">
+            <CardTitle className="text-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center">
+                <div className="bg-emerald-50 p-2 rounded-lg mr-3 text-emerald-600">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-gray-900 font-heading">Payment Details &amp; Settlement Mode</span>
+                  <p className="text-xs text-gray-500 font-normal font-body">Advance &amp; Final payment collection breakdown</p>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2">
+                {lead.paymentMode && (
+                  <Badge variant="outline" className={`text-xs px-2.5 py-1 font-bold ${
+                    lead.paymentMode === 'CASH' 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    {lead.paymentMode === 'CASH' ? '💵 Customer Preference: Cash at Workshop' : '💳 Customer Preference: Online Payment'}
+                  </Badge>
+                )}
+                <Badge className={`text-xs px-3 py-1 font-bold ${
+                  remainingBalance === 0 && totalPaidAmount > 0
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    : totalPaidAmount > 0
+                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                    : 'bg-red-50 text-red-700 border-red-200'
+                }`}>
+                  {remainingBalance === 0 && totalPaidAmount > 0
+                    ? '✓ Fully Settled'
+                    : totalPaidAmount > 0
+                    ? 'Partially Paid'
+                    : 'Payment Pending'}
+                </Badge>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
+            
+            {/* Top Metric Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/70">
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                  Total Payable
+                </span>
+                <p className="text-2xl font-black text-gray-900 font-heading">
+                  ₹{Number(totalPayableAmount || 0).toLocaleString('en-IN')}
+                </p>
+                <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                  {lead.finalAmount ? 'Final invoice amount' : quotedAmount ? 'Accepted quote amount' : 'Estimated amount'}
+                </p>
+              </div>
+
+              <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block mb-1">
+                  Advance Payment
+                </span>
+                <p className="text-2xl font-black text-blue-900 font-heading">
+                  ₹{(advancePayment ? Number(advancePayment.amount) : 0).toLocaleString('en-IN')}
+                </p>
+                <div className="text-[11px] mt-1 font-semibold flex items-center gap-1 text-blue-800">
+                  {advancePayment?.status === 'SUCCESS' ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      <span>{getProviderInfo(advancePayment, lead.paymentMode).label}</span>
+                    </>
+                  ) : advancePayment?.status === 'PENDING' ? (
+                    <span className="text-amber-700">⏳ Advance Pending Verification</span>
+                  ) : (
+                    <span className="text-gray-500">Advance Not Received</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">
+                  Final Settlement
+                </span>
+                <p className="text-2xl font-black text-emerald-900 font-heading">
+                  ₹{(finalPayment ? Number(finalPayment.amount) : 0).toLocaleString('en-IN')}
+                </p>
+                <div className="text-[11px] mt-1 font-semibold flex items-center gap-1 text-emerald-800">
+                  {finalPayment?.status === 'SUCCESS' ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      <span>{getProviderInfo(finalPayment, lead.paymentMode).label}</span>
+                    </>
+                  ) : finalPayment?.status === 'PENDING' ? (
+                    <span className="text-amber-700">⏳ Handover Pending Verification</span>
+                  ) : lead.status === 'COMPLETED' ? (
+                    <span className="text-amber-600">Pending Partner Collection</span>
+                  ) : (
+                    <span className="text-gray-500">Payable after job completion</span>
+                  )}
+                </div>
+              </div>
+
+              <div className={`p-4 rounded-2xl border ${
+                remainingBalance === 0 && totalPaidAmount > 0 
+                  ? 'bg-emerald-50/80 border-emerald-200' 
+                  : 'bg-amber-50/70 border-amber-200'
+              }`}>
+                <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider block mb-1">
+                  Total Paid / Balance
+                </span>
+                <p className="text-2xl font-black text-gray-900 font-heading">
+                  ₹{Number(totalPaidAmount || 0).toLocaleString('en-IN')}
+                </p>
+                <div className="text-[11px] mt-1 font-semibold">
+                  {remainingBalance === 0 && totalPaidAmount > 0 ? (
+                    <span className="text-emerald-700 font-bold">✓ Balance: ₹0 (No Dues)</span>
+                  ) : (
+                    <span className="text-amber-700 font-bold">Remaining Balance: ₹{Number(remainingBalance || 0).toLocaleString('en-IN')}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Advance vs Final Mode Comparison Callout Banner */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Advance Payment Mode Card */}
+              <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-primary-orange" /> Advance Booking Deposit
+                  </span>
+                  {advancePayment ? (
+                    <Badge className={`text-[10px] font-bold uppercase px-2 py-0.5 ${
+                      advancePayment.status === 'SUCCESS' ? 'bg-emerald-100 text-emerald-800' :
+                      advancePayment.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {advancePayment.status}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] text-gray-500 bg-gray-50">NOT PAID</Badge>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <span className="text-xs text-gray-500 block">Payment Mode</span>
+                    <span className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5 mt-0.5">
+                      {advancePayment ? (
+                        <>
+                          <span className="text-base">{getProviderInfo(advancePayment, lead.paymentMode).icon}</span>
+                          <span>{getProviderInfo(advancePayment, lead.paymentMode).label}</span>
+                        </>
+                      ) : (
+                        <span className="text-gray-500 italic">
+                          {lead.paymentMode === 'CASH' ? '💵 Cash at Workshop selected' : '💳 Online selected'}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-gray-500 block">Advance Amount</span>
+                    <span className="text-base font-black text-gray-900 font-heading">
+                      ₹{(advancePayment ? Number(advancePayment.amount) : Math.round(Number(totalPayableAmount || 0) * 0.15)).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                {advancePayment && (
+                  <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between text-[11px] text-gray-500 font-mono gap-1">
+                    <span className="truncate max-w-[200px]" title={advancePayment.providerPaymentId || advancePayment.providerOrderId || advancePayment._id}>
+                      Ref: {advancePayment.providerPaymentId || advancePayment.providerOrderId || advancePayment._id}
+                    </span>
+                    {advancePayment.paidAt && !isNaN(new Date(advancePayment.paidAt).getTime()) && (
+                      <span>Paid: {new Date(advancePayment.paidAt).toLocaleString()}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Final Settlement Mode Card */}
+              <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                    <Banknote className="w-4 h-4 text-emerald-600" /> Final Post-Service Settlement
+                  </span>
+                  {finalPayment ? (
+                    <Badge className={`text-[10px] font-bold uppercase px-2 py-0.5 ${
+                      finalPayment.status === 'SUCCESS' ? 'bg-emerald-100 text-emerald-800' :
+                      finalPayment.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {finalPayment.status}
+                    </Badge>
+                  ) : remainingBalance === 0 && totalPaidAmount > 0 ? (
+                    <Badge className="text-[10px] font-bold uppercase px-2 py-0.5 bg-emerald-100 text-emerald-800">SETTLED</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] text-amber-700 bg-amber-50 border-amber-200">PENDING</Badge>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <span className="text-xs text-gray-500 block">Payment Mode</span>
+                    <span className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5 mt-0.5">
+                      {finalPayment ? (
+                        <>
+                          <span className="text-base">{getProviderInfo(finalPayment, lead.paymentMode).icon}</span>
+                          <span>{getProviderInfo(finalPayment, lead.paymentMode).label}</span>
+                        </>
+                      ) : (
+                        <span className="text-gray-500 italic">
+                          {lead.paymentMode === 'CASH' ? '💵 Cash to Partner at Workshop' : '💳 Online Payment'}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-gray-500 block">Settlement Amount</span>
+                    <span className="text-base font-black text-gray-900 font-heading">
+                      ₹{(finalPayment ? Number(finalPayment.amount) : Number(remainingBalance || 0)).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                {finalPayment && (
+                  <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between text-[11px] text-gray-500 font-mono gap-1">
+                    <span className="truncate max-w-[200px]" title={finalPayment.providerPaymentId || finalPayment.providerOrderId || finalPayment._id}>
+                      Ref: {finalPayment.providerPaymentId || finalPayment.providerOrderId || finalPayment._id}
+                    </span>
+                    {finalPayment.paidAt && !isNaN(new Date(finalPayment.paidAt).getTime()) && (
+                      <span>Paid: {new Date(finalPayment.paidAt).toLocaleString()}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Complete Transaction History Table */}
+            <div className="pt-4 border-t border-gray-100">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-primary-orange" /> Payment Transaction History ({payments.length})
+              </h4>
+
+              {payments.length === 0 ? (
+                <div className="p-4 bg-gray-50 rounded-xl text-xs text-gray-500 border border-gray-100 text-center">
+                  No payment transactions recorded for this lead yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase">
+                      <tr>
+                        <th className="py-2.5 px-3">Type</th>
+                        <th className="py-2.5 px-3">Amount</th>
+                        <th className="py-2.5 px-3">Payment Mode</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Reference / Order ID</th>
+                        <th className="py-2.5 px-3 text-right">Date &amp; Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white font-medium text-gray-800">
+                      {payments.map((p: any) => {
+                        const info = getProviderInfo(p, lead.paymentMode);
+                        return (
+                          <tr key={p._id || Math.random()} className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3 font-bold text-primary-navy">
+                              {p.paymentType || "PAYMENT"}
+                            </td>
+                            <td className="py-2.5 px-3 font-black text-gray-900 font-heading">
+                              ₹{Number(p.amount || 0).toLocaleString('en-IN')}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[11px] border ${info.badgeClass}`}>
+                                <span>{info.icon}</span>
+                                <span>{info.shortLabel}</span>
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                p.status === 'SUCCESS' ? 'bg-emerald-100 text-emerald-800' :
+                                p.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {p.status}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-gray-600 truncate max-w-[200px]" title={p.providerPaymentId || p.providerOrderId || p._id}>
+                              {p.providerPaymentId || p.providerOrderId || p._id}
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-gray-500 font-mono text-[11px] whitespace-nowrap">
+                              {p.paidAt && !isNaN(new Date(p.paidAt).getTime())
+                                ? new Date(p.paidAt).toLocaleString()
+                                : p.createdAt && !isNaN(new Date(p.createdAt).getTime())
+                                ? new Date(p.createdAt).toLocaleString()
+                                : 'N/A'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
           </CardContent>
         </Card>
 
