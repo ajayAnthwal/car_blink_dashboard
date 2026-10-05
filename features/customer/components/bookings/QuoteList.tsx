@@ -36,16 +36,17 @@ export function QuoteList({
     <div className="space-y-3">
       {quotes.map((quote) => {
         const isAccepted = 
-          selectedBooking.acceptedBidId === quote._id || 
-          (selectedBooking.acceptedBidId as unknown as { _id: string })?._id === quote._id || 
-          (quote as any).status === 'ACCEPTED';
+          String((selectedBooking.acceptedBidId as any)?._id || selectedBooking.acceptedBidId || "") === String(quote._id) || 
+          (quote as any).status === 'ACCEPTED' ||
+          (quote as any).status === 'CUSTOMER_ACCEPTED';
 
         const canSelect = 
           selectedBooking.status !== "CANCELLED" && 
           selectedBooking.status !== "COMPLETED" && 
           selectedBooking.status !== "ACCEPTED" && 
+          selectedBooking.status !== "CUSTOMER_ACCEPTED" && 
           !selectedBooking.acceptedBidId && 
-          !quotes.some(q => q.status === "ACCEPTED");
+          !quotes.some(q => q.status === "ACCEPTED" || (q as any).status === "CUSTOMER_ACCEPTED");
 
         return (
           <div

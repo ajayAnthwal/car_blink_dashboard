@@ -215,10 +215,12 @@ function BookingQuoteCard({
                   .sort((a, b) => a.quotedAmount - b.quotedAmount)
                   .map((bid) => {
                     const isLowest = bid.quotedAmount === lowestAmount;
+                    const acceptedBidIdStr = typeof booking.acceptedBidId === 'object' ? (booking.acceptedBidId as any)?._id : booking.acceptedBidId;
                     const isWinning =
-                      booking.acceptedBidId === bid._id ||
+                      (acceptedBidIdStr && String(acceptedBidIdStr) === String(bid._id)) ||
                       bid.status === "WON" ||
-                      bid.status === "ACCEPTED";
+                      bid.status === "ACCEPTED" ||
+                      bid.status === "CUSTOMER_ACCEPTED";
                     const isUnlocked =
                       booking.payments?.some((p: any) => p.status === "SUCCESS") ||
                       booking.hasPaidAdvance;

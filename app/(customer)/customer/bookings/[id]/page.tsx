@@ -517,7 +517,7 @@ export default function CustomerBookingDetailsPage() {
   const remainingAmount = Math.max(0, revisedTotalAmount - totalPaidAmount);
 
   const rawAdv = Math.round(revisedTotalAmount * 0.15);
-  const advanceAmount = revisedTotalAmount > 0 ? Math.max(1, rawAdv) : 0;
+  const advanceAmount = revisedTotalAmount > 0 ? Math.min(revisedTotalAmount, Math.max(1, rawAdv)) : 0;
   const remainingForAdvance = Math.max(0, advanceAmount - totalPaidAmount);
   const needsAdvance = !hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED';
   const needsFinal = booking.status === 'COMPLETED' && remainingAmount > 0;

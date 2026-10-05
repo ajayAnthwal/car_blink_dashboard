@@ -548,7 +548,10 @@ export default function LeadDetailsPage() {
               ) : (
                 <div className="space-y-4">
                   {bids.map((bid: any) => {
-                    const isAccepted = lead.acceptedBidId === bid._id;
+                    const isAccepted = 
+                      String(lead.acceptedBidId?._id || lead.acceptedBidId || "") === String(bid._id) ||
+                      bid.status === 'ACCEPTED' ||
+                      bid.status === 'CUSTOMER_ACCEPTED';
                     const isForwarded = (lead.forwardedBidIds || []).includes(bid._id);
                     
                     return (
