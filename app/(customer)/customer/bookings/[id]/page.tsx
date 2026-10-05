@@ -973,19 +973,19 @@ export default function CustomerBookingDetailsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100">
                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">BRAND & MODEL</span>
-                <span className="text-base font-extrabold text-gray-900">{booking.vehicleId.brand} {booking.vehicleId.model}</span>
+                <span className="text-base font-extrabold text-gray-900">{booking.vehicleId?.brand} {booking.vehicleId?.model}</span>
               </div>
               <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100">
                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">REGISTRATION NO.</span>
-                <span className="text-base font-extrabold text-primary-navy font-mono">{booking.vehicleId.registrationNumber || 'N/A'}</span>
+                <span className="text-base font-extrabold text-primary-navy font-mono">{booking.vehicleId?.registrationNumber || 'N/A'}</span>
               </div>
               <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100">
                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">FUEL TYPE</span>
-                <span className="text-base font-bold text-gray-800">{booking.vehicleId.fuelType || 'Petrol/Diesel'}</span>
+                <span className="text-base font-bold text-gray-800">{booking.vehicleId?.fuelType || 'Petrol/Diesel'}</span>
               </div>
               <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100">
                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">TRANSMISSION</span>
-                <span className="text-base font-bold text-gray-800">{booking.vehicleId.transmission || 'Manual'}</span>
+                <span className="text-base font-bold text-gray-800">{booking.vehicleId?.transmission || 'Manual'}</span>
               </div>
             </div>
           </CardContent>
@@ -1309,13 +1309,13 @@ export default function CustomerBookingDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-8">
-                {booking.jobDetails.beforePhotos?.length > 0 && (
+                {booking.jobDetails?.beforePhotos && booking.jobDetails.beforePhotos.length > 0 && (
                   <div>
                     <h5 className="text-sm font-bold text-neutral-dark uppercase tracking-wider mb-4 flex items-center">
                       <span className="w-2.5 h-2.5 rounded-full bg-warning mr-3"></span> Before Service
                     </h5>
                     <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                      {booking.jobDetails.beforePhotos.map((url: string, index: number) => (
+                      {booking.jobDetails?.beforePhotos?.map((url: string, index: number) => (
                         <a href={url} target="_blank" rel="noopener noreferrer" key={index} className="relative flex-shrink-0 w-40 h-40 rounded-2xl overflow-hidden border-4 border-white shadow-md hover:shadow-lg hover:scale-[1.02] transition-all group">
                           <img src={url} alt={`Before ${index + 1}`} className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium">View Full</div>
@@ -1325,13 +1325,13 @@ export default function CustomerBookingDetailsPage() {
                   </div>
                 )}
 
-                {booking.jobDetails.afterPhotos?.length > 0 && (
+                {booking.jobDetails?.afterPhotos && booking.jobDetails.afterPhotos.length > 0 && (
                   <div>
                     <h5 className="text-sm font-bold text-neutral-dark uppercase tracking-wider mb-4 flex items-center">
                       <span className="w-2.5 h-2.5 rounded-full bg-success mr-3"></span> After Service
                     </h5>
                     <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                      {booking.jobDetails.afterPhotos.map((url: string, index: number) => (
+                      {booking.jobDetails?.afterPhotos?.map((url: string, index: number) => (
                         <a href={url} target="_blank" rel="noopener noreferrer" key={index} className="relative flex-shrink-0 w-40 h-40 rounded-2xl overflow-hidden border-4 border-white shadow-md hover:shadow-lg hover:scale-[1.02] transition-all group">
                           <img src={url} alt={`After ${index + 1}`} className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium">View Full</div>
@@ -1345,7 +1345,7 @@ export default function CustomerBookingDetailsPage() {
           )}
 
           {/* Job Extensions Section */}
-          {booking.jobDetails?.jobExtensions?.length > 0 && (
+          {booking.jobDetails?.jobExtensions && booking.jobDetails.jobExtensions.length > 0 && (
             <Card className="shadow-sm border-neutral-muted/10 rounded-3xl overflow-hidden">
               <CardHeader className="bg-primary-navy/5 border-b border-neutral-muted/10 pb-4">
                 <CardTitle className="text-lg font-bold text-primary-navy flex items-center">
@@ -1355,7 +1355,7 @@ export default function CustomerBookingDetailsPage() {
               </CardHeader>
               <CardContent className="p-8">
                 <div className="space-y-4">
-                  {booking.jobDetails.jobExtensions.map((ext: any, idx: number) => (
+                  {booking.jobDetails?.jobExtensions?.map((ext: any, idx: number) => (
                     <div key={idx} className="bg-white p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between border border-neutral-muted/20 shadow-sm hover:border-secondary-blue/30 transition-colors">
                       <div className="flex-1">
                         <p className="font-bold text-primary-navy text-lg">{ext.partName}</p>

@@ -1057,13 +1057,13 @@ export default function LeadDetailsPage() {
                       </span>
                       {lead.invoice?.taxAmount > 0 && (
                         <span className="text-xs font-semibold text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-200">
-                          Includes GST / Tax (+₹{Number(lead.invoice.taxAmount).toLocaleString('en-IN')})
+                          Includes GST / Tax (+₹{Number(lead.invoice?.taxAmount || 0).toLocaleString('en-IN')})
                         </span>
                       )}
                     </div>
-                    {lead.invoice?.items?.length > 0 && (
+                    {lead.invoice?.items && lead.invoice.items.length > 0 && (
                       <p className="text-xs text-gray-600 font-medium mt-1">
-                        Itemized Parts: {lead.invoice.items.map((i: any) => `${i.description} (x${i.quantity})`).join(', ')}
+                        Itemized Parts: {lead.invoice?.items?.map((i: any) => `${i.description} (x${i.quantity})`).join(', ')}
                       </p>
                     )}
                   </div>
