@@ -36,7 +36,11 @@ export default function CustomerBookingDetailsPage() {
 
   const { data: booking, isLoading, refetch: refetchBooking } = useBookingDetails(id);
   const { data: quotesData, refetch: refetchQuotes } = useBookingQuotes(id);
-  const quotes = quotesData || [];
+  const quotes = Array.isArray(quotesData) 
+    ? quotesData 
+    : (Array.isArray((quotesData as any)?.bids) 
+      ? (quotesData as any).bids 
+      : (Array.isArray((quotesData as any)?.data) ? (quotesData as any).data : []));
 
   const { data: canReviewData } = useCanReviewBooking(booking?.status === 'COMPLETED' ? id : null);
   const canReview = !!canReviewData;
