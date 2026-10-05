@@ -108,6 +108,7 @@ export default function PartnerJobsPage() {
       const res = await verifyCustomerCodeMutation.mutateAsync({ verificationCode: quickPinCode.trim() });
       setVerifyStatusResult({ type: "success", text: res?.message || "✓ Customer Verified! Booking status updated to VERIFIED & IN_PROGRESS." });
       setQuickPinCode("");
+      refetchJobs();
     } catch (err: any) {
       setVerifyStatusResult({ type: "error", text: err?.message || "✕ Verification Failed. Invalid, expired, or cancelled code." });
     }
@@ -144,6 +145,7 @@ export default function PartnerJobsPage() {
       } catch (startErr) {}
       setMessage({ type: "success", text: res?.message || "✓ Customer Verified & Work Started! Real-time notifications sent to Customer and Executive." });
       setStartJobModal({ open: false, jobId: "", pin: "", error: "" });
+      refetchJobs();
     } catch (err: any) {
       setStartJobModal(prev => ({ ...prev, error: err?.message || "Invalid Customer Verification PIN." }));
     }
@@ -156,6 +158,7 @@ export default function PartnerJobsPage() {
     try {
       await startJobMutation.mutateAsync({ jobId });
       setMessage({ type: "success", text: "🚀 Work Started! Customer and Executive notified in real-time." });
+      refetchJobs();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to start work. Verification PIN required first." });
     }
@@ -435,8 +438,18 @@ export default function PartnerJobsPage() {
               placeholder="Search by vehicle, service, city..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-orange/50 bg-gray-50/50 font-medium"
+              className="w-full pl-9 pr-8 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-orange/50 bg-gray-50/50 font-medium"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold text-xs bg-gray-200 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center transition-colors"
+                title="Clear search"
+              >
+                ×
+              </button>
+            )}
           </div>
         </div>
       </div>
