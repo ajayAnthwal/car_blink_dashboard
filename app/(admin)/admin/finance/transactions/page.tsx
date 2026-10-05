@@ -54,8 +54,8 @@ export default function AdminTransactionsPage() {
         const displayBkId = String(b._id).slice(-8).toUpperCase();
 
         if (!map.has(bkIdStr) && !map.has(displayBkId)) {
-          const bidAmt = b.acceptedBidId?.quotedAmount || b.estimatedAmount || 1500;
-          const adv15 = Math.round(bidAmt * 0.15) || 225;
+          const bidAmt = b.acceptedBidId?.quotedAmount || b.finalAmount || b.estimatedAmount || b.serviceId?.basePrice || 0;
+          const adv15 = Math.round(bidAmt * 0.15);
           const custObj = typeof b.customerId === 'object' ? b.customerId : { fullName: 'Customer', phone: 'N/A' };
 
           map.set(bkIdStr, {

@@ -494,8 +494,18 @@ export default function CustomerBookingDetailsPage() {
   const isConfirmed = hasPaidAdvance || (booking?.status !== 'PENDING' && booking?.status !== 'QUOTED' && booking?.status !== 'CANCELLED');
   const hasPaidFinal = isFinalPaid || isFullPaid;
 
-  const acceptedQuoteAmount = quotes.find(q => q._id === booking.acceptedBidId || q._id === (booking.acceptedBidId as any)?._id)?.quotedAmount || (booking.acceptedBidId as any)?.quotedAmount || 0;
-  const baseAmount = booking.jobDetails?.finalAmount || acceptedQuoteAmount || 1500;
+  const acceptedQuoteAmount = 
+    booking.acceptedQuoteAmount ||
+    (typeof booking.acceptedBidId === 'object' ? booking.acceptedBidId?.quotedAmount : 0) ||
+    quotes.find((q: any) => 
+      String(q._id) === String(booking.acceptedBidId?._id || booking.acceptedBidId) ||
+      String(q.id) === String(booking.acceptedBidId?._id || booking.acceptedBidId) ||
+      q.status === 'ACCEPTED' || q.status === 'CUSTOMER_ACCEPTED'
+    )?.quotedAmount ||
+    (quotes.length === 1 ? quotes[0]?.quotedAmount : 0) ||
+    0;
+
+  const baseAmount = booking.jobDetails?.finalAmount || booking.finalAmount || acceptedQuoteAmount || (booking.serviceId?.basePrice || 0);
 
   const approvedExtensions = booking.jobDetails?.jobExtensions?.filter((e: any) => e.status === 'APPROVED') || [];
   const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + ext.cost, 0);
