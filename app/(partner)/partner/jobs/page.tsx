@@ -69,7 +69,7 @@ export default function PartnerJobsPage() {
     return {
       total: totalJobsCount,
       inProgress: allJobsRaw.filter((j: any) => j.status === "IN_PROGRESS").length,
-      notStarted: allJobsRaw.filter((j: any) => j.status === "NOT_STARTED").length,
+      notStarted: allJobsRaw.filter((j: any) => j.status === "NOT_STARTED" || j.status === "VERIFIED").length,
       completed: allJobsRaw.filter((j: any) => j.status === "COMPLETED").length,
     };
   }, [allJobsRaw, totalJobsCount]);
@@ -77,7 +77,16 @@ export default function PartnerJobsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  const [startJobModal, setStartJobModal] = useState<{ open: boolean; jobId: string; pin: string; error: string }>({
+  const [startJobModal, setStartJobModal] = useState<{
+    open: boolean;
+    jobId: string;
+    pin: string;
+    error: string;
+    serviceName?: string;
+    vehicleName?: string;
+    regNumber?: string;
+    customerName?: string;
+  }>({
     open: false,
     jobId: "",
     pin: "",
@@ -708,7 +717,16 @@ export default function PartnerJobsPage() {
 
                             <div className="flex items-center gap-2 shrink-0">
                               <Button
-                                onClick={() => setStartJobModal({ open: true, jobId, pin: "", error: "" })}
+                                onClick={() => setStartJobModal({
+                                  open: true,
+                                  jobId,
+                                  pin: "",
+                                  error: "",
+                                  serviceName: sData.name || "Car Service Job",
+                                  vehicleName: `${vData.brand || ""} ${vData.model || ""}`.trim() || "Vehicle",
+                                  regNumber: vData.registrationNumber || "",
+                                  customerName: bData.customerId?.fullName || ""
+                                })}
                                 className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl"
                               >
                                 <ShieldCheck className="w-4 h-4 mr-1.5" /> Verify PIN
@@ -933,6 +951,22 @@ export default function PartnerJobsPage() {
                 <p className="text-xs text-gray-500 font-medium">Enter 4-digit PIN provided by customer</p>
               </div>
             </div>
+
+            {startJobModal.vehicleName && (
+              <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between text-xs">
+                <div>
+                  <p className="font-extrabold text-slate-900 text-sm">{startJobModal.vehicleName}</p>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                    {startJobModal.serviceName} {startJobModal.regNumber ? `• Reg: ${startJobModal.regNumber}` : ""}
+                  </p>
+                </div>
+                {startJobModal.customerName && (
+                  <span className="text-[11px] font-bold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                    {startJobModal.customerName}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="p-4 bg-orange-50/70 border border-orange-200/60 rounded-2xl text-xs text-slate-700">
               <p className="font-bold text-primary-orange mb-1 flex items-center gap-1">
