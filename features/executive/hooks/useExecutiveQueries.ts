@@ -242,17 +242,24 @@ export const usePartnerStatus = (page?: number, limit?: number, filterStr?: stri
     queryKey: ["executive", "partners", page, limit, filterStr],
     queryFn: async () => {
       const res = await getPartnerStatus(page, limit, filterStr);
-      // Axios interceptor unwraps { success, message, data: { partners, docs, total } }
-      // So res = { success, message, data: { partners: [...], docs: [...], total, page, limit } }
-      const payload = res?.data || res;
+      const partnersList = Array.isArray(res?.partners) ? res.partners
+        : Array.isArray(res?.data?.partners) ? res.data.partners
+          : Array.isArray(res?.docs) ? res.docs
+            : Array.isArray(res?.data) ? res.data
+              : Array.isArray(res) ? res
+                : [];
+
+      const totalCount = typeof res?.total === 'number' ? res.total
+        : typeof res?.data?.total === 'number' ? res.data.total
+          : typeof (res as any)?.count === 'number' ? (res as any).count
+            : partnersList.length;
+
       return {
-        partners: Array.isArray(payload?.partners) ? payload.partners
-          : Array.isArray(payload?.docs) ? payload.docs
-            : Array.isArray(payload) ? payload
-              : [],
-        total: payload?.total || 0,
-        page: payload?.page || 1,
-        limit: payload?.limit || 10,
+        partners: partnersList,
+        docs: partnersList,
+        total: totalCount,
+        page: res?.page || res?.data?.page || page || 1,
+        limit: res?.limit || res?.data?.limit || limit || 10,
       };
     },
   });
@@ -348,15 +355,23 @@ export const useCustomerStatus = (page: number, limit: number, search?: string) 
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const res = await getCustomerStatus(page, limit, search);
-      const payload = res?.data || res;
+      const customersList = Array.isArray(res?.customers) ? res.customers
+        : Array.isArray(res?.data?.customers) ? res.data.customers
+          : Array.isArray(res?.docs) ? res.docs
+            : Array.isArray(res?.data) ? res.data
+              : Array.isArray(res) ? res
+                : [];
+
+      const totalCount = typeof res?.total === 'number' ? res.total
+        : typeof res?.data?.total === 'number' ? res.data.total
+          : typeof (res as any)?.count === 'number' ? (res as any).count
+            : customersList.length;
+
       return {
-        customers: Array.isArray(payload?.customers) ? payload.customers
-          : Array.isArray(payload?.docs) ? payload.docs
-            : Array.isArray(payload) ? payload
-              : [],
-        total: payload?.total || res?.data?.total || 0,
-        page: payload?.page || res?.data?.page || 1,
-        limit: payload?.limit || res?.data?.limit || 50
+        customers: customersList,
+        total: totalCount,
+        page: res?.page || res?.data?.page || page || 1,
+        limit: res?.limit || res?.data?.limit || limit || 10
       };
     },
   });
