@@ -130,7 +130,7 @@ export default function LeadDetailsPage() {
     b._id === (lead.acceptedBidId as any)?._id || 
     b.status === 'ACCEPTED'
   );
-  const quotedAmount = acceptedBid?.quotedAmount || (typeof lead.acceptedBidId === 'object' ? (lead.acceptedBidId as any)?.quotedAmount : 0) || 0;
+  const quotedAmount = lead.acceptedQuoteAmount || acceptedBid?.quotedAmount || (typeof lead.acceptedBidId === 'object' ? (lead.acceptedBidId as any)?.quotedAmount : 0) || 0;
   const totalPayableAmount = lead.finalAmount || lead.job?.finalAmount || quotedAmount || 0;
 
   const advancePayment = payments.find((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS') || 
