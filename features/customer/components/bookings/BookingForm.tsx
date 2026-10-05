@@ -448,6 +448,7 @@ export function BookingForm({
         <Button 
           type="submit" 
           isLoading={isSubmitting} 
+          disabled={isSubmitting}
           className="w-full md:w-auto px-8 py-6 text-lg rounded-xl shadow-elevated"
         >
           <Navigation className="w-5 h-5 mr-2" />

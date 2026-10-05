@@ -37,8 +37,12 @@ export default function NewBookingPage() {
 
   const createBookingMutation = useCreateBooking();
   const [formResetKey, setFormResetKey] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateBooking = (data: BookingFormValues) => {
+    if (isSubmitting || createBookingMutation.isPending) return;
+    setIsSubmitting(true);
+
     let executed = false;
     const doCreateBooking = (lat?: number, lng?: number) => {
       if (executed) return;
@@ -78,6 +82,7 @@ export default function NewBookingPage() {
             }
           },
           onError: (err: any) => {
+            setIsSubmitting(false);
             toast.error(err?.message || "Failed to create booking.");
           }
         }
@@ -160,7 +165,7 @@ export default function NewBookingPage() {
               cities={filteredCities}
               onStateChange={setSelectedState}
               onSubmit={handleCreateBooking}
-              isSubmitting={createBookingMutation.isPending}
+              isSubmitting={isSubmitting || createBookingMutation.isPending}
             />
           )}
         </CardContent>
