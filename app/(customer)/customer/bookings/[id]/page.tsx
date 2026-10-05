@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, ArrowLeft, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote, Tag, ExternalLink, ThumbsUp, ThumbsDown, HeartHandshake, Sparkles } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, Calendar, MapPin, Car, IndianRupee, Clock, CheckCircle2, AlertCircle, Phone, Mail, FileText, Star, ShieldCheck, ChevronRight, MessageSquareQuote, Tag, ExternalLink, ThumbsUp, ThumbsDown, HeartHandshake, Sparkles } from "lucide-react";
 import { PaymentCard } from "@/components/payment/PaymentCard";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { verifyPayment } from "@/lib/services";
@@ -1210,7 +1210,7 @@ export default function CustomerBookingDetailsPage() {
                     </div>
                   )}
 
-                  {booking?.satisfactionRespondedAt && (
+                  {booking?.satisfactionRespondedAt && !isNaN(new Date(booking.satisfactionRespondedAt).getTime()) && (
                     <p className="text-[11px] text-gray-400">
                       Recorded on {format(new Date(booking.satisfactionRespondedAt), "PPP 'at' p")}
                     </p>

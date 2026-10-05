@@ -30,10 +30,20 @@ export default function CustomerErrorPage({
           <p className="text-sm text-slate-600 leading-relaxed font-medium">
             An unexpected error occurred while loading this page. You can try refreshing the page or return to your dashboard.
           </p>
-          {process.env.NODE_ENV !== "production" && error?.message && (
-            <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl font-mono mt-2 break-all text-left">
-              {error.message}
-            </p>
+          {error?.message && (
+            <details className="text-left mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs">
+              <summary className="font-semibold text-slate-700 cursor-pointer hover:text-slate-900 select-none">
+                Technical Error Details
+              </summary>
+              <p className="text-xs text-red-600 font-mono mt-2 break-all">
+                {error.message}
+              </p>
+              {error.digest && (
+                <p className="text-[10px] text-slate-400 font-mono mt-1">
+                  Digest: {error.digest}
+                </p>
+              )}
+            </details>
           )}
         </div>
 
