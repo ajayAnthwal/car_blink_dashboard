@@ -1,23 +1,50 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSocket } from "@/lib/SocketContext";
 import { useExecutiveLeadById, useClickToCallMutation } from "@/features/executive/hooks/useExecutiveQueries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, Phone, Mail, Car, Wrench, MapPin, Calendar, Clock, Briefcase, Target, Image as ImageIcon, CheckCircle, Share, ClipboardList, ExternalLink, FileText, Star, ThumbsUp, ThumbsDown, Send, Sparkles, CreditCard, Banknote, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, Car, Wrench, MapPin, Calendar, Clock, Briefcase, Target, Image as ImageIcon, CheckCircle, Share, ClipboardList, ExternalLink, FileText, Star, ThumbsUp, ThumbsDown, Send, Sparkles, CreditCard, Banknote, ShieldCheck, CheckCircle2, RotateCw } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function LeadDetailsPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+  const { socket } = useSocket();
   
-  const { data: lead, isLoading, error: queryError, refetch: refetchLead } = useExecutiveLeadById(id);
+  const { data: lead, isLoading, error: queryError, refetch: refetchLead, isFetching } = useExecutiveLeadById(id);
   const clickToCallMutation = useClickToCallMutation();
+
+  // Real-time Live Sync via WebSockets for instant payment & status updates
+  useEffect(() => {
+    if (!socket || !id) return;
+
+    const handleUpdate = () => {
+      refetchLead();
+    };
+
+    socket.on("booking_updated", handleUpdate);
+    socket.on("payment_status_update", handleUpdate);
+    socket.on("payment_received", handleUpdate);
+    socket.on("payment_updated", handleUpdate);
+    socket.on("booking_confirmed", handleUpdate);
+    socket.on("booking_status_update", handleUpdate);
+
+    return () => {
+      socket.off("booking_updated", handleUpdate);
+      socket.off("payment_status_update", handleUpdate);
+      socket.off("payment_received", handleUpdate);
+      socket.off("payment_updated", handleUpdate);
+      socket.off("booking_confirmed", handleUpdate);
+      socket.off("booking_status_update", handleUpdate);
+    };
+  }, [socket, id, refetchLead]);
   
   const [callMessage, setCallMessage] = useState({ type: "", text: "" });
   const [isCalling, setIsCalling] = useState(false);
@@ -652,6 +679,29 @@ export default function LeadDetailsPage() {
                     ? 'Partially Paid'
                     : 'Payment Pending'}
                 </Badge>
+
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  Live Sync
+                </span>
+
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    refetchLead();
+                    toast.success("Payments synchronized live!");
+                  }}
+                  disabled={isFetching}
+                  className="h-7 text-xs px-2.5 text-gray-600 hover:text-gray-900 border-gray-200 bg-white shadow-xs"
+                  title="Click to manually refresh payments"
+                >
+                  <RotateCw className={`w-3 h-3 mr-1 ${isFetching ? 'animate-spin text-primary-orange' : ''}`} />
+                  {isFetching ? 'Syncing...' : 'Sync'}
+                </Button>
               </div>
             </CardTitle>
           </CardHeader>

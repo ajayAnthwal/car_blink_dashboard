@@ -109,6 +109,8 @@ export const useServices = () => {
 export const useExecutiveLeadById = (id: string | null) => {
   return useQuery({
     queryKey: ["executive", "lead", id],
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       if (!id) return null;
       // We dynamically import getExecutiveLeadById if it's not exported at the top
