@@ -845,13 +845,22 @@ export default function PartnerJobsPage() {
 
                             {/* Offline Cash Payment Block */}
                             {(() => {
-                              const finalPayment = Array.isArray(job.payments)
-                                ? job.payments.find((p: any) => (p?.paymentType === 'FINAL' || p?.paymentType === 'FULL'))
-                                : null;
+                              const paymentsList = Array.isArray(job.payments)
+                                ? job.payments
+                                : (Array.isArray(job.bookingId?.payments) ? job.bookingId.payments : []);
+
+                              const advancePaid = paymentsList
+                                .filter((p: any) => p?.paymentType === 'ADVANCE' && p?.status === 'SUCCESS')
+                                .reduce((sum: number, p: any) => sum + (Number(p?.amount) || 0), 0);
+
+                              const finalPayment = paymentsList.find((p: any) => (p?.paymentType === 'FINAL' || p?.paymentType === 'FULL'));
                               const isFinalPaid = finalPayment?.status === 'SUCCESS';
                               const isFinalPending = finalPayment?.status === 'PENDING' && finalPayment?.provider === 'CASH';
 
-                              if (isFinalPaid) {
+                              const totalJobAmount = Number(job.finalAmount || job.bookingId?.finalAmount || 0);
+                              const remainingDue = Math.max(0, totalJobAmount - advancePaid);
+
+                              if (isFinalPaid || (remainingDue === 0 && advancePaid > 0)) {
                                 return (
                                   <div className="flex items-center justify-between bg-emerald-500/20 p-3 rounded-xl border border-emerald-500/40 text-xs font-bold text-emerald-200">
                                     <span>Payment Status:</span>
@@ -882,14 +891,17 @@ export default function PartnerJobsPage() {
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-800 border border-slate-700">
                                   <div>
                                     <p className="text-xs text-gray-400 font-medium">Final Remaining Due:</p>
-                                    <p className="text-xl font-extrabold text-primary-orange">₹{job.finalAmount || 0}</p>
+                                    <p className="text-xl font-extrabold text-primary-orange">₹{remainingDue.toLocaleString('en-IN')}</p>
+                                    {advancePaid > 0 && (
+                                      <p className="text-[10px] text-emerald-400 font-medium">Advance Deducted: -₹{advancePaid.toLocaleString('en-IN')}</p>
+                                    )}
                                   </div>
                                   <Button
                                     className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2 px-4 rounded-xl w-full sm:w-auto"
                                     isLoading={markOfflinePaymentMutation.isPending}
-                                    onClick={() => handleMarkOfflinePayment(job.bookingId?._id || job.bookingId, job.finalAmount || 0, 'FINAL')}
+                                    onClick={() => handleMarkOfflinePayment(job.bookingId?._id || job.bookingId, remainingDue, 'FINAL')}
                                   >
-                                    Mark Received in Cash
+                                    Mark Received in Cash (₹{remainingDue})
                                   </Button>
                                 </div>
                               );
