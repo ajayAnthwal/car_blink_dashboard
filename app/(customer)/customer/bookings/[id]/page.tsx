@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSocket } from "@/lib/SocketContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   useBookingDetails, 
   useBookingQuotes, 
@@ -33,6 +34,7 @@ export default function CustomerBookingDetailsPage() {
   const router = useRouter();
   const { socket } = useSocket();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: booking, isLoading, refetch: refetchBooking } = useBookingDetails(id);
   const { data: quotesData, refetch: refetchQuotes } = useBookingQuotes(id);
@@ -68,6 +70,28 @@ export default function CustomerBookingDetailsPage() {
     }
   }, [booking?.paymentMode]);
 
+  // Real-time live synchronization for booking, satisfaction & payments
+  useEffect(() => {
+    if (!socket || !id) return;
+
+    const handleLiveBookingUpdate = () => {
+      refetchBooking();
+      refetchQuotes();
+    };
+
+    socket.on("booking_updated", handleLiveBookingUpdate);
+    socket.on("satisfaction_response", handleLiveBookingUpdate);
+    socket.on("satisfaction_request", handleLiveBookingUpdate);
+    socket.on("payment_status_update", handleLiveBookingUpdate);
+
+    return () => {
+      socket.off("booking_updated", handleLiveBookingUpdate);
+      socket.off("satisfaction_response", handleLiveBookingUpdate);
+      socket.off("satisfaction_request", handleLiveBookingUpdate);
+      socket.off("payment_status_update", handleLiveBookingUpdate);
+    };
+  }, [socket, id, refetchBooking, refetchQuotes]);
+
   const [message, setMessage] = useState({ type: "", text: "" });
 
   // Review states
@@ -97,8 +121,31 @@ export default function CustomerBookingDetailsPage() {
         rating: satisfactionRating,
         feedback: satisfactionFeedback
       });
+
+      // Also register public review if satisfied
+      if (satisfactionChoice) {
+        try {
+          await createReviewMutation.mutateAsync({
+            bookingId: booking._id || id,
+            rating: satisfactionRating,
+            comment: satisfactionFeedback || "Satisfied with CarBlink service!",
+          });
+        } catch (rErr) {
+          console.warn("Public review sync note:", rErr);
+        }
+      }
+
       toast.success("Thank you! Your satisfaction response has been officially recorded.");
       setSatisfactionSubmittedLocally(true);
+
+      // Invalidate queries so that main dashboard widget and executive leads reflect this immediately
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["customer", "bookings"] }),
+        queryClient.invalidateQueries({ queryKey: ["customer", "booking", id] }),
+        queryClient.invalidateQueries({ queryKey: ["customer", "reviews"] }),
+        queryClient.invalidateQueries({ queryKey: ["executive"] }),
+      ]);
+
       refetchBooking();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err.message || "Failed to submit satisfaction feedback.");
@@ -401,7 +448,7 @@ export default function CustomerBookingDetailsPage() {
             setIsExtensionProcessing(false);
             setMessage({
               type: "error",
-              text: "⚠️ Payment popup closed. If bank payment was declined or cancelled, you can retry payment below or select 'Pay at Workshop / COD'."
+              text: "⚠️ Payment popup closed. If bank payment was declined or cancelled, you can retry your online payment below."
             });
           }
         }
@@ -411,7 +458,7 @@ export default function CustomerBookingDetailsPage() {
       rzp.on("payment.failed", function (response: any) {
         setMessage({ 
           type: "error", 
-          text: `❌ Payment Declined (${response.error?.description || "Bank decline"}). Retry online or select Pay at Workshop.` 
+          text: `❌ Payment Declined (${response.error?.description || "Bank decline"}). Please retry online.` 
         });
         setIsExtensionProcessing(false);
       });
@@ -522,6 +569,12 @@ export default function CustomerBookingDetailsPage() {
   );
   const isConfirmed = hasPaidAdvance || (booking?.status !== 'PENDING' && booking?.status !== 'QUOTED' && booking?.status !== 'CANCELLED');
   const hasPaidFinal = isFinalPaid || isFullPaid;
+
+  const partnerInfo = (booking?.assignedPartnerId && typeof booking.assignedPartnerId === 'object')
+    ? booking.assignedPartnerId
+    : (booking?.acceptedBidId && typeof booking.acceptedBidId === 'object' && booking.acceptedBidId.partnerId)
+      ? booking.acceptedBidId.partnerId
+      : (quotes.find((q: any) => q?.partnerId && typeof q.partnerId === 'object')?.partnerId || null);
 
   const acceptedQuoteAmount = 
     booking.acceptedQuoteAmount ||
@@ -658,7 +711,7 @@ export default function CustomerBookingDetailsPage() {
                   Confirm Advance Payment to Lock Your Service Slot
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
-                  Quote accepted! Complete advance payment via <strong className="text-slate-800">Online UPI/Card</strong> or <strong className="text-slate-800">Cash at Workshop</strong> to confirm your booking and immediately view partner workshop name, phone, &amp; Google Maps address.
+                  Quote accepted! Complete advance payment via <strong className="text-slate-800">Online UPI/Card</strong> to confirm your booking and immediately view partner workshop name, phone, &amp; Google Maps address.
                 </p>
               </div>
 
@@ -699,6 +752,74 @@ export default function CustomerBookingDetailsPage() {
                 >
                   Want to pay full ₹{remainingAmount.toLocaleString('en-IN')} upfront? Click here <ArrowRight className="w-3.5 h-3.5" />
                 </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Workshop Details Unlocked Banner upon Advance Payment */}
+      {hasPaidAdvance && partnerInfo && (
+        <Card className="border-2 border-emerald-500/40 shadow-xl rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/60 animate-in fade-in duration-500">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3.5 text-white flex flex-wrap items-center justify-between gap-2 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-full bg-white/20 text-white">
+                <CheckCircle2 className="w-4 h-4" />
+              </span>
+              <span className="font-heading font-black text-sm uppercase tracking-wide">
+                Booking Confirmed • Workshop Details Unlocked
+              </span>
+            </div>
+            <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
+              ✓ Verified Partner Workshop
+            </span>
+          </div>
+
+          <CardContent className="p-6 sm:p-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-1.5">
+                <p className="text-[11px] uppercase tracking-wider font-extrabold text-emerald-700">Assigned Partner Workshop</p>
+                <h3 className="font-heading font-black text-2xl sm:text-3xl text-slate-900 tracking-tight flex items-center gap-2">
+                  <Car className="w-7 h-7 text-emerald-600 shrink-0" />
+                  {partnerInfo.businessName || "Verified Service Partner"}
+                </h3>
+                {partnerInfo.businessAddress && (
+                  <p className="text-sm text-slate-600 font-medium flex items-center gap-1.5 pt-1">
+                    <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{partnerInfo.businessAddress}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons for Workshop Contact & Google Maps */}
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                {(partnerInfo.phone || partnerInfo.userId?.phone) && (
+                  <a
+                    href={`tel:${partnerInfo.phone || partnerInfo.userId?.phone}`}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.02]"
+                  >
+                    <Phone className="w-4 h-4" />
+                    <span>Call Workshop ({partnerInfo.phone || partnerInfo.userId?.phone})</span>
+                  </a>
+                )}
+                {partnerInfo.businessAddress && (() => {
+                  const coords = partnerInfo.location?.coordinates;
+                  const mapsUrl = (coords && Array.isArray(coords) && coords.length === 2 && (coords[0] !== 0 || coords[1] !== 0))
+                    ? `https://www.google.com/maps?q=${coords[1]},${coords[0]}`
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${partnerInfo.businessName || ''} ${partnerInfo.businessAddress}`.trim())}`;
+                  return (
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-200 font-extrabold text-sm shadow-sm transition-all hover:scale-[1.02]"
+                    >
+                      <MapPin className="w-4 h-4 text-primary-orange" />
+                      <span>Open in Google Maps</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                    </a>
+                  );
+                })()}
               </div>
             </div>
           </CardContent>
@@ -982,12 +1103,16 @@ export default function CustomerBookingDetailsPage() {
                   </div>
                   <h4 className="text-sm font-semibold text-neutral-muted uppercase tracking-widest mb-1">Location</h4>
                   <p className="text-lg font-bold text-primary-navy">
-                    {typeof booking.cityId === 'object' ? booking.cityId?.name : "Location not provided"}
+                    {booking.address
+                      ? `${booking.address}${booking.landmark ? `, ${booking.landmark}` : ''}${typeof booking.cityId === 'object' && booking.cityId?.name ? `, ${booking.cityId.name}` : ''}`
+                      : (typeof booking.cityId === 'object' && booking.cityId?.name)
+                        ? booking.cityId.name
+                        : (booking.serviceMode === 'GARAGE_VISIT' ? 'Workshop Visit (Selected Partner)' : 'Location not provided')}
                   </p>
                 </div>
               </div>
 
-              {booking.description && (
+              {Boolean(booking.description && booking.description.trim()) && (
                 <div className="p-8 border-t border-neutral-muted/10 bg-neutral-bg/50">
                   <h4 className="text-sm font-semibold text-neutral-muted uppercase tracking-widest mb-3">Service Notes</h4>
                   <p className="text-neutral-dark leading-relaxed">{booking.description}</p>
@@ -1417,25 +1542,96 @@ export default function CustomerBookingDetailsPage() {
                           </p>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                          <Button
-                            className="w-full bg-primary-navy hover:bg-slate-900 text-white rounded-xl py-5 font-bold shadow-md transition-all text-xs"
-                            onClick={() => handleSelectQuoteWithOption(quote, quotePartial, "ADVANCE")}
-                            isLoading={isAccepting === quoteId}
-                            disabled={isAccepting !== null && isAccepting !== quoteId}
-                          >
-                            Pay Partial Amount (₹{quotePartial})
-                          </Button>
+                        {(() => {
+                          const isThisQuoteAccepted = Boolean(
+                            String(booking.acceptedBidId?._id || booking.acceptedBidId) === String(quoteId) ||
+                            quote.status === 'ACCEPTED' ||
+                            quote.status === 'CUSTOMER_ACCEPTED'
+                          );
+                          const hasAnyAccepted = Boolean(booking.acceptedBidId || quotes.some((q: any) => q.status === 'ACCEPTED' || q.status === 'CUSTOMER_ACCEPTED'));
 
-                          <Button
-                            className="w-full bg-primary-orange hover:bg-orange-600 text-white rounded-xl py-5 font-bold shadow-md transition-all text-xs"
-                            onClick={() => handleSelectQuoteWithOption(quote, quoteTotal, "FULL")}
-                            isLoading={isAccepting === quoteId}
-                            disabled={isAccepting !== null && isAccepting !== quoteId}
-                          >
-                            Pay Full Amount (₹{quoteTotal})
-                          </Button>
-                        </div>
+                          if (isThisQuoteAccepted || (hasAnyAccepted && isThisQuoteAccepted)) {
+                            return (
+                              <div className="space-y-3 pt-1">
+                                <div className="flex items-center justify-between p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                                    <span className="text-sm font-extrabold text-emerald-800">Quote Accepted</span>
+                                  </div>
+                                  {hasPaidAdvance && (
+                                    <span className="text-xs font-bold text-emerald-700 bg-white px-3 py-1 rounded-full border border-emerald-300 shadow-2xs">
+                                      Advance Paid
+                                    </span>
+                                  )}
+                                </div>
+
+                                {hasPaidAdvance && quote.partnerId && typeof quote.partnerId === 'object' && (
+                                  <div className="space-y-2 pt-1 border-t border-slate-100">
+                                    {(quote.partnerId?.phone || quote.partnerId?.userId?.phone) && (
+                                      <a
+                                        href={`tel:${quote.partnerId?.phone || quote.partnerId?.userId?.phone}`}
+                                        className="flex items-center text-xs font-bold text-primary-navy hover:text-emerald-700 gap-2 p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors"
+                                      >
+                                        <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                        <span>Call Workshop: {quote.partnerId?.phone || quote.partnerId?.userId?.phone}</span>
+                                      </a>
+                                    )}
+                                    {quote.partnerId?.businessAddress && (() => {
+                                      const coords = quote.partnerId?.location?.coordinates;
+                                      const mapsUrl = (coords && Array.isArray(coords) && coords.length === 2 && (coords[0] !== 0 || coords[1] !== 0))
+                                        ? `https://www.google.com/maps?q=${coords[1]},${coords[0]}`
+                                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${quote.partnerId?.businessName || ''} ${quote.partnerId?.businessAddress}`.trim())}`;
+                                      return (
+                                        <a
+                                          href={mapsUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center justify-between text-xs font-bold text-primary-navy hover:text-primary-orange gap-2 p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors"
+                                        >
+                                          <div className="flex items-center gap-2 truncate">
+                                            <MapPin className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                                            <span className="truncate">{quote.partnerId?.businessAddress}</span>
+                                          </div>
+                                          <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+                                        </a>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (hasAnyAccepted) {
+                            return (
+                              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center text-xs text-slate-500 font-medium">
+                                Another quote has already been accepted for this booking.
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              <Button
+                                className="w-full bg-primary-navy hover:bg-slate-900 text-white rounded-xl py-3 px-2 font-bold shadow-md transition-all text-xs h-auto min-h-[44px] whitespace-normal leading-snug flex items-center justify-center text-center"
+                                onClick={() => handleSelectQuoteWithOption(quote, quotePartial, "ADVANCE")}
+                                isLoading={isAccepting === quoteId}
+                                disabled={isAccepting !== null && isAccepting !== quoteId}
+                              >
+                                Pay Advance (₹{quotePartial})
+                              </Button>
+
+                              <Button
+                                className="w-full bg-primary-orange hover:bg-orange-600 text-white rounded-xl py-3 px-2 font-bold shadow-md transition-all text-xs h-auto min-h-[44px] whitespace-normal leading-snug flex items-center justify-center text-center"
+                                onClick={() => handleSelectQuoteWithOption(quote, quoteTotal, "FULL")}
+                                isLoading={isAccepting === quoteId}
+                                disabled={isAccepting !== null && isAccepting !== quoteId}
+                              >
+                                Pay Full (₹{quoteTotal})
+                              </Button>
+                            </div>
+                          );
+                        })()}
                       </CardContent>
                     </Card>
                   );

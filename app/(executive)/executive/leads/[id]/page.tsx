@@ -35,6 +35,8 @@ export default function LeadDetailsPage() {
     socket.on("payment_updated", handleUpdate);
     socket.on("booking_confirmed", handleUpdate);
     socket.on("booking_status_update", handleUpdate);
+    socket.on("satisfaction_response", handleUpdate);
+    socket.on("satisfaction_request", handleUpdate);
 
     return () => {
       socket.off("booking_updated", handleUpdate);
@@ -43,6 +45,8 @@ export default function LeadDetailsPage() {
       socket.off("payment_updated", handleUpdate);
       socket.off("booking_confirmed", handleUpdate);
       socket.off("booking_status_update", handleUpdate);
+      socket.off("satisfaction_response", handleUpdate);
+      socket.off("satisfaction_request", handleUpdate);
     };
   }, [socket, id, refetchLead]);
   

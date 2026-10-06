@@ -6,7 +6,9 @@ import Link from "next/link";
 import { Star, MessageSquare, CheckCircle2, ChevronRight, Sparkles, ThumbsUp, Send, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCustomerBookings, useCustomerReviews, useCreateReviewMutation } from "@/features/customer/hooks/useCustomerQueries";
+import { respondSatisfactionTemplate } from "@/lib/services";
 
 const QUICK_TAGS = [
   "On-Time Service",
@@ -18,6 +20,7 @@ const QUICK_TAGS = [
 ];
 
 export default function CustomerSatisfactionWidget() {
+  const queryClient = useQueryClient();
   const { data: bookingsData, isLoading: loadingBookings } = useCustomerBookings();
   const { data: reviewsData, isLoading: loadingReviews } = useCustomerReviews();
   const createReviewMutation = useCreateReviewMutation();
@@ -29,11 +32,12 @@ export default function CustomerSatisfactionWidget() {
   const [activeBookingIndex, setActiveBookingIndex] = useState<number>(0);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isDismissed, setIsDismissed] = useState<boolean>(false);
 
   const bookings = bookingsData?.bookings || [];
   const reviews = Array.isArray(reviewsData) ? reviewsData : (reviewsData?.docs || reviewsData?.data || []);
 
-  // Compute completed bookings that haven't been reviewed yet
+  // Compute completed bookings that haven't been reviewed or responded to satisfaction yet
   const unreviewedCompletedBookings = useMemo(() => {
     const reviewedBookingIds = new Set(
       reviews.map((r: any) => String(r.bookingId?._id || r.bookingId || ""))
@@ -42,7 +46,8 @@ export default function CustomerSatisfactionWidget() {
     return bookings.filter((b: any) => {
       const isCompleted = String(b.status || "").toUpperCase() === "COMPLETED";
       const notReviewed = !reviewedBookingIds.has(String(b._id));
-      return isCompleted && notReviewed;
+      const notSatisfiedResponded = b.satisfactionStatus !== 'SATISFIED' && b.satisfactionStatus !== 'DISSATISFIED';
+      return isCompleted && notReviewed && notSatisfiedResponded;
     });
   }, [bookings, reviews]);
 
@@ -50,8 +55,8 @@ export default function CustomerSatisfactionWidget() {
     return null;
   }
 
-  // If no unreviewed completed booking, don't block layout or display compact badge
-  if (unreviewedCompletedBookings.length === 0) {
+  // If dismissed or no unreviewed completed booking, don't display
+  if (isDismissed || unreviewedCompletedBookings.length === 0) {
     return null;
   }
 
@@ -80,11 +85,31 @@ export default function CustomerSatisfactionWidget() {
     ].filter(Boolean).join(" - ") || "Satisfied with CarBlink service!";
 
     try {
-      await createReviewMutation.mutateAsync({
-        bookingId: currentBooking._id,
+      // 1. Submit official satisfaction response (updates DB booking.satisfactionStatus & emits real-time sockets)
+      await respondSatisfactionTemplate(currentBooking._id, {
+        isSatisfied: selectedRating >= 3,
         rating: selectedRating,
-        comment: fullComment,
+        feedback: fullComment,
       });
+
+      // 2. Also register public review
+      try {
+        await createReviewMutation.mutateAsync({
+          bookingId: currentBooking._id,
+          rating: selectedRating,
+          comment: fullComment,
+        });
+      } catch (reviewErr) {
+        console.warn("Review submission note:", reviewErr);
+      }
+
+      // 3. Immediately invalidate queries across customer & executive for live refresh
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["customer", "bookings"] }),
+        queryClient.invalidateQueries({ queryKey: ["customer", "booking", currentBooking._id] }),
+        queryClient.invalidateQueries({ queryKey: ["customer", "reviews"] }),
+        queryClient.invalidateQueries({ queryKey: ["executive"] }),
+      ]);
 
       setSubmitSuccess(true);
       setTimeout(() => {
@@ -96,7 +121,7 @@ export default function CustomerSatisfactionWidget() {
         }
       }, 3000);
     } catch (err: any) {
-      setErrorMessage(err?.message || "Failed to submit review. Please try again.");
+      setErrorMessage(err?.response?.data?.message || err?.message || "Failed to submit review. Please try again.");
     }
   };
 
@@ -162,11 +187,21 @@ export default function CustomerSatisfactionWidget() {
             </div>
           </div>
 
-          {unreviewedCompletedBookings.length > 1 && (
-            <div className="text-xs bg-black/20 px-3 py-1 rounded-full self-start sm:self-auto font-medium">
-              Service {activeBookingIndex + 1} of {unreviewedCompletedBookings.length}
-            </div>
-          )}
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {unreviewedCompletedBookings.length > 1 && (
+              <div className="text-xs bg-black/20 px-3 py-1 rounded-full font-medium">
+                Service {activeBookingIndex + 1} of {unreviewedCompletedBookings.length}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsDismissed(true)}
+              className="p-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/20 transition-all cursor-pointer"
+              title="Close feedback"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Interactive 5-Star Selection */}

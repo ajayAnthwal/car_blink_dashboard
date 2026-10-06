@@ -24,6 +24,11 @@ export default function CustomerDashboardPage() {
   const { user } = useAuth();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+  const [dismissedConfirmedBanner, setDismissedConfirmedBanner] = useState(false);
+  const [dismissedAdvanceBanner, setDismissedAdvanceBanner] = useState(false);
+  const [dismissedQuotesBanner, setDismissedQuotesBanner] = useState(false);
+  const [dismissedPartsBanner, setDismissedPartsBanner] = useState(false);
+  const [dismissedActiveTracker, setDismissedActiveTracker] = useState(false);
 
   const { data: bookingsData, isLoading: loadingBookings } = useCustomerBookings();
   const bookings = bookingsData?.bookings || [];
@@ -228,8 +233,8 @@ export default function CustomerDashboardPage() {
       )}
 
       {/* Confirmed Services Banner: Confirmed & Advance Paid */}
-      {confirmedActiveBookings.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-50 via-teal-50/70 to-emerald-50 border-2 border-emerald-300 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md w-full min-w-0">
+      {confirmedActiveBookings.length > 0 && !dismissedConfirmedBanner && (
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50/70 to-emerald-50 border-2 border-emerald-300 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md w-full min-w-0 relative">
           <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
             <div className="w-10 h-10 sm:w-14 sm:h-14 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-md shrink-0">
               <ShieldCheck className="w-5 h-5 sm:w-8 sm:h-8" />
@@ -255,17 +260,27 @@ export default function CustomerDashboardPage() {
               </p>
             </div>
           </div>
-          <Button asChild className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md text-xs sm:text-sm px-6 py-2.5">
-            <Link href={`/customer/bookings/${confirmedActiveBookings[0]?._id || confirmedActiveBookings[0]?.id || ''}`}>
-              Track Service <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button asChild className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md text-xs sm:text-sm px-6 py-2.5">
+              <Link href={`/customer/bookings/${confirmedActiveBookings[0]?._id || confirmedActiveBookings[0]?.id || ''}`}>
+                Track Service <ArrowRight className="w-4 h-4 ml-2" />
+              </Link>
+            </Button>
+            <button
+              type="button"
+              onClick={() => setDismissedConfirmedBanner(true)}
+              className="p-2 text-emerald-800 hover:text-emerald-950 hover:bg-emerald-200/60 rounded-xl transition-colors cursor-pointer shrink-0"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       )}
 
       {/* Action Center Alert: Awaiting Confirmation / Advance Payment */}
-      {awaiting15PercentAdvance.length > 0 && (
-        <div className="bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 border-2 border-amber-300 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md w-full min-w-0">
+      {awaiting15PercentAdvance.length > 0 && !dismissedAdvanceBanner && (
+        <div className="bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 border-2 border-amber-300 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md w-full min-w-0 relative">
           <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
             <div className="w-10 h-10 sm:w-14 sm:h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center shadow-md shrink-0 animate-bounce">
               <Clock className="w-5 h-5 sm:w-8 sm:h-8" />
@@ -283,21 +298,31 @@ export default function CustomerDashboardPage() {
                 Action Required: Confirm Booking or Pay Advance
               </h3>
               <p className="text-amber-800 text-xs sm:text-sm font-medium break-words mt-0.5">
-                Confirm via Pay at Workshop (Cash) or Pay Online Advance to unlock partner workshop contact and address.
+                Confirm via Pay Online Advance to unlock partner workshop contact and address.
               </p>
             </div>
           </div>
-          <Button asChild className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md text-xs sm:text-sm px-6 py-2.5">
-            <Link href={`/customer/bookings/${awaiting15PercentAdvance[0]?._id || awaiting15PercentAdvance[0]?.id || ''}#advance-payment-section`}>
-              Confirm Booking <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button asChild className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md text-xs sm:text-sm px-6 py-2.5">
+              <Link href={`/customer/bookings/${awaiting15PercentAdvance[0]?._id || awaiting15PercentAdvance[0]?.id || ''}#advance-payment-section`}>
+                Confirm Booking <ArrowRight className="w-4 h-4 ml-2" />
+              </Link>
+            </Button>
+            <button
+              type="button"
+              onClick={() => setDismissedAdvanceBanner(true)}
+              className="p-2 text-amber-800 hover:text-amber-950 hover:bg-amber-200/60 rounded-xl transition-colors cursor-pointer shrink-0"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       )}
 
       {/* Action Center Alerts: Pending Quotes */}
-      {quotesWaiting.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm w-full min-w-0">
+      {quotesWaiting.length > 0 && !dismissedQuotesBanner && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm w-full min-w-0 relative">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
             <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-blue-600">
               <AlertCircle className="w-4 h-4 sm:w-6 sm:h-6" />
@@ -307,15 +332,25 @@ export default function CustomerDashboardPage() {
               <p className="text-gray-600 text-xs sm:text-sm font-medium break-words">You have {quotesWaiting.length} booking(s) waiting for quote approval.</p>
             </div>
           </div>
-          <Button asChild className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm">
-            <Link href={`/customer/bookings/${quotesWaiting[0]._id}`}>Review Quote</Link>
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button asChild className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm">
+              <Link href={`/customer/bookings/${quotesWaiting[0]._id}`}>Review Quote</Link>
+            </Button>
+            <button
+              type="button"
+              onClick={() => setDismissedQuotesBanner(true)}
+              className="p-2 text-blue-700 hover:text-blue-900 hover:bg-blue-100/60 rounded-xl transition-colors cursor-pointer shrink-0"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       )}
 
       {/* Action Center Alerts: Additional Parts Request */}
-      {additionalPartsPending.length > 0 && (
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm w-full min-w-0">
+      {additionalPartsPending.length > 0 && !dismissedPartsBanner && (
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm w-full min-w-0 relative">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
             <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 text-purple-600">
               <Wrench className="w-4 h-4 sm:w-6 sm:h-6 animate-pulse" />
@@ -325,15 +360,33 @@ export default function CustomerDashboardPage() {
               <p className="text-gray-600 text-xs sm:text-sm font-medium break-words">Partner has requested approval for additional service parts for {additionalPartsPending.length} booking(s).</p>
             </div>
           </div>
-          <Button asChild className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm">
-            <Link href={`/customer/bookings/${additionalPartsPending[0]._id}`}>Review Extra Parts</Link>
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button asChild className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm">
+              <Link href={`/customer/bookings/${additionalPartsPending[0]._id}`}>Review Extra Parts</Link>
+            </Button>
+            <button
+              type="button"
+              onClick={() => setDismissedPartsBanner(true)}
+              className="p-2 text-purple-700 hover:text-purple-900 hover:bg-purple-100/60 rounded-xl transition-colors cursor-pointer shrink-0"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       )}
 
       {/* 🔥 ACTIVE SERVICE & LIVE VEHICLE STATUS TRACKER SECTION */}
-      {activeBooking && (
+      {activeBooking && !dismissedActiveTracker && (
         <Card className="bg-gradient-to-r from-slate-900 via-primary-navy to-slate-900 text-white shadow-xl border-primary-orange/30 rounded-3xl overflow-hidden relative group">
+          <button
+            type="button"
+            onClick={() => setDismissedActiveTracker(true)}
+            className="absolute top-4 right-4 z-20 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+            title="Dismiss Tracker"
+          >
+            <X className="w-5 h-5" />
+          </button>
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary-orange/10 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform"></div>
           <CardContent className="p-6 md:p-8 relative z-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

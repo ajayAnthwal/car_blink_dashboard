@@ -80,6 +80,9 @@ export default function ExecutiveLeadsPage() {
     socket.on("booking_confirmed", refetchLeads);
     socket.on("job_verified", refetchLeads);
     socket.on("booking_status_update", refetchLeads);
+    socket.on("booking_updated", refetchLeads);
+    socket.on("satisfaction_response", refetchLeads);
+    socket.on("satisfaction_request", refetchLeads);
 
     return () => {
       socket.off("new_lead", refetchLeads);
@@ -87,6 +90,9 @@ export default function ExecutiveLeadsPage() {
       socket.off("booking_confirmed", refetchLeads);
       socket.off("job_verified", refetchLeads);
       socket.off("booking_status_update", refetchLeads);
+      socket.off("booking_updated", refetchLeads);
+      socket.off("satisfaction_response", refetchLeads);
+      socket.off("satisfaction_request", refetchLeads);
     };
   }, [socket, refetchLeads]);
 

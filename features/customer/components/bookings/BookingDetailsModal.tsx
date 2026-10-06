@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCustomerBookingInvoice } from "@/lib/services";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { X, AlertCircle, ShieldCheck, FileText, ExternalLink, Receipt, Star, ThumbsUp, ThumbsDown } from "lucide-react";
@@ -70,6 +70,7 @@ export function BookingDetailsModal({
   isExtensionProcessing,
   onPayExtension,
 }: BookingDetailsModalProps) {
+  const queryClient = useQueryClient();
   const [cancelReason, setCancelReason] = useState("");
   const [selectedQuoteId, setSelectedQuoteId] = useState("");
 
@@ -99,6 +100,13 @@ export function BookingDetailsModal({
       });
       toast.success("Thank you for your feedback! Your response has been submitted.");
       booking.satisfactionStatus = satisfactionChoice ? 'SATISFIED' : 'DISSATISFIED';
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["customer", "bookings"] }),
+        queryClient.invalidateQueries({ queryKey: ["customer", "booking", booking._id] }),
+        queryClient.invalidateQueries({ queryKey: ["customer", "reviews"] }),
+        queryClient.invalidateQueries({ queryKey: ["executive"] }),
+      ]);
     } catch (err: any) {
       toast.error(err.message || "Failed to submit feedback.");
     } finally {
