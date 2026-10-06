@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Receipt, FileText, CheckCircle2, Edit3, Plus, Trash2, User, Building2, Car, Search, Clock, ShieldCheck, Send, Loader2, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, CheckCircle2, Edit3, Plus, Trash2, User, Building2, Car, Search, Clock, ShieldCheck, Send, Loader2, X, ExternalLink, ChevronLeft, ChevronRight, BadgeIndianRupee, IndianRupee } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 
@@ -161,7 +161,7 @@ export default function ExecutiveInvoicesPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading flex items-center gap-2">
-            <Receipt className="w-8 h-8 text-primary-orange" /> Partner Invoice Review Console
+            <BadgeIndianRupee className="w-8 h-8 text-primary-orange" /> Partner Invoice Review Console
           </h1>
           <p className="text-gray-500 mt-1 font-body">
             Inspect, edit itemized bills, apply executive discounts, and approve invoices for customer payment.
@@ -242,7 +242,7 @@ export default function ExecutiveInvoicesPage() {
             </div>
           ) : invoicesList.length === 0 ? (
             <div className="p-16 text-center flex flex-col items-center justify-center">
-              <Receipt className="w-16 h-16 text-gray-300 mb-4" />
+              <BadgeIndianRupee className="w-16 h-16 text-gray-300 mb-4" />
               <h3 className="text-lg font-bold text-gray-800 font-heading">No Invoices Found</h3>
               <p className="text-xs text-gray-500 mt-1 max-w-sm">
                 There are currently no partner submitted invoices matching the selected criteria.
@@ -275,9 +275,11 @@ export default function ExecutiveInvoicesPage() {
                           <div className="bg-orange-50 p-2 rounded-xl text-primary-orange shrink-0">
                             <Building2 className="w-4 h-4" />
                           </div>
-                          <div>
-                            <p className="font-bold text-gray-900 text-sm">{partner?.businessName || "Workshop Partner"}</p>
-                            <p className="text-xs text-gray-500">{partner?.phone || "N/A"}</p>
+                          <div className="min-w-0 max-w-[240px]">
+                            <p className="font-bold text-gray-900 text-sm truncate">{partner?.businessName || "Workshop Partner"}</p>
+                            <p className="text-xs text-gray-500 truncate" title={partner?.businessAddress || partner?.phone || ""}>
+                              {partner?.businessAddress || partner?.phone || "Workshop Location"}
+                            </p>
                           </div>
                         </div>
                       </TableCell>
@@ -290,7 +292,7 @@ export default function ExecutiveInvoicesPage() {
                           </span>
                           <span className="text-xs text-gray-500 flex items-center gap-1">
                             <Car className="w-3.5 h-3.5 text-gray-400" /> 
-                            {vehicle ? `${vehicle.brand || ''} ${vehicle.model || ''} (${vehicle.registrationNumber || 'N/A'})` : 'Car Details'}
+                            {vehicle ? `${vehicle.brand || ''} ${vehicle.model || ''}${vehicle.registrationNumber ? ` (${vehicle.registrationNumber})` : ''}`.trim() || 'Vehicle' : (booking?.serviceId?.name || booking?.description || 'Car Details')}
                           </span>
                         </div>
                       </TableCell>
@@ -307,9 +309,9 @@ export default function ExecutiveInvoicesPage() {
                       {/* Amount */}
                       <TableCell>
                         <div>
-                          <p className="font-black text-sm text-gray-900">₹{inv.grandTotal || 0}</p>
+                          <p className="font-black text-sm text-gray-900">₹{Number(inv.grandTotal || 0).toLocaleString('en-IN')}</p>
                           {inv.discount > 0 && (
-                            <p className="text-[10px] text-emerald-600 font-bold">Disc: ₹{inv.discount}</p>
+                            <p className="text-[10px] text-emerald-600 font-bold">Disc: ₹{Number(inv.discount).toLocaleString('en-IN')}</p>
                           )}
                         </div>
                       </TableCell>
@@ -429,12 +431,14 @@ export default function ExecutiveInvoicesPage() {
               <div className="bg-orange-50/60 border border-orange-100 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
                 <div>
                   <span className="font-bold text-gray-500 uppercase tracking-wider block text-[10px]">Partner</span>
-                  <p className="font-black text-gray-900 mt-0.5">{selectedInvoice.partnerId?.businessName || 'N/A'}</p>
-                  <p className="text-gray-600">{selectedInvoice.partnerId?.phone || ''}</p>
+                  <p className="font-black text-gray-900 mt-0.5">{selectedInvoice.partnerId?.businessName || 'Workshop Partner'}</p>
+                  <p className="text-gray-600 line-clamp-2" title={selectedInvoice.partnerId?.businessAddress || ''}>
+                    {selectedInvoice.partnerId?.businessAddress || selectedInvoice.partnerId?.phone || ''}
+                  </p>
                 </div>
                 <div>
                   <span className="font-bold text-gray-500 uppercase tracking-wider block text-[10px]">Customer</span>
-                  <p className="font-black text-gray-900 mt-0.5">{selectedInvoice.customerId?.fullName || 'N/A'}</p>
+                  <p className="font-black text-gray-900 mt-0.5">{selectedInvoice.customerId?.fullName || 'Customer'}</p>
                   <p className="text-gray-600">{selectedInvoice.customerId?.phone || ''}</p>
                 </div>
                 <div>
@@ -504,7 +508,7 @@ export default function ExecutiveInvoicesPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
-                    <Receipt className="w-4 h-4 text-primary-orange" /> Bill Line Items
+                    <BadgeIndianRupee className="w-4 h-4 text-primary-orange" /> Bill Line Items
                   </h4>
                   <Button onClick={addItemRow} size="sm" variant="outline" className="text-xs font-bold text-primary-orange border-primary-orange/30">
                     <Plus className="w-3.5 h-3.5 mr-1" /> Add Line Item

@@ -694,13 +694,17 @@ export default function LeadDetailsPage() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => {
+                  onClick={async () => {
+                    try {
+                      const { syncLeadPayments } = await import("@/lib/services");
+                      await syncLeadPayments(lead._id || id);
+                    } catch (e) {}
                     refetchLead();
-                    toast.success("Payments synchronized live!");
+                    toast.success("Payments synchronized live with gateway!");
                   }}
                   disabled={isFetching}
                   className="h-7 text-xs px-2.5 text-gray-600 hover:text-gray-900 border-gray-200 bg-white shadow-xs"
-                  title="Click to manually refresh payments"
+                  title="Click to manually refresh payments with Razorpay"
                 >
                   <RotateCw className={`w-3 h-3 mr-1 ${isFetching ? 'animate-spin text-primary-orange' : ''}`} />
                   {isFetching ? 'Syncing...' : 'Sync'}
@@ -739,6 +743,8 @@ export default function LeadDetailsPage() {
                     </>
                   ) : advancePayment?.status === 'PENDING' ? (
                     <span className="text-amber-700">⏳ Advance Pending Verification</span>
+                  ) : advancePayment?.status === 'CREATED' ? (
+                    <span className="text-amber-700">⏳ Online Payment In-Progress</span>
                   ) : (
                     <span className="text-gray-500">Advance Not Received</span>
                   )}
@@ -750,7 +756,7 @@ export default function LeadDetailsPage() {
                   Final Settlement
                 </span>
                 <p className="text-2xl font-black text-emerald-900 font-heading">
-                  ₹{(finalPayment ? Number(finalPayment.amount) : 0).toLocaleString('en-IN')}
+                  ₹{(finalPayment ? Number(finalPayment.amount) : Number(remainingBalance || 0)).toLocaleString('en-IN')}
                 </p>
                 <div className="text-[11px] mt-1 font-semibold flex items-center gap-1 text-emerald-800">
                   {finalPayment?.status === 'SUCCESS' ? (
@@ -760,6 +766,8 @@ export default function LeadDetailsPage() {
                     </>
                   ) : finalPayment?.status === 'PENDING' ? (
                     <span className="text-amber-700">⏳ Handover Pending Verification</span>
+                  ) : remainingBalance === 0 && totalPaidAmount > 0 ? (
+                    <span className="text-emerald-700 font-bold">✓ Settled (No Dues)</span>
                   ) : lead.status === 'COMPLETED' ? (
                     <span className="text-amber-600">Pending Partner Collection</span>
                   ) : (
@@ -801,7 +809,7 @@ export default function LeadDetailsPage() {
                   {advancePayment ? (
                     <Badge className={`text-[10px] font-bold uppercase px-2 py-0.5 ${
                       advancePayment.status === 'SUCCESS' ? 'bg-emerald-100 text-emerald-800' :
-                      advancePayment.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
+                      advancePayment.status === 'PENDING' || advancePayment.status === 'CREATED' ? 'bg-amber-100 text-amber-800' :
                       'bg-red-100 text-red-800'
                     }`}>
                       {advancePayment.status}

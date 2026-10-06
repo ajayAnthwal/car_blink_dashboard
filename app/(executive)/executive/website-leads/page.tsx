@@ -1,14 +1,15 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCities, getServices, getVehicleBrands, getVehicleModels } from "@/lib/services";
 import { useWebsiteLeads, useConvertWebsiteLead } from "@/features/executive/hooks/useExecutiveQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X, Search, Filter, ChevronLeft, ChevronRight, Target } from "lucide-react";
+import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X, Search, Filter, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Target, RefreshCw } from "lucide-react";
+import { useSocket } from "@/lib/SocketContext";
 import { format } from "date-fns";
 
 const formatDateSafe = (dateVal: any, pattern: string = 'MMM dd, yyyy HH:mm') => {
@@ -22,8 +23,24 @@ const formatDateSafe = (dateVal: any, pattern: string = 'MMM dd, yyyy HH:mm') =>
   }
 };
 
+const getPageNumbers = (current: number, max: number) => {
+  if (max <= 5) {
+    return Array.from({ length: max }, (_, i) => i + 1);
+  }
+  const pages: (number | string)[] = [];
+  if (current <= 3) {
+    pages.push(1, 2, 3, 4, '...', max);
+  } else if (current >= max - 2) {
+    pages.push(1, '...', max - 3, max - 2, max - 1, max);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', max);
+  }
+  return pages;
+};
+
 export default function MarketingLeadsPage() {
   const router = useRouter();
+  const { socket } = useSocket();
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   
   // Pagination & Filters
@@ -33,7 +50,7 @@ export default function MarketingLeadsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [limit, setLimit] = useState(10);
 
-  const { data: leadsData, isLoading: isLoadingLeads } = useWebsiteLeads({ 
+  const { data: leadsData, isLoading: isLoadingLeads, refetch: refetchLeads } = useWebsiteLeads({ 
     page, 
     limit, 
     search, 
@@ -42,8 +59,27 @@ export default function MarketingLeadsPage() {
   });
   const leads = (leadsData?.leads || []) as any[];
   const total = leadsData?.total || 0;
-  const totalPages = total ? Math.ceil(total / limit) : 1;
+  const totalPages = leadsData?.totalPages || (total ? Math.ceil(total / limit) : 1);
   const convertMutation = useConvertWebsiteLead();
+
+  // Realtime Socket listener for new website leads
+  useEffect(() => {
+    if (!socket) return;
+    const handleNewLead = () => {
+      refetchLeads();
+    };
+    socket.on("new_lead", handleNewLead);
+    return () => {
+      socket.off("new_lead", handleNewLead);
+    };
+  }, [socket, refetchLeads]);
+
+  // Ensure page stays within valid boundaries
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [totalPages, page]);
 
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [services, setServices] = useState<any[]>([]);
@@ -243,10 +279,18 @@ export default function MarketingLeadsPage() {
           <CardTitle className="text-lg text-primary-navy flex items-center gap-2">
             <ExternalLink className="w-5 h-5 text-primary-orange" /> Lead Submissions
             {total > 0 && (
-              <span className="text-xs font-normal text-gray-500 bg-gray-200/60 px-2.5 py-0.5 rounded-full">
-                {total} total
+              <span className="text-xs font-semibold text-gray-700 bg-orange-100/70 border border-orange-200/50 px-2.5 py-0.5 rounded-full">
+                {total} total leads
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => refetchLeads()}
+              title="Refresh Leads"
+              className="p-1 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors ml-1"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingLeads ? 'animate-spin text-primary-orange' : ''}`} />
+            </button>
           </CardTitle>
           
           <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full sm:w-auto">
@@ -383,8 +427,8 @@ export default function MarketingLeadsPage() {
           
           {/* Pagination Controls */}
           {!isLoadingLeads && total > 0 && (
-            <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100 bg-gray-50/50">
-              <div className="flex items-center gap-4 text-xs text-gray-500">
+            <div className="px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
                 <span>
                   Showing <span className="font-bold text-gray-900">{Math.min((page - 1) * limit + 1, total)}</span> to <span className="font-bold text-gray-900">{Math.min(page * limit, total)}</span> of <span className="font-bold text-gray-900">{total}</span> leads
                 </span>
@@ -394,36 +438,77 @@ export default function MarketingLeadsPage() {
                   <select 
                     value={limit}
                     onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-                    className="border border-gray-200 rounded px-2 py-1 text-xs font-semibold bg-white text-gray-700 focus:outline-none"
+                    className="border border-gray-200 rounded px-2 py-1 text-xs font-semibold bg-white text-gray-700 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
                   >
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
+                    <option value={100}>100</option>
                   </select>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Page Navigation */}
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                {/* First Page */}
+                <button 
+                  onClick={() => setPage(1)}
+                  disabled={page === 1}
+                  title="First Page"
+                  className="p-1.5 text-xs font-semibold border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
+                >
+                  <ChevronsLeft className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Previous Page */}
                 <button 
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm transition-all"
+                  className="px-2.5 py-1.5 text-xs font-semibold border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm transition-all"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                  <ChevronLeft className="w-3.5 h-3.5" /> Prev
                 </button>
 
-                <div className="flex items-center gap-1 px-2">
-                  <span className="text-xs font-bold text-gray-900">{page}</span>
-                  <span className="text-xs text-gray-400">/</span>
-                  <span className="text-xs font-medium text-gray-500">{totalPages}</span>
+                {/* Page Number Pills */}
+                <div className="flex items-center gap-1 mx-1">
+                  {getPageNumbers(page, totalPages).map((p, idx) => (
+                    typeof p === 'number' ? (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`min-w-[32px] h-8 px-2 text-xs font-bold rounded-md transition-all ${
+                          page === p
+                            ? 'bg-primary-orange text-white shadow-sm ring-1 ring-primary-orange'
+                            : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ) : (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-xs text-gray-400 font-bold">
+                        ...
+                      </span>
+                    )
+                  ))}
                 </div>
 
+                {/* Next Page */}
                 <button 
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm transition-all"
+                  className="px-2.5 py-1.5 text-xs font-semibold border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm transition-all"
                 >
                   Next <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Last Page */}
+                <button 
+                  onClick={() => setPage(totalPages)}
+                  disabled={page >= totalPages}
+                  title="Last Page"
+                  className="p-1.5 text-xs font-semibold border border-gray-200 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
+                >
+                  <ChevronsRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

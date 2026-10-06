@@ -86,8 +86,9 @@ export const useWebsiteLeads = (params?: { page?: number; limit?: number; search
         leads = extractArray(res, "data");
       }
       
-      total = payload?.total || res?.total || res?.data?.total || leads.length;
-      return { leads, total };
+      total = payload?.pagination?.total ?? payload?.total ?? res?.pagination?.total ?? res?.total ?? res?.data?.total ?? leads.length;
+      const totalPages = payload?.pagination?.pages ?? payload?.pages ?? payload?.totalPages ?? (total && params?.limit ? Math.ceil(total / params.limit) : 1);
+      return { leads, total, totalPages };
     },
   });
 };

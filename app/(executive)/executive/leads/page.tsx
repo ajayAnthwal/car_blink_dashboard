@@ -464,12 +464,11 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <Table className="w-full min-w-[1180px]">
+            <Table className="w-full min-w-[980px]">
               <TableHeader className="bg-slate-50 border-b border-slate-200">
                 <TableRow>
                   <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[200px]">Lead ID & Customer</TableHead>
                   <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[230px]">Service Details</TableHead>
-                  <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[200px]">Location & Time</TableHead>
                   <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[140px]">Executive Owner</TableHead>
                   <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[230px]">Bids & Status</TableHead>
                   <TableHead className="whitespace-nowrap font-bold text-[11px] uppercase tracking-wider text-slate-700 min-w-[180px] text-center">Actions</TableHead>
@@ -508,20 +507,16 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                           {lead.vehicleId?.brand} {lead.vehicleId?.model}
                         </span>
 
-                        {(lead.serviceMode || lead.paymentMode) && (
+                        {(lead.serviceMode || (lead.paymentMode && lead.paymentMode === 'CASH')) && (
                           <div className="flex flex-wrap gap-1.5 mt-1.5">
                             {lead.serviceMode && (
                               <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-medium border border-blue-100 uppercase">
                                 {lead.serviceMode.replace('_', ' ')}
                               </span>
                             )}
-                            {lead.paymentMode && (
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border uppercase inline-flex items-center gap-1 ${
-                                lead.paymentMode === 'CASH'
-                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                  : 'bg-blue-50 text-blue-800 border-blue-200'
-                              }`}>
-                                {lead.paymentMode === 'CASH' ? '💵 CASH' : '💳 ONLINE'}
+                            {lead.paymentMode === 'CASH' && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold border uppercase inline-flex items-center gap-1 bg-amber-50 text-amber-800 border-amber-200">
+                                💵 CASH
                               </span>
                             )}
                           </div>
@@ -529,65 +524,6 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                         <p className="text-[11px] text-neutral-muted line-clamp-2 mt-1.5 whitespace-normal break-words" title={lead.description}>
                           {lead.description || "No description provided."}
                         </p>
-                      </div>
-                    </TableCell>
-
-                    {/* Location & Time */}
-                    <TableCell className="min-w-[200px] align-top py-3.5">
-                      <div className="flex flex-col space-y-2">
-                        <div className="flex items-start text-xs text-neutral-700 gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-neutral-muted mt-0.5 shrink-0" />
-                          <div className="flex flex-col">
-                            <span className="font-medium">{lead.cityId?.name}</span>
-                            {lead.address && <span className="text-[10px] text-neutral-muted line-clamp-2">{lead.address} {lead.landmark && `(${lead.landmark})`}</span>}
-                          </div>
-                        </div>
-                        <div className="flex items-start text-xs text-neutral-700 gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-neutral-muted mt-0.5 shrink-0" />
-                          <span className="font-medium">{new Date(lead.preferredDate).toLocaleString()}</span>
-                        </div>
-
-                        {/* Follow Up */}
-                        <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between group">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-semibold text-primary-navy">Follow-up:</span>
-                            <span className="text-[10px] text-neutral-600">
-                              {lead.followUpDate ? new Date(lead.followUpDate).toLocaleString() : 'Not Set'}
-                            </span>
-                          </div>
-                          <button onClick={() => {
-                            setEditingLeadId(lead._id);
-                            followUpForm.reset({
-                              followUpDate: lead.followUpDate ? new Date(new Date(lead.followUpDate).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : "",
-                              remarks: lead.remarks || ""
-                            });
-                          }} className="text-[10px] text-secondary-blue hover:underline opacity-0 group-hover:opacity-100 transition-opacity">
-                            Edit
-                          </button>
-                        </div>
-                        {editingLeadId === lead._id && (
-                          <form onSubmit={followUpForm.handleSubmit((d) => handleUpdateLead(lead._id, d))} className="mt-2 space-y-2 bg-gray-50 p-2 rounded border border-gray-100">
-                            <div>
-                              <input
-                                type="datetime-local"
-                                className="w-full border rounded p-1 text-[10px]"
-                                {...followUpForm.register("followUpDate")}
-                              />
-                            </div>
-                            <div>
-                              <input
-                                type="text"
-                                className="w-full border rounded p-1 text-[10px]"
-                                placeholder="Remarks..."
-                                {...followUpForm.register("remarks")}
-                              />
-                            </div>
-                            <div className="flex space-x-2 pt-1">
-                              <Button type="submit" size="sm" isLoading={updateLeadMutation.isPending} className="flex-1 text-[10px] h-5 bg-secondary-blue p-0">Save</Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => setEditingLeadId(null)} className="flex-1 text-[10px] h-5 p-0">Cancel</Button>
-                            </div>
-                          </form>
-                        )}
                       </div>
                     </TableCell>
 

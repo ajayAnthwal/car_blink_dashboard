@@ -118,16 +118,22 @@ export default function CustomerBookingDetailsPage() {
     booking?.status === 'COMPLETED'
   );
 
-  // Auto-focus directly on Advance Payment Section when payment is needed
+  // Auto-focus directly on Advance Payment Section ONLY when payment is genuinely pending
   useEffect(() => {
     if (typeof window === 'undefined' || !booking || booking.status === 'COMPLETED') return;
 
-    const isAdvPaid = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS' && p.amount > 0);
-    const isFlPaid = booking.payments?.some((p: any) => p.paymentType === 'FULL' && p.status === 'SUCCESS' && p.amount > 0);
+    const isAdvPaid = Boolean(
+      booking.hasPaidAdvance ||
+      booking.isAdvancePaid ||
+      booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS' && p.amount > 0)
+    );
+    const isFlPaid = Boolean(
+      booking.payments?.some((p: any) => p.paymentType === 'FULL' && p.status === 'SUCCESS' && p.amount > 0)
+    );
     const totalPaid = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
-    const isPaid = isAdvPaid || isFlPaid || totalPaid > 0;
+    const isPaid = isAdvPaid || isFlPaid || totalPaid > 0 || ['ACCEPTED', 'CONFIRMED', 'VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(booking.status) || (booking.paymentMode === 'CASH' && ['CUSTOMER_ACCEPTED', 'AWAITING_15_PERCENT_ADVANCE', 'ACCEPTED'].includes(booking.status));
 
-    if (!isPaid) {
+    if (!isPaid && (booking.status === 'CUSTOMER_ACCEPTED' || booking.status === 'AWAITING_15_PERCENT_ADVANCE')) {
       const timer = setTimeout(() => {
         const payEl = document.getElementById('advance-payment-section');
         if (payEl) {
@@ -136,7 +142,7 @@ export default function CustomerBookingDetailsPage() {
       }, 350);
       return () => clearTimeout(timer);
     }
-  }, [booking?._id, booking?.status, booking?.payments]);
+  }, [booking?._id, booking?.status, booking?.hasPaidAdvance, booking?.isAdvancePaid, booking?.payments]);
 
   useEffect(() => {
     if (!socket || !id) return;
@@ -483,14 +489,37 @@ export default function CustomerBookingDetailsPage() {
     : "Vehicle Requested";
 
 
-  const isAdvancePaid = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS' && p.amount > 0);
-  const isAdvancePending = booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'PENDING');
-  const isFinalPaid = booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'SUCCESS' && p.amount > 0);
-  const isFinalPending = booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'PENDING');
-  const isFullPaid = booking.payments?.some((p: any) => p.paymentType === 'FULL' && p.status === 'SUCCESS' && p.amount > 0);
+  const isAdvancePaid = Boolean(
+    booking?.hasPaidAdvance ||
+    booking?.isAdvancePaid ||
+    booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS' && p.amount > 0)
+  );
+  const isAdvancePending = Boolean(
+    booking.payments?.some((p: any) => p.paymentType === 'ADVANCE' && p.status === 'PENDING') ||
+    (booking?.paymentMode === 'CASH' && ['CUSTOMER_ACCEPTED', 'AWAITING_15_PERCENT_ADVANCE', 'ACCEPTED'].includes(booking?.status))
+  );
+  const isFinalPaid = Boolean(
+    booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'SUCCESS' && p.amount > 0)
+  );
+  const isFinalPending = Boolean(
+    booking.payments?.some((p: any) => p.paymentType === 'FINAL' && p.status === 'PENDING')
+  );
+  const isFullPaid = Boolean(
+    booking.payments?.some((p: any) => p.paymentType === 'FULL' && p.status === 'SUCCESS' && p.amount > 0)
+  );
   
   const totalPaidAmount = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
-  const hasPaidAdvance = isAdvancePaid || isFullPaid || totalPaidAmount > 0;
+  
+  // Advance is satisfied if customer has paid advance/full, or DB flags hasPaidAdvance, or booking is already confirmed/in-progress
+  const hasPaidAdvance = Boolean(
+    booking?.hasPaidAdvance ||
+    booking?.isAdvancePaid ||
+    isAdvancePaid ||
+    isFullPaid ||
+    totalPaidAmount > 0 ||
+    ['ACCEPTED', 'CONFIRMED', 'VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(booking?.status) ||
+    (booking?.paymentMode === 'CASH' && ['CUSTOMER_ACCEPTED', 'AWAITING_15_PERCENT_ADVANCE', 'ACCEPTED', 'CONFIRMED'].includes(booking?.status))
+  );
   const isConfirmed = hasPaidAdvance || (booking?.status !== 'PENDING' && booking?.status !== 'QUOTED' && booking?.status !== 'CANCELLED');
   const hasPaidFinal = isFinalPaid || isFullPaid;
 
@@ -519,7 +548,7 @@ export default function CustomerBookingDetailsPage() {
   const rawAdv = Math.round(revisedTotalAmount * 0.15);
   const advanceAmount = revisedTotalAmount > 0 ? Math.min(revisedTotalAmount, Math.max(1, rawAdv)) : 0;
   const remainingForAdvance = Math.max(0, advanceAmount - totalPaidAmount);
-  const needsAdvance = !hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED';
+  const needsAdvance = !hasPaidAdvance && remainingAmount > 0 && !['ACCEPTED', 'CONFIRMED', 'VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(booking.status);
   const needsFinal = booking.status === 'COMPLETED' && remainingAmount > 0;
   const effectivePaymentMode = selectedPaymentPreference || booking.paymentMode || "ONLINE";
   const isCashMode = effectivePaymentMode === "CASH";
@@ -605,7 +634,7 @@ export default function CustomerBookingDetailsPage() {
       )}
 
       {/* Top Priority Action: 15% Advance Payment Banner & Action Card */}
-      {(!hasPaidAdvance && remainingAmount > 0 && booking.status !== 'COMPLETED') && (
+      {needsAdvance && (
         <Card id="advance-payment-section" className="border-2 border-primary-orange shadow-xl rounded-3xl overflow-hidden bg-gradient-to-br from-orange-50/90 via-white to-amber-50/70 animate-in fade-in slide-in-from-top-4 duration-500 scroll-mt-24">
           <div className="bg-gradient-to-r from-primary-orange to-amber-600 px-6 py-3.5 text-white flex flex-wrap items-center justify-between gap-2 shadow-sm">
             <div className="flex items-center gap-2">
@@ -884,7 +913,7 @@ export default function CustomerBookingDetailsPage() {
                   stage: 3,
                   title: "3. Quote / Payment Pending",
                   sub: "Quote review & advance payment",
-                  isPassed: ["CONFIRMED", "VERIFIED", "INSPECTION", "DIAGNOSIS", "WORK_STARTED", "IN_PROGRESS", "REPAIRING", "QUALITY_CHECK", "COMPLETED"].includes(s) || isPaid,
+                  isPassed: ["ACCEPTED", "CONFIRMED", "VERIFIED", "INSPECTION", "DIAGNOSIS", "WORK_STARTED", "IN_PROGRESS", "REPAIRING", "QUALITY_CHECK", "COMPLETED"].includes(s) || isPaid,
                   isActive: ["QUOTED", "CUSTOMER_ACCEPTED", "AWAITING_15_PERCENT_ADVANCE"].includes(s) || (!isPaid && ["ASSIGNED", "CONFIRMED"].includes(s)),
                 },
                 {

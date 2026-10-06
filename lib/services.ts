@@ -534,6 +534,11 @@ export const getExecutiveLeadById = async (id: string) => {
   return response.data;
 };
 
+export const syncLeadPayments = async (id: string) => {
+  const response = await apiClient.post(`/executive/leads/${id}/sync-payments`);
+  return response.data;
+};
+
 export const updateExecutiveLead = async (id: string, data: { followUpDate?: string; remarks?: string }) => {
   const response = await apiClient.patch(`/executive/leads/${id}`, data);
   return response.data;
