@@ -676,81 +676,16 @@ export default function CustomerBookingDetailsPage() {
               </div>
             </div>
 
-            {/* Payment Method Selector & Instant Action Buttons */}
+            {/* Main Pay Button */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  Choose Payment Method:
-                </span>
-                <span className="text-xs font-semibold text-slate-500">
-                  {effectivePaymentMode === 'CASH' ? '💵 Cash selected (Pay at workshop)' : '💳 Online selected (Instant verification)'}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
-                <button
-                  type="button"
-                  onClick={() => handleTogglePaymentMode("CASH")}
-                  className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold border-2 transition-all flex items-center justify-center gap-2 ${
-                    effectivePaymentMode === "CASH"
-                      ? "bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.01]"
-                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                  }`}
+              <div className="pt-2 max-w-md">
+                <Button 
+                  className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-2xl py-6 font-extrabold text-sm sm:text-base shadow-lg shadow-primary-navy/25 flex items-center justify-center transition-all hover:scale-[1.01]" 
+                  onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
+                  isLoading={isExtensionProcessing}
                 >
-                  💵 Pay Cash at Workshop
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTogglePaymentMode("ONLINE")}
-                  className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold border-2 transition-all flex items-center justify-center gap-2 ${
-                    effectivePaymentMode === "ONLINE"
-                      ? "bg-primary-navy text-white border-primary-navy shadow-md scale-[1.01]"
-                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  💳 Pay Online (UPI / Card)
-                </button>
-              </div>
-
-              {/* Main Pay Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                {effectivePaymentMode === 'CASH' ? (
-                  <>
-                    <Button 
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl py-6 font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition-all hover:scale-[1.01]" 
-                      onClick={() => handlePayAtWorkshop(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
-                      isLoading={isExtensionProcessing}
-                    >
-                      <CheckCircle2 className="w-5 h-5 mr-2 text-white" /> Confirm Pay at Workshop (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      className="w-full border-primary-navy/30 bg-white hover:bg-primary-navy/5 text-primary-navy rounded-2xl py-6 font-bold text-xs sm:text-sm shadow-sm" 
-                      onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
-                      isLoading={isExtensionProcessing}
-                    >
-                      <IndianRupee className="w-4 h-4 mr-1.5 text-primary-orange" /> Pay Online (Razorpay / UPI) Instead
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button 
-                      className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-2xl py-6 font-extrabold text-sm sm:text-base shadow-lg shadow-primary-navy/25 flex items-center justify-center transition-all hover:scale-[1.01]" 
-                      onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
-                      isLoading={isExtensionProcessing}
-                    >
-                      <IndianRupee className="w-5 h-5 mr-2 text-primary-orange" /> Pay Online Advance (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      className="w-full border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-800 rounded-2xl py-6 font-bold text-xs sm:text-sm shadow-sm" 
-                      onClick={() => handlePayAtWorkshop(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
-                      isLoading={isExtensionProcessing}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" /> Pay Cash at Workshop (Skip Online)
-                    </Button>
-                  </>
-                )}
+                  <IndianRupee className="w-5 h-5 mr-2 text-primary-orange" /> Pay Online Advance (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})
+                </Button>
               </div>
 
               <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-2 border-t border-orange-100">
