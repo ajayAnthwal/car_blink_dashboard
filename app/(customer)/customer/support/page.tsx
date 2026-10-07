@@ -1,7 +1,8 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { HelpCircle, Loader2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Ticket, CheckCircle, Clock, ShieldCheck, Car, MessageSquare, AlertCircle } from "lucide-react";
@@ -40,6 +41,21 @@ const ChatInterface = dynamic(
 );
 
 export default function SupportPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 text-primary-orange animate-spin" />
+      </div>
+    }>
+      <SupportContent />
+    </Suspense>
+  );
+}
+
+function SupportContent() {
+  const searchParams = useSearchParams();
+  const defaultBookingId = searchParams.get("bookingId") || "";
+
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -225,6 +241,7 @@ export default function SupportPage() {
         <CardContent className="p-6">
           <QueryForm 
             bookings={bookings} 
+            defaultBookingId={defaultBookingId}
             onSubmit={handleCreateTicket} 
             isSubmitting={createTicketMutation.isPending} 
           />
@@ -329,7 +346,64 @@ export default function SupportPage() {
                       {expandedId === ticket._id && (
                         <tr>
                           <td colSpan={5} className="p-0 border-b border-gray-200 bg-slate-50/50">
-                            <div className="p-6">
+                            <div className="p-6 space-y-5">
+                              {/* 3-Step Live Status Progression Tracker */}
+                              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs">
+                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                                  Live Query Progression:
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  {/* Step 1: Open */}
+                                  <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                                    ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].includes(ticket.status) 
+                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900' 
+                                      : 'bg-gray-50 border-gray-200 text-gray-400'
+                                  }`}>
+                                    <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+                                      1
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-xs">Query Submitted</div>
+                                      <div className="text-[11px] text-gray-500">Queued for executive review</div>
+                                    </div>
+                                  </div>
+
+                                  {/* Step 2: In Progress */}
+                                  <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                                    ['IN_PROGRESS', 'RESOLVED', 'CLOSED'].includes(ticket.status) 
+                                      ? 'bg-blue-50 border-blue-300 text-blue-900 font-medium' 
+                                      : 'bg-gray-50 border-gray-200 text-gray-400 opacity-60'
+                                  }`}>
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${
+                                      ['IN_PROGRESS', 'RESOLVED', 'CLOSED'].includes(ticket.status) ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
+                                    }`}>
+                                      2
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-xs">In Progress</div>
+                                      <div className="text-[11px] text-gray-500">Executive reviewing details</div>
+                                    </div>
+                                  </div>
+
+                                  {/* Step 3: Resolved */}
+                                  <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                                    ['RESOLVED', 'CLOSED'].includes(ticket.status) 
+                                      ? 'bg-emerald-100 border-emerald-400 text-emerald-950 font-bold' 
+                                      : 'bg-gray-50 border-gray-200 text-gray-400 opacity-60'
+                                  }`}>
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${
+                                      ['RESOLVED', 'CLOSED'].includes(ticket.status) ? 'bg-emerald-700 text-white' : 'bg-gray-300 text-gray-600'
+                                    }`}>
+                                      3
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-xs">Resolved</div>
+                                      <div className="text-[11px] text-gray-500">Issue resolved & verified</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
                               {selectedTicket && selectedTicket._id === ticket._id && (
                                 <ChatInterface
                                   query={selectedTicket}

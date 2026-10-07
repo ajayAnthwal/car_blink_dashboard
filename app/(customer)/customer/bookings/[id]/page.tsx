@@ -359,25 +359,9 @@ export default function CustomerBookingDetailsPage() {
       const paymentData = res?.data || res;
       const { orderId, amount: payAmount, currency, key } = paymentData;
 
-      const isMock = !key || key === "mock_key" || (orderId && String(orderId).startsWith("mock_"));
-
-      if (isMock || !isScriptLoaded) {
-        setMessage({ type: "success", text: "Processing payment..." });
-        setTimeout(async () => {
-          try {
-            await verifyPayment({
-              paymentId: "pay_sim_" + Date.now(),
-              orderId: orderId || "order_sim_" + Date.now(),
-              signature: "dummy_signature",
-            });
-            setMessage({ type: "success", text: "Payment successful! Booking confirmed." });
-            refetchBooking();
-          } catch (verr: any) {
-            setMessage({ type: "error", text: "Payment verification failed." });
-          } finally {
-            setIsExtensionProcessing(false);
-          }
-        }, 1000);
+      if (!isScriptLoaded) {
+        setMessage({ type: "error", text: "Unable to load secure Razorpay gateway. Please check your internet connection and refresh the page." });
+        setIsExtensionProcessing(false);
         return;
       }
 
@@ -557,15 +541,15 @@ export default function CustomerBookingDetailsPage() {
   
   const totalPaidAmount = booking.payments?.filter((p: any) => p.status === 'SUCCESS').reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
   
-  // Advance is satisfied if customer has paid advance/full, or DB flags hasPaidAdvance, or booking is already confirmed/in-progress
+  // Advance is strictly satisfied only if customer has verified payment or service is already in progress/verified
   const hasPaidAdvance = Boolean(
-    booking?.hasPaidAdvance ||
-    booking?.isAdvancePaid ||
+    (booking?.hasPaidAdvance && (booking?.isAdvancePaid || (booking?.paidAmount || 0) > 0)) ||
     isAdvancePaid ||
     isFullPaid ||
     totalPaidAmount > 0 ||
-    ['ACCEPTED', 'CONFIRMED', 'VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(booking?.status) ||
-    (booking?.paymentMode === 'CASH' && ['CUSTOMER_ACCEPTED', 'AWAITING_15_PERCENT_ADVANCE', 'ACCEPTED', 'CONFIRMED'].includes(booking?.status))
+    booking?.paymentStatus === 'PAID' ||
+    booking?.paymentStatus === 'PARTIALLY_PAID' ||
+    ['VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(booking?.status)
   );
   const isConfirmed = hasPaidAdvance || (booking?.status !== 'PENDING' && booking?.status !== 'QUOTED' && booking?.status !== 'CANCELLED');
   const hasPaidFinal = isFinalPaid || isFullPaid;
@@ -574,7 +558,7 @@ export default function CustomerBookingDetailsPage() {
     ? booking.assignedPartnerId
     : (booking?.acceptedBidId && typeof booking.acceptedBidId === 'object' && booking.acceptedBidId.partnerId)
       ? booking.acceptedBidId.partnerId
-      : (quotes.find((q: any) => q?.partnerId && typeof q.partnerId === 'object')?.partnerId || null);
+      : null;
 
   const acceptedQuoteAmount = 
     booking.acceptedQuoteAmount ||
@@ -758,8 +742,8 @@ export default function CustomerBookingDetailsPage() {
         </Card>
       )}
 
-      {/* Workshop Details Unlocked Banner upon Advance Payment */}
-      {hasPaidAdvance && partnerInfo && (
+      {/* Workshop Details Unlocked Banner upon Verified Advance Payment */}
+      {hasPaidAdvance && partnerInfo ? (
         <Card className="border-2 border-emerald-500/40 shadow-xl rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/60 animate-in fade-in duration-500">
           <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3.5 text-white flex flex-wrap items-center justify-between gap-2 shadow-sm">
             <div className="flex items-center gap-2">
@@ -824,7 +808,41 @@ export default function CustomerBookingDetailsPage() {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : (!hasPaidAdvance && (booking?.acceptedBidId || booking?.assignedPartnerId || booking?.status === 'CUSTOMER_ACCEPTED' || booking?.status === 'AWAITING_15_PERCENT_ADVANCE')) ? (
+        <Card className="border-2 border-amber-500/30 shadow-md rounded-3xl overflow-hidden bg-gradient-to-br from-amber-50/70 via-white to-orange-50/50">
+          <div className="bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 text-white flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-full bg-white/20 text-white">
+                <ShieldCheck className="w-4 h-4" />
+              </span>
+              <span className="font-heading font-black text-sm uppercase tracking-wide">
+                Quote Accepted • Advance Payment Required
+              </span>
+            </div>
+            <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
+              🔒 Contact & Location Locked
+            </span>
+          </div>
+          <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h4 className="font-heading font-extrabold text-lg text-slate-900 flex items-center gap-2">
+                <Car className="w-5 h-5 text-amber-600" />
+                Verified Workshop Allocated
+              </h4>
+              <p className="text-xs sm:text-sm text-slate-600 max-w-xl">
+                To guarantee your booking slot and activate CarBlink Service Warranty, direct workshop contact details, Google Maps navigation, and check-in PIN will unlock immediately once the 15% advance payment is completed.
+              </p>
+            </div>
+            <Button
+              onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")}
+              isLoading={isExtensionProcessing}
+              className="bg-primary-navy hover:bg-secondary-blue text-white font-extrabold text-xs sm:text-sm rounded-xl px-6 py-5 shrink-0 shadow-md transition-all hover:scale-[1.01]"
+            >
+              Pay Advance to Unlock (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {showCancel && (
         <Card className="border-danger/20 shadow-lg rounded-2xl overflow-hidden">
@@ -2092,7 +2110,7 @@ export default function CustomerBookingDetailsPage() {
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary-orange/20 rounded-full blur-xl -ml-12 -mb-12" />
                 <h3 className="font-heading font-bold text-xl text-white mb-3">Need Help?</h3>
                 <p className="text-sm text-white/70 mb-8 leading-relaxed">If you have any questions or need to make changes to your booking, please raise a query with our team.</p>
-                <Button variant="outline" className="w-full bg-white/10 border-white/20 hover:bg-white text-white hover:text-primary-navy rounded-xl py-6 font-bold transition-colors" onClick={() => router.push('/customer/support')}>
+                <Button variant="outline" className="w-full bg-white/10 border-white/20 hover:bg-white text-white hover:text-primary-navy rounded-xl py-6 font-bold transition-colors" onClick={() => router.push(`/customer/support?bookingId=${id}`)}>
                   Raise Query <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>

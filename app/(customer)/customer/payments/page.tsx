@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,27 +74,8 @@ export default function PaymentsPage() {
       const paymentData = response?.data || response;
       const { orderId, amount: payAmount, currency, key } = paymentData;
 
-      const isMock = !key || key === "mock_key" || (orderId && String(orderId).startsWith("mock_"));
-
-      if (isMock || !isScriptLoaded) {
-        setMessage({ type: "success", text: "Processing payment..." });
-        setTimeout(async () => {
-          try {
-            await verifyPayment({
-              paymentId: "pay_sim_" + Date.now(),
-              orderId: orderId || "order_sim_" + Date.now(),
-              signature: "dummy_signature"
-            });
-            setMessage({ type: "success", text: "Payment verified successfully!" });
-            refetchPayments();
-            queryClient.invalidateQueries({ queryKey: ["customer", "bookings"] });
-            setBookingId("");
-            setAmount("");
-            setCouponCode("");
-          } catch (verr: any) {
-            setMessage({ type: "error", text: "Payment verification failed." });
-          }
-        }, 1000);
+      if (!isScriptLoaded) {
+        setMessage({ type: "error", text: "Unable to load secure Razorpay gateway. Please check your internet connection." });
         return;
       }
 
@@ -228,10 +210,15 @@ export default function PaymentsPage() {
                 label="Booking"
                 value={bookingId}
                 onChange={(e) => setBookingId(e.target.value)}
-                options={bookings.map(b => ({
-                  value: b._id,
-                  label: `${b.vehicleId?.brand} ${b.vehicleId?.model} - ${b.serviceId?.name}`
-                }))}
+                options={bookings.map(b => {
+                  const bId = String(b._id?._id || b._id || b.id || "");
+                  const vName = typeof b.vehicleId === 'object' && b.vehicleId?.brand ? `${b.vehicleId.brand} ${b.vehicleId.model || ''}`.trim() : (b.vehicleDetails?.makeModel || "Your Vehicle");
+                  const sName = typeof b.serviceId === 'object' && b.serviceId?.name ? b.serviceId.name : (b.serviceName || "Service");
+                  return {
+                    value: bId,
+                    label: `${vName} — ${sName} (#${bId.slice(-6).toUpperCase()})`
+                  };
+                })}
                 disabled={bookings.length === 0}
                 required
               />
@@ -346,15 +333,44 @@ export default function PaymentsPage() {
                           {payment.status}
                         </span>
                       </div>
-                      <p className="text-sm text-neutral-muted">
-                        {getTypeLabel(payment.paymentType)} - Booking: {payment.bookingId}
-                      </p>
-                      {payment.paymentId && (
-                        <p className="text-xs text-neutral-muted mt-1">Payment ID: {payment.paymentId}</p>
-                      )}
-                      <p className="text-xs text-neutral-muted mt-1">
-                        {new Date(payment.createdAt).toLocaleString()}
-                      </p>
+                      {(() => {
+                        const bObj = typeof payment.bookingId === 'object' ? payment.bookingId : null;
+                        const rawBId = bObj?._id || payment.bookingId;
+                        const bIdStr = rawBId ? String(rawBId) : "N/A";
+                        const serviceName = bObj?.serviceId?.name || bObj?.description || "Car Service";
+                        const vehicleName = bObj?.vehicleId ? `${bObj.vehicleId.brand || ''} ${bObj.vehicleId.model || ''}`.trim() : null;
+
+                        return (
+                          <div className="space-y-1.5 my-2">
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-800">
+                              <span className="font-bold text-primary-navy">{getTypeLabel(payment.paymentType)}</span>
+                              <span className="text-gray-400">•</span>
+                              <span className="font-semibold text-gray-700">{serviceName}</span>
+                              {vehicleName && (
+                                <>
+                                  <span className="text-gray-400">•</span>
+                                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-semibold">{vehicleName}</span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-muted">
+                              <span>Booking ID: <strong className="font-mono text-slate-700">#{bIdStr.slice(-8).toUpperCase()}</strong></span>
+                              {payment.paymentId && (
+                                <span>Txn ID: <strong className="font-mono text-slate-600">{payment.paymentId}</strong></span>
+                              )}
+                              <span>Date: {new Date(payment.createdAt || payment.paidAt || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            {rawBId && rawBId !== "N/A" && (
+                              <div className="pt-1">
+                                <Link href={`/customer/bookings/${bIdStr}`} className="text-xs font-bold text-secondary-blue hover:text-blue-800 hover:underline inline-flex items-center gap-1">
+                                  <span>View Linked Service Booking</span>
+                                  <span>→</span>
+                                </Link>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       {payment.status === "SUCCESS" ? (

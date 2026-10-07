@@ -36,25 +36,9 @@ export function PaymentCard({ bookingId, amount, paymentType, title, description
       const paymentData = initRes.data || initRes;
       const { orderId, amount: payAmount, currency, key } = paymentData;
 
-      const isMock = !key || key === "mock_key" || (orderId && String(orderId).startsWith("mock_"));
-
-      if (isMock || !isScriptLoaded) {
-        setMessage({ type: "success", text: "Processing payment..." });
-        setTimeout(async () => {
-          try {
-            await verifyPayment({
-              paymentId: "pay_sim_" + Date.now(),
-              orderId: orderId || "order_sim_" + Date.now(),
-              signature: "dummy_signature",
-            });
-            setMessage({ type: "success", text: "Payment successful!" });
-            if (onSuccess) onSuccess();
-          } catch (verr: any) {
-            setMessage({ type: "error", text: "Payment verification failed." });
-          } finally {
-            setIsProcessingOnline(false);
-          }
-        }, 1000);
+      if (!isScriptLoaded) {
+        setMessage({ type: "error", text: "Unable to load secure Razorpay gateway. Please check your internet connection and refresh the page." });
+        setIsProcessingOnline(false);
         return;
       }
 
@@ -120,6 +104,12 @@ export function PaymentCard({ bookingId, amount, paymentType, title, description
         theme: {
           color: "#0a2540",
         },
+        modal: {
+          ondismiss: function () {
+            setIsProcessingOnline(false);
+            setMessage({ type: "error", text: "Payment window was closed before completing transaction." });
+          }
+        }
       };
 
       const rzp = new (window as any).Razorpay(options);

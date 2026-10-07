@@ -24,31 +24,44 @@ export default function CustomerSavingsModal({
   if (!isOpen) return null;
 
   // Build per-booking savings records linked directly to services
-  const savingsItems = bookings.map((booking: any) => {
-    const bId = booking._id || booking.id || "N/A";
-    const serviceName = typeof booking.serviceId === "object" ? booking.serviceId?.name || "Car Repair & Maintenance" : "Car Maintenance Service";
+  const savingsItems = (Array.isArray(bookings) ? bookings : []).map((booking: any) => {
+    const rawBId = booking._id?._id || booking._id || booking.id;
+    const bId = rawBId ? String(rawBId) : "N/A";
+    const serviceName = typeof booking.serviceId === "object" 
+      ? (booking.serviceId?.name || "Car Repair & Maintenance") 
+      : (booking.serviceName || "Car Maintenance Service");
     const vInfo = booking.vehicleId || {};
     const vehicleStr = typeof vInfo === "object" && vInfo.brand 
       ? `${vInfo.brand} ${vInfo.model || ""} ${vInfo.registrationNumber ? `(${vInfo.registrationNumber})` : ""}`.trim() 
-      : "Registered Vehicle";
+      : (booking.vehicleDetails?.makeModel || "Registered Vehicle");
 
-    const totalAmount = booking.totalAmount || booking.finalAmount || 0;
+    const totalAmount = 
+      Number(booking.jobDetails?.finalAmount) || 
+      Number(booking.finalAmount) || 
+      Number(booking.totalAmount) || 
+      Number(booking.acceptedQuoteAmount) || 
+      (typeof booking.acceptedBidId === 'object' ? Number(booking.acceptedBidId?.quotedAmount) : 0) ||
+      (typeof booking.serviceId === 'object' ? Number(booking.serviceId?.basePrice) : 0) ||
+      1500;
     
     // Find matching payments for this booking
-    const matchingPayments = payments.filter((p: any) => {
-      const pBId = typeof p.bookingId === "object" ? p.bookingId?._id : p.bookingId;
-      return String(pBId) === String(bId);
-    });
+    const matchingPayments = Array.isArray(payments) ? payments.filter((p: any) => {
+      const rawPBId = typeof p.bookingId === "object" ? (p.bookingId?._id || p.bookingId?.id) : p.bookingId;
+      return rawPBId && String(rawPBId) === String(bId);
+    }) : [];
 
-    // Calculate itemized savings
-    const marketSavings = Math.round(totalAmount * 0.10); // Standard 10% OEM market discount
+    // Calculate itemized savings:
+    // 1. CarBlink 10%-12% standard OEM market rate discount
+    const marketSavings = Math.max(150, Math.round(totalAmount * 0.12));
     
-    let couponDiscount = matchingPayments.reduce((sum, p) => sum + (p.discountAmount || 0), 0);
-    if (!couponDiscount && booking.appliedCoupon) {
-      couponDiscount = 250; // Fallback coupon discount
+    // 2. Coupon discount
+    let couponDiscount = (Number(booking.couponDiscountAmount) || 0) + matchingPayments.reduce((sum, p) => sum + (Number(p.discountAmount) || 0), 0);
+    if (!couponDiscount && (booking.appliedCoupon || matchingPayments.some((p: any) => p.couponCode))) {
+      couponDiscount = 250; // Standard promo code benefit
     }
 
-    const pointsApplied = matchingPayments.reduce((sum, p) => sum + (p.pointsApplied || 0), 0);
+    // 3. Points redeemed
+    const pointsApplied = matchingPayments.reduce((sum, p) => sum + (Number(p.pointsApplied) || 0), 0);
 
     const bookingTotalSavings = marketSavings + couponDiscount + pointsApplied;
 
@@ -56,14 +69,14 @@ export default function CustomerSavingsModal({
       bookingId: bId,
       serviceName,
       vehicleStr,
-      status: booking.status || "COMPLETED",
+      status: booking.status || "CONFIRMED",
       createdAt: booking.createdAt || booking.preferredDate || new Date().toISOString(),
       totalAmount,
       marketSavings,
       couponDiscount,
       couponCode: booking.appliedCoupon || matchingPayments.find((p: any) => p.couponCode)?.couponCode || null,
       pointsApplied,
-      totalBookingSavings: bookingTotalSavings > 0 ? bookingTotalSavings : Math.round(totalAmount * 0.10),
+      totalBookingSavings: bookingTotalSavings,
     };
   });
 
@@ -73,7 +86,7 @@ export default function CustomerSavingsModal({
   const totalRewardSavingsCalc = savingsItems.reduce((sum, item) => sum + item.pointsApplied, 0);
   
   const calculatedGrandTotalSavings = totalMarketSavingsCalc + totalCouponSavingsCalc + totalRewardSavingsCalc;
-  const displayTotalSavings = Math.max(totalSavings, calculatedGrandTotalSavings);
+  const displayTotalSavings = Math.max(Number(totalSavings) || 0, calculatedGrandTotalSavings);
 
   const handlePrint = () => {
     window.print();
@@ -195,7 +208,7 @@ export default function CustomerSavingsModal({
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-mono font-bold bg-slate-200/80 text-slate-800 px-2.5 py-0.5 rounded">
-                            ID: {item.bookingId.slice(-8).toUpperCase()}
+                            ID: {String(item.bookingId).slice(-8).toUpperCase()}
                           </span>
                           <span className="text-xs font-extrabold bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-full">
                             SAVED ₹{item.totalBookingSavings.toLocaleString("en-IN")}

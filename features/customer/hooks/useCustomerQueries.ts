@@ -254,13 +254,22 @@ export const useSupportTickets = (params?: { page?: number; limit?: number; sear
   return useQuery({
     queryKey: ["customer", "support-tickets", params],
     queryFn: async () => {
-      const res = await getSupportTickets(params);
-      const ticketsArray = extractArray(res, "tickets");
-      return {
-        tickets: ticketsArray,
-        total: res?.total || res?.data?.total || ticketsArray.length
-      };
+      try {
+        const res = await getSupportTickets(params);
+        const ticketsArray = extractArray(res, "tickets");
+        return {
+          tickets: ticketsArray,
+          total: res?.total || res?.data?.total || ticketsArray.length
+        };
+      } catch (err) {
+        console.warn("useSupportTickets query error:", err);
+        return { tickets: [], total: 0 };
+      }
     },
+    retry: 1,
+    refetchOnMount: true,
+    staleTime: 0,
+    refetchInterval: 5000,
   });
 };
 

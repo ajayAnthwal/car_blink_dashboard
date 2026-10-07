@@ -18,12 +18,15 @@ import WebsitePromotionalBanners from "@/components/home/WebsitePromotionalBanne
 import ProfileCompletionScoreWidget from "@/components/customer/ProfileCompletionScoreWidget";
 import CustomerSatisfactionWidget from "@/components/customer/CustomerSatisfactionWidget";
 import CustomerSavingsModal from "@/components/customer/CustomerSavingsModal";
+import CustomerPaymentHistoryModal from "@/components/customer/CustomerPaymentHistoryModal";
+import LiveBookingStatusTracker from "@/components/customer/LiveBookingStatusTracker";
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+  const [isPaymentsModalOpen, setIsPaymentsModalOpen] = useState(false);
   const [dismissedConfirmedBanner, setDismissedConfirmedBanner] = useState(false);
   const [dismissedAdvanceBanner, setDismissedAdvanceBanner] = useState(false);
   const [dismissedQuotesBanner, setDismissedQuotesBanner] = useState(false);
@@ -376,77 +379,8 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
-      {/* 🔥 ACTIVE SERVICE & LIVE VEHICLE STATUS TRACKER SECTION */}
-      {activeBooking && !dismissedActiveTracker && (
-        <Card className="bg-gradient-to-r from-slate-900 via-primary-navy to-slate-900 text-white shadow-xl border-primary-orange/30 rounded-3xl overflow-hidden relative group">
-          <button
-            type="button"
-            onClick={() => setDismissedActiveTracker(true)}
-            className="absolute top-4 right-4 z-20 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-            title="Dismiss Tracker"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <div className="absolute top-0 right-0 w-96 h-96 bg-primary-orange/10 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform"></div>
-          <CardContent className="p-6 md:p-8 relative z-10">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-3 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-primary-orange/20 text-primary-orange border border-primary-orange/40">
-                    <span className="w-2 h-2 rounded-full bg-primary-orange animate-ping" />
-                    LIVE ACTIVE SERVICE TRACKER
-                  </span>
-                  <span className="text-xs text-white/50 font-mono bg-white/10 px-2.5 py-0.5 rounded-md">
-                    ID: {(activeBooking._id || activeBooking.id || '').substring(0, 10).toUpperCase()}
-                  </span>
-                </div>
-
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-heading">
-                  {typeof activeBooking.serviceId === 'object' ? activeBooking.serviceId.name : 'Car Service Request'}
-                </h2>
-
-                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300 font-medium">
-                  <span className="flex items-center text-white font-bold bg-white/10 px-3 py-1 rounded-xl">
-                    <Car className="w-4 h-4 mr-2 text-primary-orange" />
-                    {typeof activeBooking.vehicleId === 'object' ? `${activeBooking.vehicleId.brand} ${activeBooking.vehicleId.model}` : 'Vehicle'}
-                  </span>
-                  {activeBooking.vehicleId?.registrationNumber && (
-                    <span className="font-mono text-xs bg-white/10 px-2.5 py-1 rounded-xl text-slate-200">
-                      {activeBooking.vehicleId.registrationNumber}
-                    </span>
-                  )}
-                  {activeBooking.preferredDate && (
-                    <span className="flex items-center text-xs text-slate-300">
-                      <Clock className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                      {new Date(activeBooking.preferredDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                {activeBooking.status !== 'PENDING' && activeBooking.status !== 'QUOTED' && activeBooking.verificationCode && (
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-2.5 flex items-center gap-3">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-orange-300 tracking-wider block">Workshop PIN</span>
-                      <span className="text-xl font-black font-mono tracking-widest text-white">{activeBooking.verificationCode}</span>
-                    </div>
-                    <span className="text-[11px] text-slate-300 hidden md:inline-block max-w-[130px] leading-tight">
-                      Share with workshop upon arrival
-                    </span>
-                  </div>
-                )}
-                <Button asChild className="bg-primary-orange hover:bg-orange-600 text-white font-bold rounded-2xl py-6 px-6 shadow-lg shadow-primary-orange/20 text-sm">
-                  <Link href={`/customer/bookings/${activeBooking._id || activeBooking.id}`} className="flex items-center justify-center">
-                    <span>Live Tracking & Details</span>
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Compact, Mobile-Responsive "Live Booking Status" Stepper & Tracker */}
+      <LiveBookingStatusTracker bookings={safeBookings} />
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 w-full min-w-0">
         <div className="min-w-0">
@@ -502,7 +436,7 @@ export default function CustomerDashboardPage() {
           </Card>
         </Link>
 
-        <Link href="/customer/payments" className="block group">
+        <div onClick={() => setIsPaymentsModalOpen(true)} className="block group cursor-pointer">
           <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-orange-300 group-hover:border-primary-orange hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-gray-500">Total Spent</CardTitle>
@@ -521,7 +455,7 @@ export default function CustomerDashboardPage() {
               </span>
             </CardFooter>
           </Card>
-        </Link>
+        </div>
 
         <Link href="/customer/warranty" className="block group">
           <Card className="bg-white/80 backdrop-blur-md shadow-sm border-white/40 hover:border-purple-300 group-hover:border-purple-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
@@ -911,7 +845,17 @@ export default function CustomerDashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentBookings.length === 0 ? (
+              {loadingBookings ? (
+                Array.from({ length: 3 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell><Skeleton className="h-5 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-24 ml-auto rounded-lg" /></TableCell>
+                  </TableRow>
+                ))
+              ) : recentBookings.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-40 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
@@ -923,57 +867,81 @@ export default function CustomerDashboardPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                recentBookings.map((booking) => (
-                  <TableRow 
-                    key={booking._id || booking.id} 
-                    onClick={() => router.push(`/customer/bookings/${booking._id || booking.id}`)}
-                    className="hover:bg-orange-50/40 transition-colors cursor-pointer group"
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0">
-                          <Wrench className="w-4 h-4 text-gray-500" />
+                recentBookings.map((booking) => {
+                  const bId = String(booking._id?._id || booking._id || booking.id || "");
+                  const serviceName = typeof booking.serviceId === 'object' && booking.serviceId 
+                    ? booking.serviceId.name 
+                    : (booking.serviceName || 'Car Service Appointment');
+                  
+                  const vehicleName = typeof booking.vehicleId === 'object' && booking.vehicleId
+                    ? `${booking.vehicleId.brand || ''} ${booking.vehicleId.model || ''}`.trim()
+                    : (booking.vehicleDetails?.makeModel || booking.vehicleNumber || 'Registered Vehicle');
+
+                  const rawDate = booking.preferredDate || booking.createdAt || booking.date;
+                  const dateDisplay = rawDate 
+                    ? new Date(rawDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : 'Recently';
+
+                  return (
+                    <TableRow 
+                      key={bId || Math.random().toString()} 
+                      onClick={() => {
+                        if (bId) router.push(`/customer/bookings/${bId}`);
+                      }}
+                      className="hover:bg-orange-50/50 transition-colors cursor-pointer group"
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0">
+                            <Wrench className="w-4 h-4 text-gray-500" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-900 font-heading font-medium">
+                              {serviceName}
+                            </span>
+                            {booking.assignedExecutiveId && typeof booking.assignedExecutiveId === 'object' && (
+                              <div className="text-[10px] uppercase font-bold tracking-wider text-secondary-blue mt-1.5 border border-secondary-blue/30 bg-secondary-blue/10 px-2 py-0.5 rounded-md inline-flex items-center w-max">
+                                <span className="w-1.5 h-1.5 rounded-full bg-secondary-blue mr-1.5"></span>
+                                Assigned to {booking.assignedExecutiveId.fullName} (Executive)
+                              </div>
+                            )}
+                            {booking.assignedPartnerId && typeof booking.assignedPartnerId === 'object' && (
+                              <div className="text-[10px] uppercase font-bold tracking-wider text-success mt-1.5 border border-success/30 bg-success/10 px-2 py-0.5 rounded-md inline-flex items-center w-max">
+                                <span className="w-1.5 h-1.5 rounded-full bg-success mr-1.5"></span>
+                                Assigned to {(booking.hasPaidAdvance || booking.payments?.some((p: any) => p.status === 'SUCCESS')) ? booking.assignedPartnerId.businessName : "CarBlink Workshop Partner"}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-gray-900 font-heading">
-                            {typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service Appointment'}
-                          </span>
-                          {booking.assignedExecutiveId && typeof booking.assignedExecutiveId === 'object' && (
-                            <div className="text-[10px] uppercase font-bold tracking-wider text-secondary-blue mt-1.5 border border-secondary-blue/30 bg-secondary-blue/10 px-2 py-0.5 rounded-md inline-flex items-center w-max">
-                              <span className="w-1.5 h-1.5 rounded-full bg-secondary-blue mr-1.5"></span>
-                              Assigned to {booking.assignedExecutiveId.fullName} (Executive)
-                            </div>
-                          )}
-                          {booking.assignedPartnerId && typeof booking.assignedPartnerId === 'object' && (
-                            <div className="text-[10px] uppercase font-bold tracking-wider text-success mt-1.5 border border-success/30 bg-success/10 px-2 py-0.5 rounded-md inline-flex items-center w-max">
-                              <span className="w-1.5 h-1.5 rounded-full bg-success mr-1.5"></span>
-                              Assigned to {(booking.hasPaidAdvance || booking.payments?.some((p: any) => p.status === 'SUCCESS')) ? booking.assignedPartnerId.businessName : "CarBlink Workshop Partner"}
-                            </div>
-                          )}
+                      </TableCell>
+                      <TableCell className="text-gray-600 font-medium">
+                        {vehicleName}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-sm text-gray-600 font-medium">
+                          <Clock className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+                          {dateDisplay}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-600 font-medium">
-                      {typeof booking.vehicleId === 'object' ? `${booking.vehicleId.brand} ${booking.vehicleId.model}` : 'Vehicle'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-sm text-gray-600 font-medium">
-                        <Clock className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
-                        {new Date(booking.preferredDate).toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={booking.status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-semibold">
-                        <Link href={`/customer/bookings/${booking._id || booking.id}`}>
-                          View Live Status <ChevronRight className="w-4 h-4 ml-1" />
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={booking.status} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (bId) router.push(`/customer/bookings/${bId}`);
+                          }}
+                          className="text-primary-orange hover:text-primary-orange-dark hover:bg-orange-50 font-semibold"
+                        >
+                          View Details <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -1114,6 +1082,12 @@ export default function CustomerDashboardPage() {
         bookings={safeBookings}
         payments={safePayments}
         totalSavings={stats.totalSavings}
+      />
+      <CustomerPaymentHistoryModal
+        isOpen={isPaymentsModalOpen}
+        onClose={() => setIsPaymentsModalOpen(false)}
+        payments={safePayments}
+        totalSpent={stats.totalSpent}
       />
     </div>
   );

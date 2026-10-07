@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface ChatInterfaceProps {
-  query: Record<string, unknown>;
+  query: any;
   isLoadingDetails: boolean;
   onReply: (message: string) => void;
   isReplying: boolean;
@@ -39,17 +39,39 @@ export default function ChatInterface({
     <div className="flex flex-col h-[400px] max-w-4xl mx-auto bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
       {/* Chat Messages Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-5">
-        {query.messages && (query.messages as any[]).length > 0 ? (
-          (query.messages as any[]).map((reply: any) => {
+        {/* Initial Customer Query */}
+        <div className="flex w-full justify-end">
+          <div className="max-w-[85%] flex flex-col items-end">
+            <span className="text-[11px] font-bold text-primary-orange mb-1 px-1">
+              You (Original Query)
+            </span>
+            <div className="px-5 py-3 rounded-2xl text-sm shadow-sm bg-primary-navy text-white rounded-tr-sm space-y-1">
+              <p className="font-bold text-amber-300 text-xs border-b border-white/20 pb-1">
+                {String(query.subject || "")}
+              </p>
+              <p className="whitespace-pre-wrap leading-relaxed text-slate-100">
+                {String(query.description || "")}
+              </p>
+              {Boolean(query.createdAt) && (
+                <span className="text-[10px] text-slate-400 block text-right pt-1">
+                  {new Date(String(query.createdAt)).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {query.messages && (query.messages as any[]).length > 0 && (
+          (query.messages as any[]).map((reply: any, idx: number) => {
             const isCustomer = reply.senderRole === "CUSTOMER";
             return (
               <div
-                key={reply._id}
+                key={reply._id || idx}
                 className={`flex w-full ${isCustomer ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`max-w-[85%] flex flex-col ${isCustomer ? 'items-end' : 'items-start'}`}>
-                  <span className="text-[11px] font-medium text-gray-400 mb-1 px-1">
-                    {isCustomer ? "You" : "Support Team"}
+                  <span className={`text-[11px] font-medium mb-1 px-1 ${isCustomer ? 'text-gray-400' : 'text-blue-600 font-bold'}`}>
+                    {isCustomer ? "You" : "CarBlink Support Executive"}
                   </span>
                   <div
                     className={`px-5 py-3 rounded-2xl text-sm shadow-sm ${
@@ -59,18 +81,16 @@ export default function ChatInterface({
                     }`}
                   >
                     <p className="whitespace-pre-wrap leading-relaxed">{reply.message}</p>
+                    {reply.createdAt && (
+                      <span className={`text-[10px] block text-right pt-1 ${isCustomer ? 'text-slate-400' : 'text-gray-400'}`}>
+                        {new Date(reply.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-sm">
-              <MessageSquareWarning className="w-5 h-5 text-gray-300" />
-            </div>
-            <p className="text-sm text-gray-500 font-medium">No messages yet.<br/>Start the conversation below.</p>
-          </div>
         )}
       </div>
 
