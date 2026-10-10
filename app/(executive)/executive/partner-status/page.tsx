@@ -34,6 +34,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import toast from "react-hot-toast";
+import PartnerVerificationReviewScreen from "@/components/partner/PartnerVerificationReviewScreen";
 
 export default function PartnerStatusPage() {
   const queryClient = useQueryClient();
@@ -192,8 +193,13 @@ export default function PartnerStatusPage() {
                     >
                       {/* Partner & Business */}
                       <TableCell className="align-top">
-                        <div className="font-bold text-primary-navy group-hover:text-secondary-blue transition-colors flex items-center gap-1.5">
+                        <div className="font-bold text-primary-navy group-hover:text-secondary-blue transition-colors flex items-center gap-1.5 flex-wrap">
                           <span>{partner.businessName || "No Business Name"}</span>
+                          {partner.uniquePartnerId && (
+                            <span className="font-mono text-[10px] font-black bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                              {partner.uniquePartnerId}
+                            </span>
+                          )}
                           <Eye className="w-3.5 h-3.5 text-secondary-blue opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                         <div className="text-sm text-gray-500 mt-1 flex items-center">
@@ -344,213 +350,18 @@ export default function PartnerStatusPage() {
         </div>
       )}
 
-      {/* Comprehensive Partner Details & KYC Modal */}
+      {/* Comprehensive Partner Details & KYC Review Overlay */}
       {selectedPartner && (
-        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-          <Card className="w-full max-w-3xl shadow-2xl overflow-hidden bg-white border-gray-100 flex flex-col max-h-[90vh]">
-            <CardHeader className="border-b border-gray-100 bg-slate-900 text-white p-5 flex flex-row items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-xl bg-secondary-blue/20 border border-secondary-blue/40 flex items-center justify-center text-secondary-blue">
-                  <Building2 className="w-6 h-6" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-bold font-heading text-white flex items-center gap-2">
-                    {selectedPartner.businessName || "Workshop Partner Details"}
-                    <Badge variant="outline" className={`ml-2 text-xs border-transparent ${getStatusColor(selectedPartner.verificationStatus)}`}>
-                      {selectedPartner.verificationStatus?.replace(/_/g, " ") || "PENDING"}
-                    </Badge>
-                  </CardTitle>
-                  <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                    Owner: <span className="text-white">{selectedPartner.ownerName || selectedPartner.userId?.fullName || "N/A"}</span> • Joined: {new Date(selectedPartner.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedPartner(null)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </CardHeader>
-
-            <CardContent className="p-6 overflow-y-auto space-y-6 custom-scrollbar text-sm">
-              {/* 1. Contact & Owner Information */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <Phone className="w-4 h-4 text-secondary-blue" /> Contact & Account Details
-                </h4>
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <span className="text-gray-500 text-xs font-medium block">Owner Full Name</span>
-                    <span className="font-bold text-gray-900">{selectedPartner.ownerName || selectedPartner.userId?.fullName || "N/A"}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-xs font-medium block">Phone Number</span>
-                    <span className="font-bold text-gray-900 flex items-center gap-1">
-                      <Phone className="w-3.5 h-3.5 text-gray-400" /> +91 {selectedPartner.userId?.phone || "N/A"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-xs font-medium block">Email Address</span>
-                    <span className="font-bold text-gray-900 truncate block" title={selectedPartner.userId?.email}>
-                      {selectedPartner.userId?.email || "No Email Provided"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Registration & Tax Credentials */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <Tag className="w-4 h-4 text-primary-orange" /> Business Credentials & Tax IDs
-                </h4>
-                <div className="bg-orange-50/40 border border-orange-100 rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-gray-500 text-xs font-medium block">GST Number</span>
-                    <span className="font-mono font-black text-gray-900 text-base flex items-center gap-2 mt-0.5">
-                      {selectedPartner.gstNumber || "NOT PROVIDED"}
-                      {selectedPartner.gstNumber && (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedPartner.gstNumber);
-                            toast.success("GST Number copied to clipboard!");
-                          }}
-                          className="p-1 hover:bg-orange-100 rounded text-gray-500 hover:text-gray-900"
-                          title="Copy GST"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-500 text-xs font-medium block">MSME / Udyam Certificate No</span>
-                    <span className="font-mono font-black text-gray-900 text-base mt-0.5 block">
-                      {selectedPartner.msmeNumber || "NOT PROVIDED"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Workshop Address & Map Pin Location */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-red-500" /> Workshop Physical Address & Map Pin
-                </h4>
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div>
-                    <span className="font-bold text-gray-900 block text-base">{selectedPartner.businessName}</span>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed font-medium">
-                      {selectedPartner.businessAddress && selectedPartner.businessAddress !== "Workshop Address" 
-                        ? selectedPartner.businessAddress 
-                        : "Address not provided yet by partner."}
-                    </p>
-                  </div>
-
-                  <a
-                    href={
-                      selectedPartner.location?.coordinates?.length === 2 && 
-                      (selectedPartner.location.coordinates[0] !== 77.2090 || selectedPartner.location.coordinates[1] !== 28.6139)
-                        ? `https://www.google.com/maps?q=${selectedPartner.location.coordinates[1]},${selectedPartner.location.coordinates[0]}`
-                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                            (selectedPartner.businessAddress && selectedPartner.businessAddress !== "Workshop Address"
-                              ? selectedPartner.businessAddress
-                              : selectedPartner.businessName) + ", Dehradun, Uttarakhand"
-                          )}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-red-200 shrink-0 shadow-2xs transition-colors"
-                  >
-                    <MapPin className="w-4 h-4 text-red-600" /> Open Map Location <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
-
-              {/* 4. Bank Account Details */}
-              {selectedPartner.bankDetails && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-emerald-600" /> Bank Payout Account Details
-                  </h4>
-                  <div className="bg-emerald-50/40 border border-emerald-100 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <span className="text-gray-500 text-xs font-medium block">Account Holder</span>
-                      <span className="font-bold text-gray-900">{selectedPartner.bankDetails.accountHolderName || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 text-xs font-medium block">Account Number</span>
-                      <span className="font-mono font-bold text-gray-900">{selectedPartner.bankDetails.accountNumber || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 text-xs font-medium block">IFSC Code</span>
-                      <span className="font-mono font-bold text-gray-900">{selectedPartner.bankDetails.ifscCode || "N/A"}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 5. Uploaded KYC & Legal Documents */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-blue-600" /> Uploaded Verification Documents
-                </h4>
-                {selectedPartner.kycDocuments && selectedPartner.kycDocuments.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedPartner.kycDocuments.map((doc: any) => (
-                      <div key={doc._id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
-                        <div className="flex items-center space-x-2.5">
-                          <FileText className="w-5 h-5 text-secondary-blue" />
-                          <div>
-                            <span className="font-bold text-xs text-gray-900 block">{doc.documentType?.replace(/_/g, ' ')}</span>
-                            <span className="text-[10px] text-gray-500">Status: {doc.status}</span>
-                          </div>
-                        </div>
-                        <a
-                          href={doc.documentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-2.5 py-1 bg-white hover:bg-slate-100 text-secondary-blue text-xs font-bold rounded border border-slate-200 flex items-center gap-1 shadow-2xs"
-                        >
-                          View Document <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-4 text-center text-xs text-gray-500">
-                    No KYC documents uploaded by partner yet.
-                  </div>
-                )}
-              </div>
-            </CardContent>
-
-            {/* Modal Actions */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
-              <Button variant="ghost" onClick={() => setSelectedPartner(null)} className="text-xs font-bold text-gray-600">
-                Close
-              </Button>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => handleVerify(selectedPartner._id, 'REJECTED')}
-                  disabled={verifyMutation.isPending}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
-                >
-                  <XCircle className="w-4 h-4 mr-1.5" /> Reject Registration
-                </Button>
-
-                <Button
-                  onClick={() => handleVerify(selectedPartner._id, 'APPROVED')}
-                  disabled={verifyMutation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md"
-                >
-                  <CheckCircle className="w-4 h-4 mr-1.5" /> Approve & Forward to Admin
-                </Button>
-              </div>
-            </div>
-          </Card>
+        <div className="fixed inset-0 bg-slate-900/80 z-[70] overflow-y-auto p-3 sm:p-6 backdrop-blur-sm animate-in fade-in">
+          <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden p-4 sm:p-6 my-4">
+            <PartnerVerificationReviewScreen
+              partnerId={selectedPartner._id}
+              userRole="EXECUTIVE"
+              onBack={() => {
+                setSelectedPartner(null);
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

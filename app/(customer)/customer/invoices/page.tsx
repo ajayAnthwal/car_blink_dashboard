@@ -239,8 +239,12 @@ export default function CustomerInvoicesPage() {
                           variant="outline"
                           className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 text-xs py-2.5 rounded-xl font-bold flex items-center justify-center gap-2"
                         >
-                          <a href={inv.pdfUrl || inv.pdf || inv.pdfDocument || inv.invoiceUrl} target="_blank" rel="noopener noreferrer">
-                            <FileText className="w-4 h-4 text-primary-orange" /> Download Original PDF
+                          <a
+                            href={inv.pdfUrl || inv.pdf || inv.pdfDocument || inv.invoiceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <FileText className="w-4 h-4 text-primary-orange" /> {(inv.pdfUrl || inv.pdf || inv.pdfDocument || inv.invoiceUrl)?.toLowerCase().endsWith('.pdf') ? 'Download / View PDF' : 'View Invoice'}
                           </a>
                         </Button>
                       )}
@@ -402,15 +406,13 @@ export default function CustomerInvoicesPage() {
               <div className="flex justify-end my-6">
                 <div className="w-full sm:w-72 bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
                   <div className="flex justify-between text-gray-600 font-medium">
-                    <span>Subtotal:</span>
-                    <span>₹{(selectedInvoice.subtotal || selectedInvoice.grandTotal || 0).toLocaleString('en-IN')}</span>
+                    <span>Taxable Base Value:</span>
+                    <span>₹{(selectedInvoice.subtotal || Number(((selectedInvoice.grandTotal || 0) / 1.18).toFixed(2))).toLocaleString('en-IN')}</span>
                   </div>
-                  {Number(selectedInvoice.taxAmount) > 0 && (
-                    <div className="flex justify-between text-gray-600 font-medium">
-                      <span>GST (18%):</span>
-                      <span>+ ₹{(selectedInvoice.taxAmount).toLocaleString('en-IN')}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between text-blue-700 font-medium">
+                    <span>GST (18% Included):</span>
+                    <span>₹{(selectedInvoice.taxAmount || Number(((selectedInvoice.grandTotal || 0) - ((selectedInvoice.grandTotal || 0) / 1.18)).toFixed(2))).toLocaleString('en-IN')}</span>
+                  </div>
                   {Number(selectedInvoice.discount) > 0 && (
                     <div className="flex justify-between text-emerald-700 font-bold">
                       <span>Discount:</span>
@@ -418,7 +420,10 @@ export default function CustomerInvoicesPage() {
                     </div>
                   )}
                   <div className="pt-2 border-t border-gray-300 flex justify-between font-black text-gray-900 text-sm">
-                    <span>Grand Total:</span>
+                    <div>
+                      <span>Grand Total:</span>
+                      <span className="block text-[10px] text-gray-400 font-normal">All-Inclusive of 18% GST</span>
+                    </div>
                     <span className="text-primary-orange">₹{(selectedInvoice.grandTotal || 0).toLocaleString('en-IN')}</span>
                   </div>
                 </div>

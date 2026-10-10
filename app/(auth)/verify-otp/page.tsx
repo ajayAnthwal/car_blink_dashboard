@@ -5,7 +5,7 @@ import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { verifyOtp } from "@/lib/services";
-import { ROLE_ROUTES } from "@/lib/constants";
+import { ROLE_ROUTES, getRoleDestination } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -39,7 +39,7 @@ function VerifyOTPContent() {
       }
       await login(user, tokens.accessToken, tokens.refreshToken || tokens.accessToken);
       
-      const route = ROLE_ROUTES[user.role] || "/customer/dashboard";
+      const route = getRoleDestination(user);
       if (typeof window !== "undefined") {
         window.location.href = route;
       } else {

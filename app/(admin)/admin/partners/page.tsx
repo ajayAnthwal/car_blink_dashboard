@@ -90,6 +90,9 @@ export default function AdminPartnersPage() {
               <option value="UNDER_REVIEW">Under Review</option>
               <option value="APPROVED">Approved</option>
               <option value="REJECTED">Rejected</option>
+              <option value="MANUAL_VERIFICATION_REQUIRED">Manual Verification Required</option>
+              <option value="APPROVED_VERIFIED">Approved & Verified</option>
+              <option value="SUSPENDED">Suspended</option>
             </select>
           </div>
         </CardHeader>
@@ -120,7 +123,24 @@ export default function AdminPartnersPage() {
                     partners.map((partner: unknown) => (
                       <tr key={partner._id} className="hover:bg-blue-50/30 transition-colors">
                         <td className="px-6 py-4">
-                          <div className="font-bold text-gray-900">{partner.businessName}</div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-gray-900">{partner.businessName}</span>
+                            {partner.uniquePartnerId && (
+                              <span className="font-mono text-[10px] font-black bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                                {partner.uniquePartnerId}
+                              </span>
+                            )}
+                            {partner.duplicateFlags?.length > 0 && (
+                              <span className="font-mono text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded border border-amber-300">
+                                ⚠️ {partner.duplicateFlags.length} Flag{partner.duplicateFlags.length > 1 ? "s" : ""}
+                              </span>
+                            )}
+                            {partner.reVerificationRequired && (
+                              <span className="font-mono text-[9px] font-bold bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded border border-indigo-300 animate-pulse">
+                                🔄 Re-Verification
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-500 mt-1 line-clamp-1">{partner.businessAddress}</div>
                         </td>
                         <td className="px-6 py-4">

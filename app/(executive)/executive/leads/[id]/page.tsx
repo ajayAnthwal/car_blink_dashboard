@@ -121,8 +121,13 @@ export default function LeadDetailsPage() {
   const customerObj = typeof lead.customerId === 'object' ? lead.customerId : null;
   const serviceObj = typeof lead.serviceId === 'object' ? lead.serviceId : null;
   const vehicleObj = typeof lead.vehicleId === 'object' ? lead.vehicleId : null;
-  const cityObj = typeof lead.cityId === 'object' ? lead.cityId : null;
-  const assignedPartners = lead.assignment?.assignedPartnerIds || [];
+  const cityObj = typeof lead.cityId === 'object' ? lead.cityId : (typeof lead.city === 'object' ? lead.city : null);
+  const assignedPartners = [
+    ...(lead.assignment?.assignedPartnerIds || []),
+    ...(lead.assignedPartnerId && !(lead.assignment?.assignedPartnerIds || []).some((p: any) => String(p._id || p) === String(lead.assignedPartnerId._id || lead.assignedPartnerId))
+      ? [typeof lead.assignedPartnerId === 'object' ? lead.assignedPartnerId : { _id: lead.assignedPartnerId, businessName: 'Assigned Partner' }]
+      : [])
+  ];
   const bids = lead.bids || [];
   
   const hasCoordinates = lead.location?.coordinates?.length === 2;
@@ -531,7 +536,14 @@ export default function LeadDetailsPage() {
                           <Briefcase className="w-5 h-5 text-success" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900 text-sm truncate" title={partner.businessName}>{partner.businessName || "Partner"}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-semibold text-gray-900 text-sm truncate" title={partner.businessName}>{partner.businessName || "Partner"}</p>
+                            {partner.uniquePartnerId && (
+                              <span className="font-mono text-[10px] font-black bg-blue-100 text-blue-900 px-1.5 py-0.5 rounded border border-blue-200">
+                                {partner.uniquePartnerId}
+                              </span>
+                            )}
+                          </div>
                           {partner.isVerified && <span className="text-[10px] text-success font-medium flex items-center mt-0.5"><CheckCircle className="w-3 h-3 mr-1" /> Verified</span>}
                         </div>
                       </div>
@@ -1082,8 +1094,12 @@ export default function LeadDetailsPage() {
 
                   {(lead.invoice?.pdfUrl || lead.job?.invoiceUrl || lead.invoiceUrl) && (
                     <Button asChild className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-sm">
-                      <a href={lead.invoice?.pdfUrl || lead.job?.invoiceUrl || lead.invoiceUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-4 h-4 mr-1.5" /> View Partner PDF Invoice
+                      <a
+                        href={lead.invoice?.pdfUrl || lead.job?.invoiceUrl || lead.invoiceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1.5" /> {(lead.invoice?.pdfUrl || lead.job?.invoiceUrl || lead.invoiceUrl)?.toLowerCase().endsWith('.pdf') ? 'View Partner PDF Invoice' : 'View Partner Invoice'}
                       </a>
                     </Button>
                   )}

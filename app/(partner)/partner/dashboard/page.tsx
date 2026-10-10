@@ -134,6 +134,7 @@ export default function PartnerDashboardPage() {
   }, [jobs]);
 
   const unbidLeads = useMemo(() => leads.filter(l => l.status === 'PENDING'), [leads]);
+  const readyToStartJobs = useMemo(() => jobs.filter(j => j && (j.status === 'NOT_STARTED' || j.status === 'VERIFIED')), [jobs]);
   const recentJobs = useMemo(() => [...jobs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5), [jobs]);
   const todayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
 
@@ -168,10 +169,15 @@ export default function PartnerDashboardPage() {
     <div className="max-w-7xl mx-auto space-y-6 pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 flex-wrap gap-y-2">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">
               {profile?.businessName || "Partner Dashboard"}
             </h1>
+            {(profile?.uniquePartnerId || user?.partnerInfo?.uniquePartnerId) && (
+              <span className="font-mono text-xs font-black bg-blue-100 text-blue-900 px-2.5 py-1 rounded-full border border-blue-200">
+                Partner ID: {profile?.uniquePartnerId || user?.partnerInfo?.uniquePartnerId}
+              </span>
+            )}
             {profile?.verificationStatus && (
               <StatusBadge status={profile.verificationStatus} />
             )}
@@ -203,6 +209,73 @@ export default function PartnerDashboardPage() {
           <Button asChild size="sm" className={isKycRejected ? "bg-red-600 hover:bg-red-700 text-white shrink-0" : "bg-orange-600 hover:bg-orange-700 text-white shrink-0"}>
             <Link href="/partner/profile">Update Profile</Link>
           </Button>
+        </div>
+      )}
+
+      {/* 🚀 New Accepted Jobs / Ready to Start Alert */}
+      {readyToStartJobs.length > 0 && (
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-400/80 rounded-2xl p-5 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-gray-900 text-base md:text-lg">
+                    🎉 Bid Accepted! {readyToStartJobs.length} Job{readyToStartJobs.length > 1 ? "s" : ""} Ready to Start Work
+                  </h3>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Action Required
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-600 font-medium mt-0.5">
+                  Customer &amp; Executive have confirmed your quote! Please review the vehicle details and start work.
+                </p>
+              </div>
+            </div>
+            <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 shadow-sm font-bold text-xs h-9">
+              <Link href="/partner/jobs">
+                Start Work Now <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Link>
+            </Button>
+          </div>
+
+          {/* Quick List Preview of jobs ready to start */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+            {readyToStartJobs.slice(0, 3).map((job: any) => {
+              const booking = job.bookingId || {};
+              const service = booking.serviceId || {};
+              const vehicle = booking.vehicleId || {};
+              const vehicleText = vehicle.brand ? `${vehicle.brand} ${vehicle.model || ""}` : (booking.description || "Customer Vehicle");
+              const price = job.finalAmount || job.bidId?.quotedAmount || 0;
+
+              return (
+                <div key={job._id || job.id} className="bg-white/95 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs hover:shadow-xs transition-shadow">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-gray-900 truncate flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      {service.name || "Vehicle Service"}
+                    </p>
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                      {vehicleText}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {price > 0 && (
+                      <p className="text-xs font-black text-emerald-700">₹{price.toLocaleString()}</p>
+                    )}
+                    <Link
+                      href="/partner/jobs"
+                      className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 hover:underline block mt-0.5"
+                    >
+                      Start Job &rarr;
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

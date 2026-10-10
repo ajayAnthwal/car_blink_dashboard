@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAdminBookingDetails, useCancelAdminBookingMutation, useManualAssignAdminBookingMutation, useAdminUsers, useAdminAuditLogs } from "@/features/admin/hooks/useAdminQueries";
+import { useAdminBookingDetails, useCancelAdminBookingMutation, useManualAssignAdminBookingMutation, useAdminUsers, useAdminAuditLogs, useEligiblePartnersForAdminBooking } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, Calendar, User, Wrench, ArrowLeft, Ban, MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee, Phone, Mail, Info, Camera, Zap, ShieldAlert, History } from "lucide-react";
 import toast from "react-hot-toast";
@@ -15,6 +15,7 @@ export default function AdminBookingDetailsPage() {
   const cancelMutation = useCancelAdminBookingMutation();
   const manualAssignMutation = useManualAssignAdminBookingMutation();
   
+  const { data: eligiblePartnersRes } = useEligiblePartnersForAdminBooking(id as string);
   const { data: partnersData } = useAdminUsers(1, 100, "PARTNER");
   const { data: executivesData } = useAdminUsers(1, 100, "EXECUTIVE");
   const { data: auditLogsRes } = useAdminAuditLogs();
@@ -31,6 +32,7 @@ export default function AdminBookingDetailsPage() {
 
   const booking = bookingRes?.data?._id ? bookingRes.data : (bookingRes?._id ? bookingRes : (bookingRes?.data || bookingRes));
 
+  const eligiblePartners = eligiblePartnersRes?.partners || [];
   const partners = partnersData?.docs || partnersData?.users || partnersData?.data || (Array.isArray(partnersData) ? partnersData : []);
   const executives = executivesData?.docs || executivesData?.users || executivesData?.data || (Array.isArray(executivesData) ? executivesData : []);
   
@@ -205,7 +207,14 @@ export default function AdminBookingDetailsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                   <div className="space-y-1">
                     <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-2">Partner / Garage</p>
-                    <p className="font-bold text-gray-900 text-lg">{booking.acceptedBidId.partnerId?.businessName}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-gray-900 text-lg">{booking.acceptedBidId.partnerId?.businessName}</p>
+                      {booking.acceptedBidId.partnerId?.uniquePartnerId && (
+                        <span className="font-mono text-xs font-black bg-blue-100 text-blue-900 px-2 py-0.5 rounded border border-blue-200">
+                          {booking.acceptedBidId.partnerId.uniquePartnerId}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
                       <User className="w-3.5 h-3.5" /> 
                       {booking.acceptedBidId.partnerId?.userId?.fullName}
@@ -226,6 +235,23 @@ export default function AdminBookingDetailsPage() {
                   <div className="sm:col-span-2 bg-indigo-50/60 p-5 rounded-2xl border border-indigo-100 mt-2">
                     <p className="text-[11px] text-indigo-500 uppercase font-bold tracking-wider mb-3">Partner Notes</p>
                     <p className="text-indigo-900 text-sm font-medium">&quot;{booking.acceptedBidId.notes || "No notes provided."}&quot;</p>
+                  </div>
+                </div>
+              ) : booking.assignedPartnerId ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                  <div className="space-y-1">
+                    <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-2">Assigned Partner / Garage</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-gray-900 text-lg">{booking.assignedPartnerId.businessName || "Assigned Partner"}</p>
+                      {booking.assignedPartnerId.uniquePartnerId && (
+                        <span className="font-mono text-xs font-black bg-blue-100 text-blue-900 px-2 py-0.5 rounded border border-blue-200">
+                          {booking.assignedPartnerId.uniquePartnerId}
+                        </span>
+                      )}
+                    </div>
+                    {booking.assignedPartnerId.userId?.phone && (
+                      <p className="text-xs text-gray-500 mt-1">Phone: {booking.assignedPartnerId.userId.phone}</p>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -503,11 +529,36 @@ export default function AdminBookingDetailsPage() {
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
                   <option value="">-- Keep Current / No Change --</option>
-                  {partners.map((p: any) => (
-                    <option key={p._id || p.id} value={p._id || p.id}>
-                      {p.businessName || p.fullName || "Partner"} ({p.phone || "No Phone"})
-                    </option>
-                  ))}
+                  {eligiblePartners.length > 0 ? (
+                    eligiblePartners.map((p: any) => {
+                      const pId = p.partnerId || p._id;
+                      const isEligible = p.isEligible !== false;
+                      const uniqueId = p.uniquePartnerId ? `[${p.uniquePartnerId}] ` : '';
+                      const distText = p.distanceKm !== null ? ` • ${p.distanceKm}km` : '';
+                      const quoteText = p.quote ? ` • ₹${p.quote.quotedAmount}` : '';
+                      const ratingText = p.performance?.rating ? ` • ★${p.performance.rating.toFixed(1)}` : '';
+                      const reason = p.ineligibilityReasons?.[0] ? ` [DISABLED: ${p.ineligibilityReasons[0]}]` : ' [INELIGIBLE]';
+
+                      return (
+                        <option
+                          key={pId}
+                          value={pId}
+                          disabled={!isEligible}
+                          className={!isEligible ? 'text-gray-500 bg-slate-900' : 'text-white'}
+                        >
+                          {isEligible
+                            ? `✓ ${uniqueId}${p.businessName}${distText}${quoteText}${ratingText}`
+                            : `⛔ ${uniqueId}${p.businessName}${reason}`}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    partners.map((p: any) => (
+                      <option key={p._id || p.id} value={p._id || p.id}>
+                        {p.businessName || p.fullName || 'Partner'} ({p.phone || 'No Phone'})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

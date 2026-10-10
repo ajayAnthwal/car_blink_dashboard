@@ -1,11 +1,11 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useGarageVehicles } from "@/features/customer/hooks/useCustomerQueries";
-import { CheckCircle2, AlertCircle, Sparkles, ChevronDown, ChevronUp, User, Mail, Phone, Image as ImageIcon, MapPin, Car, PhoneCall, ArrowRight } from "lucide-react";
+import { CheckCircle2, AlertCircle, Sparkles, ChevronDown, ChevronUp, User, Mail, Phone, Image as ImageIcon, MapPin, Car, PhoneCall, ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function ProfileCompletionScoreWidget() {
@@ -17,6 +17,22 @@ export function ProfileCompletionScoreWidget() {
 
   // Default to collapsed for a ultra-compact sleek look
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("carblink_dismissed_profile_widget") === "true") {
+        setIsDismissed(true);
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    try {
+      localStorage.setItem("carblink_dismissed_profile_widget", "true");
+    } catch (e) {}
+  };
 
   // 10 REAL Profile & Account Criteria
   const items = [
@@ -115,6 +131,10 @@ export function ProfileCompletionScoreWidget() {
     progressColor = "bg-secondary-blue";
   }
 
+  if (isDismissed) {
+    return null;
+  }
+
   return (
     <div className="w-full mb-4">
       <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 shadow-sm ${
@@ -181,6 +201,15 @@ export function ProfileCompletionScoreWidget() {
                   {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={handleDismiss}
+                className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                title="Dismiss Profile Widget"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
 

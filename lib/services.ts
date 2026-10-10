@@ -105,12 +105,13 @@ export const uploadFile = async (file: File, folder?: string) => {
     formData.append("folder", folder);
   }
 
-  const response = await apiClient.post("/upload", formData, {
+  const response: any = await apiClient.post("/upload", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
-  return response.data;
+  const fileUrl = response?.fileUrl || response?.data?.fileUrl || response?.data || response;
+  return { fileUrl, data: { fileUrl }, ...response };
 };
 
 // ==========================================
@@ -551,6 +552,24 @@ export const convertWebsiteLeadToBooking = async (id: string, data: { serviceId:
 
 export const assignLeadToPartner = async (id: string, data: { partnerIds: string[]; notes?: string }) => {
   const response = await apiClient.patch(`/executive/leads/${id}/assign-partner`, data);
+  return response.data;
+};
+
+export const getEligiblePartnersForLead = async (id: string, params?: { includeAll?: boolean; cityId?: string; maxRadiusKm?: number }) => {
+  let query = "";
+  if (params?.includeAll) query += `includeAll=true&`;
+  if (params?.cityId) query += `cityId=${params.cityId}&`;
+  if (params?.maxRadiusKm) query += `maxRadiusKm=${params.maxRadiusKm}&`;
+  const response = await apiClient.get(`/executive/leads/${id}/eligible-partners?${query}`);
+  return response.data;
+};
+
+export const getEligiblePartnersForBooking = async (id: string, params?: { includeAll?: boolean; cityId?: string; maxRadiusKm?: number }) => {
+  let query = "";
+  if (params?.includeAll) query += `includeAll=true&`;
+  if (params?.cityId) query += `cityId=${params.cityId}&`;
+  if (params?.maxRadiusKm) query += `maxRadiusKm=${params.maxRadiusKm}&`;
+  const response = await apiClient.get(`/super-admin/bookings/${id}/eligible-partners?${query}`);
   return response.data;
 };
 
@@ -1056,13 +1075,16 @@ export const assignDriverToBooking = async (data: { bookingId: string; executive
 export const uploadJobPhotos = async (jobId: string, formData: FormData) => {
   const type = formData.get("type") as string;
   const photos = formData.getAll("photos") as File[];
+  if (!photos || photos.length === 0) {
+    throw new Error("Please select at least one photo to upload.");
+  }
 
   const uploadPromises = photos.map(file => uploadFile(file, "job-photos"));
   const uploadResponses = await Promise.all(uploadPromises);
-  const photoUrls = uploadResponses.map(res => {
+  const photoUrls = uploadResponses.map((res: any) => {
     if (typeof res === 'string') return res;
-    return res.fileUrl || res.data?.fileUrl || res.data || res;
-  });
+    return res?.fileUrl || res?.data?.fileUrl || res?.data || res;
+  }).filter((url): url is string => typeof url === 'string' && url.length > 0);
 
   const response = await apiClient.post(`/partner/jobs/${jobId}/photos`, {
     type,

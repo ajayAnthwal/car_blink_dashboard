@@ -21,7 +21,8 @@ import {
   useConfirmQuoteMutation,
   useUpdateLead,
   useServices,
-  usePartnerStatus
+  usePartnerStatus,
+  useEligiblePartnersForLead
 } from "@/features/executive/hooks/useExecutiveQueries";
 
 // Zod schemas
@@ -113,191 +114,22 @@ export default function ExecutiveLeadsPage() {
     defaultValues: { partnerIds: [], notes: "" }
   });
 
-  // Construct query string for usePartnerStatus based on filters
-  const partnerFilterStr = useMemo(() => {
-    if (!selectedLead) return "verificationStatus=APPROVED";
-    let query = "verificationStatus=APPROVED";
-
-    // Geo distance filter — check lead location OR customer saved profile location
-    if (radiusKm !== "all") {
-      const coords = selectedLead?.location?.coordinates?.length === 2
-        ? selectedLead.location.coordinates
-        : (selectedLead?.customerId?.location?.coordinates?.length === 2 ? selectedLead.customerId.location.coordinates : null);
-
-      if (coords) {
-        const [lng, lat] = coords;
-        query += `&lat=${lat}&lng=${lng}&radius=${radiusKm}`;
-      }
+  // Fetch strictly evaluated eligible partners for selected lead (distance, quotes, availability, performance)
+  const { data: eligibleData, isLoading: isFetchingPartners } = useEligiblePartnersForLead(
+    selectedLead?._id,
+    {
+      includeAll: true,
+      cityId: useCityFilter ? selectedLead?.cityId?._id : undefined,
+      maxRadiusKm: radiusKm !== "all" ? Number(radiusKm) : undefined,
     }
+  );
 
-    if (selectedServiceFilter !== "all") {
-      query += `&serviceId=${selectedServiceFilter}`;
-    }
-    return query;
-  }, [selectedLead, radiusKm, selectedServiceFilter]);
-
-  const { data: partnersData, isLoading: isFetchingPartners } = usePartnerStatus(1, 100, partnerFilterStr);
-  const pData = partnersData as any;
-  const rawPartners = Array.isArray(pData?.partners)
-    ? pData.partners
-    : (Array.isArray(pData?.docs) ? pData.docs : (Array.isArray(pData) ? pData : []));
-
-// Sub-location coordinates map for instant, accurate Haversine distance calculation
-const LOCATION_COORDINATES_MAP: Record<string, [number, number]> = {
-  "rispna": [78.0556, 30.2931],
-  "rispna pull": [78.0556, 30.2931],
-  "isbt": [78.0322, 30.3165],
-  "isbt dehradun": [78.0322, 30.3165],
-  "clock tower": [78.0422, 30.3256],
-  "ghanta ghar": [78.0422, 30.3256],
-  "rajpur": [78.0612, 30.3421],
-  "rajpur road": [78.0612, 30.3421],
-  "ballupur": [78.0089, 30.3341],
-  "subhash nagar": [77.9944, 30.2711],
-  "cle": [77.9944, 30.2711],
-  "prem nagar": [77.9622, 30.3321],
-  "patel nagar": [78.0211, 30.3089],
-  "saharanpur road": [78.0211, 30.3089],
-  "dehradun": [78.0322, 30.3165],
-  "bhuddi": [77.9800, 30.2600],
-  "agar": [76.0167, 23.7167],
-};
-
-function getCoordinatesForLocationText(text: string): [number, number] | null {
-  if (!text) return null;
-  const lower = text.toLowerCase();
-  for (const [key, coords] of Object.entries(LOCATION_COORDINATES_MAP)) {
-    if (lower.includes(key)) {
-      return coords;
-    }
-  }
-  return null;
-}
-
-  // Client-side text address & distance filter logic with SMART PROXIMITY SORTING
-  const partners = useMemo(() => {
-    if (!selectedLead) return rawPartners;
-
-    // Safely extract location text without regex destruction
-    const rawDesc = (selectedLead.description || "").replace(/Vehicle:[^,]+/gi, "").replace(/Fuel:[^,]+/gi, "");
-    const rawMsg = (selectedLead.message || "").replace(/Vehicle:[^,]+/gi, "").replace(/Fuel:[^,]+/gi, "");
-
-    const combinedLocText = [
-      selectedLead.address,
-      selectedLead.city,
-      selectedLead.cityId?.name,
-      rawDesc,
-      rawMsg,
-    ].filter(Boolean).join(" ").toLowerCase();
-
-    // Resolve GPS coordinates for lead (either from lead object or text geocoding map)
-    const leadCoords = selectedLead?.location?.coordinates?.length === 2
-      ? selectedLead.location.coordinates
-      : (selectedLead?.customerId?.location?.coordinates?.length === 2
-          ? selectedLead.customerId.location.coordinates
-          : getCoordinatesForLocationText(combinedLocText));
-
-    const stopWords = new Set([
-      "custom", "address", "location", "services", "fuel", "vehicle", "testing", "booking",
-      "petrol", "diesel", "cng", "maruti", "suzuki", "dzire", "tata", "motors", "tiago",
-      "honda", "hyundai", "car", "wash", "repair", "service", "lead", "request", "details",
-      "visit", "garage", "doorstep", "quoted", "pending", "status", "road", "near", "opposite", "street"
-    ]);
-
-    const leadKeywords = combinedLocText
-      .split(/[\s|,|:|-|\/|\n]+/)
-      .map(w => w.trim())
-      .filter(w => w.length > 2 && !stopWords.has(w));
-
-    // Compute distance and text match score for each partner
-    const processedPartners = rawPartners.map((p: any) => {
-      let calcDist = p.distance;
-      let matchScore = 0;
-
-      // 1. Calculate GPS spherical distance if coords exist
-      if (leadCoords && p.location?.coordinates?.length === 2) {
-        const [lon1, lat1] = leadCoords;
-        const [lon2, lat2] = p.location.coordinates;
-        const R = 6371e3; // meters
-        const φ1 = (lat1 * Math.PI) / 180;
-        const φ2 = (lat2 * Math.PI) / 180;
-        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-        const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                  Math.cos(φ1) * Math.cos(φ2) *
-                  Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        calcDist = Math.round(R * c);
-      }
-
-      // 2. Calculate text location match score against businessAddress and city name
-      const pCityName = (p.cityId?.name || p.city?.name || "").toLowerCase();
-      const pAddress = (p.businessAddress || "").toLowerCase();
-      const pText = `${pCityName} ${pAddress}`;
-
-      let matchedWordsCount = 0;
-      leadKeywords.forEach((kw) => {
-        if (pText.includes(kw)) {
-          matchedWordsCount += 1;
-        }
-      });
-
-      matchScore = matchedWordsCount;
-
-      return {
-        ...p,
-        calculatedDistance: calcDist,
-        matchScore: matchScore,
-        matchedKeyword: leadKeywords.find(kw => pText.includes(kw)) || ""
-      };
-    });
-
-    // 1. Apply Service Filter if selected
-    let filteredList = processedPartners;
-    if (selectedServiceFilter !== "all") {
-      filteredList = filteredList.filter((p: any) => {
-        if (!p.servicesOffered || p.servicesOffered.length === 0) return true;
-        return p.servicesOffered.some((s: any) => {
-          const sId = typeof s === 'object' ? s._id : s;
-          return String(sId) === String(selectedServiceFilter);
-        });
-      });
-    }
-
-    // 2. Filter by Distance / Radius if active
-    let resultList = filteredList;
-    if (radiusKm !== "all") {
-      const maxDistMeters = Number(radiusKm) * 1000;
-      if (leadCoords) {
-        resultList = filteredList.filter((p: any) => {
-          if (p.calculatedDistance !== undefined && p.calculatedDistance !== null) {
-            return p.calculatedDistance <= maxDistMeters;
-          }
-          return p.matchScore > 0;
-        });
-      } else if (leadKeywords.length > 0) {
-        resultList = filteredList.filter((p: any) => p.matchScore > 0);
-      }
-    } else if (useCityFilter && leadKeywords.length > 0) {
-      resultList = filteredList.filter((p: any) => p.matchScore > 0);
-    }
-
-    // 3. SMART PROXIMITY SORTING: Closest distance first, or Highest Location Match Score first!
-    resultList.sort((a: any, b: any) => {
-      // If GPS distance is present for both, sort by closest distance
-      if (a.calculatedDistance !== undefined && a.calculatedDistance !== null &&
-          b.calculatedDistance !== undefined && b.calculatedDistance !== null) {
-        return a.calculatedDistance - b.calculatedDistance;
-      }
-      // Otherwise sort by highest text match score
-      if (b.matchScore !== a.matchScore) {
-        return b.matchScore - a.matchScore;
-      }
-      return 0;
-    });
-
-    return resultList;
-  }, [rawPartners, useCityFilter, radiusKm, selectedServiceFilter, selectedLead]);
+  const partners: any[] = useMemo(() => {
+    if (Array.isArray(eligibleData)) return eligibleData;
+    if (Array.isArray(eligibleData?.partners)) return eligibleData.partners;
+    if (Array.isArray(eligibleData?.data)) return eligibleData.data;
+    return [];
+  }, [eligibleData]);
 
   const openAssignModal = (lead: any) => {
     setSelectedLead(lead);
@@ -831,11 +663,18 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
       {/* Assignment Modal */}
       {selectedLead && (
         <div className="fixed inset-0 bg-neutral-navy/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 font-heading">Assign Partner</h3>
-                <p className="text-sm text-gray-500 mt-1">Select the best partner for this service request</p>
+                <h3 className="text-xl font-bold text-gray-900 font-heading flex items-center gap-2">
+                  <span>Assign Partner Workshop</span>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                    Strict Eligible Only
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Only verified &amp; active workshops matching requested service and availability can be assigned.
+                </p>
               </div>
               <button
                 onClick={() => setSelectedLead(null)}
@@ -845,135 +684,99 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="mb-6 bg-gradient-to-r from-primary-navy/5 to-transparent p-4 rounded-xl border border-primary-navy/10 flex items-start gap-4">
+            <div className="p-6 overflow-y-auto flex-1 space-y-5">
+              {/* Lead Summary Header */}
+              <div className="bg-gradient-to-r from-primary-navy/5 to-transparent p-4 rounded-xl border border-primary-navy/10 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-primary-navy/10 flex items-center justify-center shrink-0">
                   <Car className="w-5 h-5 text-primary-navy" />
                 </div>
-                <div>
-                  <p className="font-bold text-primary-navy text-lg">{selectedLead.serviceId?.name}</p>
-                  <p className="text-gray-600 text-sm mt-0.5">{selectedLead.vehicleId?.brand} {selectedLead.vehicleId?.model} • {selectedLead.cityId?.name}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-primary-navy text-base">{selectedLead.serviceId?.name || "Service Request"}</p>
+                    {selectedLead.serviceId?.category && (
+                      <span className="text-[11px] font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                        {selectedLead.serviceId.category}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-600 text-xs mt-1">
+                    {selectedLead.vehicleId?.brand} {selectedLead.vehicleId?.model} • {selectedLead.cityId?.name || "Dehradun"}
+                    {selectedLead.preferredDate && ` • Preferred: ${new Date(selectedLead.preferredDate).toLocaleDateString()}`}
+                  </p>
                 </div>
               </div>
 
-              <form id="assignForm" onSubmit={assignForm.handleSubmit(handleAssignSubmit)} className="space-y-6">
-                <div className="grid grid-cols-3 gap-3">
+              <form id="assignForm" onSubmit={assignForm.handleSubmit(handleAssignSubmit)} className="space-y-5">
+                {/* Filters */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">City Filter</label>
+                    <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">City Scope</label>
                     <select
                       value={useCityFilter ? "city" : "all"}
                       onChange={(e) => setUseCityFilter(e.target.value === "city")}
-                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 hover:bg-gray-100/50 transition-colors focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy outline-none"
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 bg-white text-gray-800 outline-none focus:ring-1 focus:ring-primary-navy"
                     >
+                      <option value="city">Lead's City Only ({selectedLead?.cityId?.name || "Local"})</option>
                       <option value="all">All Cities</option>
-                      <option value="city">Lead's City ({selectedLead?.cityId?.name || selectedLead?.city || "Local"})</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Service Filter</label>
-                    <select
-                      value={selectedServiceFilter}
-                      onChange={(e) => setSelectedServiceFilter(e.target.value)}
-                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 hover:bg-gray-100/50 transition-colors focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy outline-none"
-                    >
-                      <option value="all">All Categories</option>
-                      {selectedLead?.serviceId?._id && (
-                        <option value={selectedLead.serviceId._id}>Match Lead Service ({selectedLead.serviceId.name})</option>
-                      )}
-                      <optgroup label="All Services">
-                        {allServices.map((s: any) => (
-                          <option key={s._id} value={s._id}>{s.name} {s.category ? `(${s.category})` : ''}</option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Distance</label>
+                    <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">Max Distance</label>
                     <select
                       value={radiusKm}
                       onChange={(e) => setRadiusKm(e.target.value)}
-                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 hover:bg-gray-100/50 transition-colors focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy outline-none"
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 bg-white text-gray-800 outline-none focus:ring-1 focus:ring-primary-navy"
                     >
                       <option value="all">Any Distance</option>
                       <option value="5">Within 5 km</option>
                       <option value="10">Within 10 km</option>
                       <option value="15">Within 15 km</option>
-                      <option value="50">Within 50 km</option>
+                      <option value="30">Within 30 km</option>
                     </select>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1 flex flex-col justify-end">
+                    <span className="text-[11px] text-gray-500 font-medium">Eligible Workshops</span>
+                    <span className="font-bold text-sm text-emerald-700">
+                      {partners.filter((p: any) => p.isEligible !== false).length} of {partners.length} eligible
+                    </span>
                   </div>
                 </div>
 
-                {(() => {
-                  const hasCoords = selectedLead?.location?.coordinates?.length === 2 || selectedLead?.customerId?.location?.coordinates?.length === 2;
-                  const rawLoc = [
-                    selectedLead?.cityId?.name,
-                    selectedLead?.city,
-                    selectedLead?.address,
-                    selectedLead?.message,
-                  ].filter(Boolean).join(" ");
-                  const leadLoc = rawLoc.replace(/Custom Address:|Location:|Services:.*$/gi, "").trim() || "Local";
-
-                  if (useCityFilter && leadLoc) {
-                    return (
-                      <div className="flex items-center gap-2 text-xs text-primary-navy bg-primary-navy/5 p-3 rounded-xl border border-primary-navy/15 font-medium">
-                        <MapPin className="w-4 h-4 text-primary-orange shrink-0" />
-                        <span>Matching partners by lead location text: <strong className="text-primary-navy">{leadLoc}</strong></span>
-                      </div>
-                    );
-                  }
-
-                  if (!hasCoords && radiusKm !== "all") {
-                    return (
-                      <div className="flex items-center gap-2 text-xs text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200/60 font-medium">
-                        <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span>No GPS coordinates for this lead. Matched partners by address text: <strong className="text-amber-900">{leadLoc}</strong></span>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-                <div className="space-y-3">
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider flex justify-between">
-                    <span>Available Partners</span>
+                {/* Partner Comparison List */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Partner Comparison &amp; Selection
+                    </label>
                     {assignForm.formState.errors.partnerIds && (
-                      <span className="text-red-500 font-medium normal-case">{assignForm.formState.errors.partnerIds.message}</span>
+                      <span className="text-red-500 text-xs font-semibold">{assignForm.formState.errors.partnerIds.message}</span>
                     )}
-                  </label>
-                  <div className="max-h-64 overflow-y-auto space-y-3 pr-2 relative custom-scrollbar">
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1 relative custom-scrollbar">
                     {isFetchingPartners && (
-                      <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center rounded-xl border border-gray-100">
-                        <Loader2 className="w-8 h-8 animate-spin text-primary-navy" />
-                        <p className="text-sm font-medium text-primary-navy mt-2">Finding partners...</p>
+                      <div className="py-12 flex flex-col items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary-navy" />
+                        <p className="text-xs font-medium text-gray-500 mt-2">Checking partner eligibility &amp; proximity...</p>
                       </div>
                     )}
 
-                    {partners.length === 0 && !isFetchingPartners && (
-                      <div className="flex flex-col items-center justify-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                        <Target className="w-10 h-10 text-gray-300 mb-3" />
-                        <p className="text-sm font-medium text-gray-500 text-center px-4">
-                          {useCityFilter
-                            ? `No partners registered in ${selectedLead?.cityId?.name || selectedLead?.city || "this city"}.`
-                            : "No partners found matching criteria."}
+                    {!isFetchingPartners && partners.length === 0 && (
+                      <div className="py-10 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200 p-4">
+                        <Target className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-sm font-bold text-gray-700">No eligible partners found in this city</p>
+                        <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                          No active verified workshops are registered in {selectedLead?.cityId?.name || "this location"}.
                         </p>
-                        <div className="flex gap-3 mt-3">
-                          {useCityFilter && (
-                            <button
-                              type="button"
-                              onClick={() => setUseCityFilter(false)}
-                              className="text-xs text-primary-navy font-bold hover:underline bg-primary-navy/10 px-3 py-1.5 rounded-lg"
-                            >
-                              Show All Cities
-                            </button>
-                          )}
+                        {useCityFilter && (
                           <button
                             type="button"
-                            onClick={() => { setSelectedServiceFilter("all"); setRadiusKm("all"); setUseCityFilter(false); }}
-                            className="text-xs text-primary-orange font-semibold hover:underline px-3 py-1.5"
+                            onClick={() => setUseCityFilter(false)}
+                            className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-navy text-white hover:bg-primary-navy/90 transition-colors shadow-2xs"
                           >
-                            Clear All Filters
+                            Switch to All Cities
                           </button>
-                        </div>
+                        )}
                       </div>
                     )}
 
@@ -983,46 +786,115 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                       render={({ field }) => (
                         <>
                           {partners.map((p: any) => {
-                            const isSelected = field.value.includes(p._id);
+                            const pId = p.partnerId || p._id;
+                            const isSelected = field.value.includes(pId);
+                            const isEligible = p.isEligible !== false;
+
                             return (
                               <div
-                                key={p._id}
+                                key={pId}
                                 onClick={() => {
+                                  if (!isEligible) return;
                                   if (isSelected) {
-                                    field.onChange(field.value.filter(id => id !== p._id));
+                                    field.onChange(field.value.filter((id: string) => id !== pId));
                                   } else {
-                                    field.onChange([...field.value, p._id]);
+                                    field.onChange([...field.value, pId]);
                                   }
                                 }}
-                                className={`flex items-center space-x-4 p-4 rounded-xl border transition-all cursor-pointer ${isSelected ? 'border-primary-orange bg-primary-orange/5 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}`}
+                                className={`p-3.5 rounded-xl border transition-all text-left ${
+                                  !isEligible
+                                    ? "bg-gray-50/70 border-gray-200 opacity-60 cursor-not-allowed"
+                                    : isSelected
+                                    ? "border-primary-orange bg-orange-50/20 shadow-xs cursor-pointer ring-1 ring-primary-orange"
+                                    : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-xs cursor-pointer"
+                                }`}
                               >
-                                <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-primary-orange text-white' : 'border-2 border-gray-300'}`}>
-                                  {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className={`text-sm font-bold truncate ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}>{p.businessName || p.fullName}</p>
-                                  <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
-                                    <MapPin className="w-3.5 h-3.5 text-primary-orange shrink-0" />
-                                    <span className="truncate font-medium">{p.cityId?.name || p.city?.name || p.businessAddress || 'Location Registered'}</span>
+                                <div className="flex items-start gap-3">
+                                  {/* Checkbox */}
+                                  <div
+                                    className={`w-5 h-5 rounded mt-0.5 flex items-center justify-center shrink-0 transition-colors ${
+                                      !isEligible
+                                        ? "bg-gray-200 text-gray-400"
+                                        : isSelected
+                                        ? "bg-primary-orange text-white"
+                                        : "border-2 border-gray-300 bg-white"
+                                    }`}
+                                  >
+                                    {isSelected && (
+                                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    )}
+                                  </div>
+
+                                  {/* Main Details */}
+                                  <div className="flex-1 min-w-0 space-y-1.5">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-sm text-gray-900">{p.businessName}</span>
+                                        {p.uniquePartnerId && (
+                                          <span className="font-mono text-[10px] font-black bg-blue-100 text-blue-900 px-1.5 py-0.5 rounded border border-blue-200">
+                                            {p.uniquePartnerId}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5">
+                                        {isEligible ? (
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                            ✓ Eligible
+                                          </span>
+                                        ) : (
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800">
+                                            Disabled
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Metrics Grid */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                                      {/* Distance */}
+                                      <div className="bg-slate-50 p-1.5 rounded border border-slate-200/60">
+                                        <span className="text-gray-400 block text-[10px]">Distance</span>
+                                        <span className="font-semibold text-slate-800">
+                                          {p.distanceKm !== null ? `${p.distanceKm} km away` : "City Registered"}
+                                        </span>
+                                      </div>
+
+                                      {/* Existing Quote */}
+                                      <div className="bg-slate-50 p-1.5 rounded border border-slate-200/60">
+                                        <span className="text-gray-400 block text-[10px]">Existing Quote</span>
+                                        <span className={`font-bold ${p.quote ? "text-emerald-700" : "text-gray-500"}`}>
+                                          {p.quote ? `₹${p.quote.quotedAmount}` : "None yet"}
+                                        </span>
+                                      </div>
+
+                                      {/* Availability */}
+                                      <div className="bg-slate-50 p-1.5 rounded border border-slate-200/60">
+                                        <span className="text-gray-400 block text-[10px]">Availability</span>
+                                        <span className={`font-semibold ${p.availability?.isAvailable ? "text-emerald-700" : "text-amber-700"}`}>
+                                          {p.availability?.isAvailable ? "Available" : "At Capacity"}
+                                        </span>
+                                      </div>
+
+                                      {/* Rating & Performance */}
+                                      <div className="bg-slate-50 p-1.5 rounded border border-slate-200/60">
+                                        <span className="text-gray-400 block text-[10px]">Rating &amp; Jobs</span>
+                                        <span className="font-semibold text-amber-800">
+                                          ★ {p.performance?.rating ? p.performance.rating.toFixed(1) : "New"} ({p.performance?.totalJobsCompleted || 0} jobs)
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Ineligibility Reason Banner */}
+                                    {!isEligible && p.ineligibilityReasons?.length > 0 && (
+                                      <p className="text-[11px] text-red-700 bg-red-50/80 p-1.5 rounded border border-red-200 font-medium">
+                                        ⚠️ Ineligible: {p.ineligibilityReasons.join(" • ")}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
-                                {p.calculatedDistance !== undefined && p.calculatedDistance !== null ? (
-                                  p.calculatedDistance > 0 ? (
-                                    <div className="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-200/60 shrink-0">
-                                      {(p.calculatedDistance / 1000).toFixed(1)} km away
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200/60 shrink-0">
-                                      Local Partner
-                                    </div>
-                                  )
-                                ) : (
-                                  p.distance ? (
-                                    <div className="text-xs font-semibold bg-gray-100 px-2 py-1 rounded text-gray-600 shrink-0">
-                                      {(p.distance / 1000).toFixed(1)} km
-                                    </div>
-                                  ) : null
-                                )}
                               </div>
                             );
                           })}
@@ -1033,7 +905,9 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Notes for Partner <span className="text-gray-400 font-normal lowercase">(Optional)</span></label>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                    Notes for Partner <span className="text-gray-400 font-normal lowercase">(Optional)</span>
+                  </label>
                   <textarea
                     {...assignForm.register("notes")}
                     placeholder="E.g. Expedite this request..."
@@ -1041,12 +915,16 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                     className="w-full text-sm rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy"
                   />
                 </div>
-
               </form>
             </div>
 
             <div className="p-5 border-t border-gray-100 bg-gray-50 flex space-x-3 mt-auto">
-              <Button type="button" variant="outline" className="flex-1 bg-white border-gray-200 hover:bg-gray-100 text-gray-700 h-12 rounded-xl shadow-sm" onClick={() => setSelectedLead(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 bg-white border-gray-200 hover:bg-gray-100 text-gray-700 h-12 rounded-xl shadow-sm"
+                onClick={() => setSelectedLead(null)}
+              >
                 Cancel
               </Button>
               <Button
@@ -1054,6 +932,7 @@ function getCoordinatesForLocationText(text: string): [number, number] | null {
                 type="submit"
                 className="flex-1 bg-primary-navy hover:bg-primary-navy-light text-white h-12 rounded-xl shadow-lg shadow-primary-navy/20"
                 isLoading={assignMutation.isPending}
+                disabled={assignForm.watch("partnerIds").length === 0}
               >
                 Assign Partner {assignForm.watch("partnerIds").length > 0 && `(${assignForm.watch("partnerIds").length})`}
               </Button>

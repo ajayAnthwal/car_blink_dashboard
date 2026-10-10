@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { loginUser, getCurrentUserProfile, sendSignupOtp, verifyOtp } from "@/lib/services";
 import { setApiAccessToken } from "@/lib/axios";
-import { ROLE_ROUTES } from "@/lib/constants";
+import { ROLE_ROUTES, getRoleDestination } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -63,7 +63,7 @@ function LoginContent() {
   useEffect(() => {
     const isLogoutOrSwitch = searchParams.get('logout') === 'true' || searchParams.get('switch') === 'true';
     if (user && !ssoToken && !isLogoutOrSwitch) {
-      const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
+      const targetRoute = getRoleDestination(user);
       if (typeof window !== "undefined") {
         window.location.href = targetRoute;
       } else {
@@ -117,7 +117,7 @@ function LoginContent() {
             document.cookie = `user_role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
           }
           await login(resolvedUser, cleanToken, cleanToken);
-          const route = ROLE_ROUTES[resolvedUser.role] || "/customer/dashboard";
+          const route = getRoleDestination(resolvedUser);
           if (typeof window !== "undefined") {
             window.location.href = route;
           } else {
@@ -131,7 +131,7 @@ function LoginContent() {
     } else {
       const isLogoutOrSwitch = searchParams.get('logout') === 'true' || searchParams.get('switch') === 'true';
       if (user && user.role && !isLogoutOrSwitch) {
-        const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
+        const targetRoute = getRoleDestination(user);
         if (typeof window !== "undefined") {
           window.location.href = targetRoute;
         } else {
@@ -174,7 +174,7 @@ function LoginContent() {
       }
       await login(user, tokens.accessToken, tokens.refreshToken || tokens.accessToken);
 
-      const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
+      const targetRoute = getRoleDestination(user);
       if (typeof window !== "undefined") {
         window.location.href = targetRoute;
       } else {
@@ -208,7 +208,7 @@ function LoginContent() {
           const resolvedUser = userProfile?.role ? userProfile : (userProfile?.data?.role ? userProfile.data : (userProfile?.data || userProfile?.user || userProfile));
           if (resolvedUser && resolvedUser.role) {
             await login(resolvedUser, existingToken, existingToken);
-            const targetRoute = ROLE_ROUTES[resolvedUser.role] || "/customer/dashboard";
+            const targetRoute = getRoleDestination(resolvedUser);
             window.location.href = targetRoute;
             return;
           }
@@ -260,7 +260,7 @@ function LoginContent() {
         document.cookie = `user_role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
       }
       await login(user, tokens.accessToken, tokens.refreshToken || tokens.accessToken);
-      const targetRoute = ROLE_ROUTES[user.role] || "/customer/dashboard";
+      const targetRoute = getRoleDestination(user);
       if (typeof window !== "undefined") {
         window.location.href = targetRoute;
       } else {

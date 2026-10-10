@@ -33,3 +33,28 @@ export const CUSTOMER_ROUTES = {
   REVIEWS: "/customer/reviews",
   PROFILE: "/customer/profile",
 } as const;
+
+/**
+ * Authoritative destination resolver based on role and partner verification status.
+ * Ensures partner logins never fall back to /customer/dashboard.
+ */
+export function getRoleDestination(user: any): string {
+  if (!user || !user.role) return "/login";
+  const role = String(user.role).toUpperCase();
+  if (role === "PARTNER") {
+    const status = user.verificationStatus || user.partnerInfo?.verificationStatus;
+    const isVerified = Boolean(user.isVerified || user.partnerInfo?.isVerified);
+    const isActive = user.isActive !== false && user.partnerInfo?.isActive !== false;
+    const isApproved =
+      (status === "APPROVED_VERIFIED" || status === "APPROVED") &&
+      isVerified &&
+      isActive;
+    return isApproved ? "/partner/dashboard" : "/partner/kyc";
+  }
+  if (role === "CUSTOMER") return "/customer/dashboard";
+  if (role === "EXECUTIVE") return "/executive/dashboard";
+  if (role === "ACCOUNTS") return "/accounts/dashboard";
+  if (role === "SUPER_ADMIN" || role === "ADMIN") return "/admin/dashboard";
+  return ROLE_ROUTES[role] || "/login";
+}
+

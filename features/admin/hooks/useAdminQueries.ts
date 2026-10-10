@@ -664,6 +664,18 @@ export const useManualAssignAdminBookingMutation = () => {
   });
 };
 
+export const useEligiblePartnersForAdminBooking = (bookingId?: string) => {
+  return useQuery({
+    queryKey: ["admin", "bookings", bookingId, "eligible-partners"],
+    enabled: Boolean(bookingId),
+    queryFn: async () => {
+      const { getEligiblePartnersForBooking } = await import("@/lib/services");
+      const res = await getEligiblePartnersForBooking(bookingId as string, { includeAll: true });
+      return res?.data || res;
+    },
+  });
+};
+
 // ==========================================
 // Vendors
 // ==========================================

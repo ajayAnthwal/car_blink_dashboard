@@ -157,6 +157,14 @@ export default function AdminBookingsPage() {
                             <div className="text-xs text-gray-600 mt-1 font-medium bg-gray-50 px-2 py-0.5 rounded-md inline-block">
                               {booking.vehicleId?.model ? `${booking.vehicleId.model} (${booking.vehicleId.registrationNumber || 'N/A'})` : 'No Vehicle'}
                             </div>
+                            {(booking.assignedPartnerId || booking.partnerId || booking.acceptedBidId?.partnerId) && (
+                              <div className="mt-1 flex items-center gap-1 text-[11px] font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 w-fit">
+                                <span className="font-medium text-gray-500">Partner:</span>
+                                <span className="font-bold">
+                                  {booking.assignedPartnerId?.uniquePartnerId || booking.partnerId?.uniquePartnerId || booking.acceptedBidId?.partnerId?.uniquePartnerId || booking.assignedPartnerId?.businessName || booking.partnerId?.businessName || 'Assigned'}
+                                </span>
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${

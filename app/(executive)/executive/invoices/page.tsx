@@ -29,7 +29,6 @@ export default function ExecutiveInvoicesPage() {
   // Modal Form State
   const [items, setItems] = useState<any[]>([]);
   const [discount, setDiscount] = useState<number>(0);
-  const [taxAmount, setTaxAmount] = useState<number>(0);
   const [executiveNotes, setExecutiveNotes] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -69,14 +68,15 @@ export default function ExecutiveInvoicesPage() {
 
     setItems(existingItems);
     setDiscount(Number(inv.discount) || 0);
-    setTaxAmount(Number(inv.taxAmount) || 0);
     setExecutiveNotes(inv.executiveNotes || "");
     setIsEditModalOpen(true);
   };
 
-  // Itemized Calculations
-  const subtotal = items.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
-  const grandTotal = Math.max(0, subtotal + Number(taxAmount || 0) - Number(discount || 0));
+  // Itemized Calculations (Option A: All-Inclusive Pricing, 18% GST Included)
+  const itemsGross = items.reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)), 0);
+  const grandTotal = Math.max(0, itemsGross - Number(discount || 0));
+  const taxAmount = Number((grandTotal - (grandTotal / 1.18)).toFixed(2));
+  const subtotal = Number((grandTotal - taxAmount).toFixed(2));
 
   // Item Handlers
   const handleItemChange = (index: number, field: string, value: any) => {
@@ -577,8 +577,8 @@ export default function ExecutiveInvoicesPage() {
               {/* Bill Financial Summary */}
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                 <div className="flex justify-between items-center text-xs font-semibold text-gray-600">
-                  <span>Subtotal Items:</span>
-                  <span className="font-bold text-gray-900">₹{subtotal}</span>
+                  <span>Gross Items Total (Incl. 18% GST):</span>
+                  <span className="font-bold text-gray-900 font-mono">₹{itemsGross.toLocaleString("en-IN")}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
@@ -593,22 +593,24 @@ export default function ExecutiveInvoicesPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-bold text-emerald-700 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">GST / Tax Amount (₹)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={taxAmount}
-                      onChange={(e) => setTaxAmount(Number(e.target.value) || 0)}
-                      placeholder="0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-bold text-gray-800 bg-white focus:outline-none focus:ring-1 focus:ring-primary-orange"
-                    />
+                  <div className="bg-white border border-gray-200 p-2.5 rounded-lg space-y-1">
+                    <div className="flex justify-between text-[11px] text-gray-600">
+                      <span>Taxable Subtotal:</span>
+                      <span className="font-bold font-mono">₹{subtotal.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-blue-700">
+                      <span>GST (18% Included):</span>
+                      <span className="font-bold font-mono">₹{taxAmount.toLocaleString("en-IN")}</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center pt-3 border-t border-gray-300 text-base font-black text-gray-900">
-                  <span>Final Grand Total Bill:</span>
-                  <span className="text-xl text-primary-orange">₹{grandTotal}</span>
+                  <div>
+                    <span>Final Grand Total Bill:</span>
+                    <span className="block text-[10px] text-gray-500 font-normal">(Customer Payable, All-Inclusive)</span>
+                  </div>
+                  <span className="text-xl text-primary-orange font-mono font-bold">₹{grandTotal.toLocaleString("en-IN")}</span>
                 </div>
               </div>
 

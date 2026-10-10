@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Star, MessageSquare, CheckCircle2, ChevronRight, Sparkles, ThumbsUp, Send, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,23 +33,42 @@ export default function CustomerSatisfactionWidget() {
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
+  const [dismissedBookingIds, setDismissedBookingIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("carblink_dismissed_satisfaction_bookings");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setDismissedBookingIds(parsed);
+          }
+        }
+      }
+    } catch (e) {}
+  }, []);
 
   const bookings = bookingsData?.bookings || [];
   const reviews = Array.isArray(reviewsData) ? reviewsData : (reviewsData?.docs || reviewsData?.data || []);
 
-  // Compute completed bookings that haven't been reviewed or responded to satisfaction yet
+  // Compute completed bookings that haven't been reviewed, responded to satisfaction, or dismissed
   const unreviewedCompletedBookings = useMemo(() => {
     const reviewedBookingIds = new Set(
       reviews.map((r: any) => String(r.bookingId?._id || r.bookingId || ""))
     );
+    const safeDismissed = Array.isArray(dismissedBookingIds) ? dismissedBookingIds : [];
 
     return bookings.filter((b: any) => {
+      if (!b) return false;
+      const bookingIdStr = String(b._id || b.id || "");
       const isCompleted = String(b.status || "").toUpperCase() === "COMPLETED";
-      const notReviewed = !reviewedBookingIds.has(String(b._id));
+      const notReviewed = !reviewedBookingIds.has(bookingIdStr);
       const notSatisfiedResponded = b.satisfactionStatus !== 'SATISFIED' && b.satisfactionStatus !== 'DISSATISFIED';
-      return isCompleted && notReviewed && notSatisfiedResponded;
+      const notDismissed = !safeDismissed.includes(bookingIdStr);
+      return isCompleted && notReviewed && notSatisfiedResponded && notDismissed;
     });
-  }, [bookings, reviews]);
+  }, [bookings, reviews, dismissedBookingIds]);
 
   if (loadingBookings || loadingReviews) {
     return null;
@@ -195,7 +214,23 @@ export default function CustomerSatisfactionWidget() {
             )}
             <button
               type="button"
-              onClick={() => setIsDismissed(true)}
+              onClick={() => {
+                setIsDismissed(true);
+                try {
+                  const pendingIds = (unreviewedCompletedBookings || []).map((b: any) => String(b?._id || b?.id || ""));
+                  let existing: string[] = [];
+                  try {
+                    const raw = localStorage.getItem("carblink_dismissed_satisfaction_bookings");
+                    if (raw) {
+                      const p = JSON.parse(raw);
+                      if (Array.isArray(p)) existing = p;
+                    }
+                  } catch (e) {}
+                  const updated = Array.from(new Set([...existing, ...pendingIds]));
+                  localStorage.setItem("carblink_dismissed_satisfaction_bookings", JSON.stringify(updated));
+                  setDismissedBookingIds(updated);
+                } catch (e) {}
+              }}
               className="p-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/20 transition-all cursor-pointer"
               title="Close feedback"
             >

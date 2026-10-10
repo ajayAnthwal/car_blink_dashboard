@@ -157,6 +157,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         items: [
           { name: "Website Leads", href: "/executive/website-leads", icon: Target },
           { name: "Leads / Assignments", href: "/executive/leads", icon: Target },
+          { name: "Extra Work Review", href: "/executive/extra-work", icon: Wrench },
           { name: "All Warranties", href: "/executive/warranties", icon: ShieldCheck },
           { name: "Website Ads & Banners", href: "/executive/ads", icon: Image },
           { name: "Invoices & Bills", href: "/executive/invoices", icon: Receipt },

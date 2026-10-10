@@ -169,16 +169,21 @@ export default function PartnerJobsPage() {
     try {
       const hasInvoice = job.invoiceUrl || job.invoice || job.hasInvoice || invoiceUrl;
       if (!hasInvoice) {
-        setMessage({ type: "error", text: "Please submit an itemized bill form or upload an invoice document before completing the job." });
+        setMessage({ type: "error", text: "Please submit Step 1 itemized bill before completing the job." });
         return;
       }
 
       const payload: any = {};
-      if (finalAmount) payload.finalAmount = parseFloat(finalAmount);
+      const invTotal = job.invoice?.grandTotal || job.invoice?.totalAmount || job.estimatedCost;
+      if (finalAmount) {
+        payload.finalAmount = parseFloat(finalAmount);
+      } else if (invTotal) {
+        payload.finalAmount = Number(invTotal);
+      }
       if (invoiceUrl) payload.invoiceUrl = invoiceUrl;
 
       await completeJobMutation.mutateAsync({ jobId: job._id || job.id, payload });
-      setMessage({ type: "success", text: "Job marked as complete!" });
+      setMessage({ type: "success", text: "🎉 Service Job marked as completed successfully!" });
       setFinalAmount("");
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to complete job." });
@@ -208,12 +213,16 @@ export default function PartnerJobsPage() {
       files.forEach((file) => formData.append("photos", file));
 
       await uploadPhotosMutation.mutateAsync({ jobId: id, formData });
-      setMessage({ type: "success", text: `${type === "BEFORE" ? "Before" : "After"} service photos uploaded successfully!` });
+      const successMsg = `${type === "BEFORE" ? "Before" : "After"} service photos uploaded successfully!`;
+      setMessage({ type: "success", text: successMsg });
+      toast.success(successMsg);
 
       if (type === "BEFORE") setBeforePhotoFiles([]);
       else setAfterPhotoFiles([]);
     } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to upload photos." });
+      const errMsg = err?.message || "Failed to upload photos.";
+      setMessage({ type: "error", text: errMsg });
+      toast.error(errMsg);
     }
   };
 
@@ -222,8 +231,11 @@ export default function PartnerJobsPage() {
     try {
       await deletePhotoMutation.mutateAsync({ jobId: id, photoUrl, type });
       setMessage({ type: "success", text: "Photo deleted successfully!" });
+      toast.success("Photo deleted successfully!");
     } catch (err: any) {
-      setMessage({ type: "error", text: err?.message || "Failed to delete photo." });
+      const errMsg = err?.message || "Failed to delete photo.";
+      setMessage({ type: "error", text: errMsg });
+      toast.error(errMsg);
     }
   };
 
@@ -552,7 +564,7 @@ export default function PartnerJobsPage() {
                             <input
                               type="file"
                               multiple
-                              accept="image/*"
+                              accept="image/*,.heic,.heif,.avif,.webp,.png,.jpg,.jpeg"
                               onChange={(e) => {
                                 if (e.target.files) setBeforePhotoFiles(Array.from(e.target.files));
                               }}
@@ -595,7 +607,7 @@ export default function PartnerJobsPage() {
                             <input
                               type="file"
                               multiple
-                              accept="image/*"
+                              accept="image/*,.heic,.heif,.avif,.webp,.png,.jpg,.jpeg"
                               onChange={(e) => {
                                 if (e.target.files) setAfterPhotoFiles(Array.from(e.target.files));
                               }}
@@ -712,8 +724,16 @@ export default function PartnerJobsPage() {
 
                       {/* Section 4: Final Job Actions & Cash Verification */}
                       <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-md space-y-4">
-                        <h4 className="font-bold text-sm text-gray-200 border-b border-gray-800 pb-3 flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Job Status & Work Start Actions
+                        <h4 className="font-bold text-sm text-gray-200 border-b border-gray-800 pb-3 flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            {job.status === "COMPLETED" ? "Service Completed & Settlement Summary" : (job.status === "IN_PROGRESS" ? "Step 2: Service Completion & Actions" : "Job Status & Work Start Actions")}
+                          </span>
+                          {job.status === "COMPLETED" && (
+                            <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
+                              Work Finished
+                            </span>
+                          )}
                         </h4>
 
                         {/* Mandatory Gate: Not Verified yet */}
@@ -777,29 +797,87 @@ export default function PartnerJobsPage() {
                           </div>
                         )}
 
-                        {job.status === "IN_PROGRESS" && (
-                          <div className="space-y-4">
-                            <div className="flex flex-col sm:flex-row items-end gap-3">
-                              <div className="flex-1 w-full">
-                                <label className="block text-[11px] font-bold text-gray-300 mb-1">Final Amount (₹) (Optional)</label>
-                                <input
-                                  type="number"
-                                  placeholder="If different from bid"
-                                  value={finalAmount}
-                                  onChange={(e) => setFinalAmount(e.target.value)}
-                                  className="w-full px-3 py-2 text-xs border border-gray-700 rounded-xl bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
+                        {job.status === "IN_PROGRESS" && (() => {
+                          const hasSubmittedInvoice = Boolean(job.invoice || job.invoiceUrl || job.hasInvoice);
+                          const invTotal = job.invoice?.grandTotal || job.invoice?.totalAmount || job.estimatedCost || 0;
+
+                          if (!hasSubmittedInvoice) {
+                            return (
+                              <div className="space-y-3">
+                                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        Step 2 of 2 (Locked 🔒)
+                                      </span>
+                                      <span className="text-xs font-bold text-amber-200">
+                                        Submit Step 1 Bill First
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-300">
+                                      Job complete karne ke liye pehle upar <strong>Step 1</strong> me Itemized Bill submit karein. Uske baad yeh button automatically activate ho jayega.
+                                    </p>
+                                  </div>
+                                  <Button
+                                    disabled={true}
+                                    className="bg-gray-800 text-gray-500 border border-gray-700 font-bold text-xs py-3 px-5 rounded-xl cursor-not-allowed opacity-60 shrink-0 w-full sm:w-auto"
+                                    title="Pehle Step 1 bill submit karein"
+                                  >
+                                    <Lock className="w-4 h-4 mr-1.5" /> Step 2: Complete Service Job (Locked)
+                                  </Button>
+                                </div>
                               </div>
-                              <Button
-                                onClick={() => handleCompleteJob(job)}
-                                isLoading={completeJobMutation.isPending}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 px-6 rounded-xl w-full sm:w-auto shadow-md"
-                              >
-                                <CheckCircle2 className="w-4 h-4 mr-1.5" /> Complete Service Job
-                              </Button>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-4">
+                              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                      Step 2 of 2 (Ready 🚀)
+                                    </span>
+                                    <span className="text-xs font-bold text-emerald-200 flex items-center gap-1">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Step 1 Bill Ready: ₹{invTotal.toLocaleString('en-IN')}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-gray-300">
+                                    Gaadi ka service work poora ho chuka hai? Niche button click karke service job ko complete mark karein.
+                                  </p>
+                                </div>
+                                <Button
+                                  onClick={() => handleCompleteJob(job)}
+                                  isLoading={completeJobMutation.isPending}
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-3.5 px-6 rounded-xl shadow-lg shrink-0 w-full sm:w-auto"
+                                >
+                                  <CheckCircle2 className="w-4 h-4 mr-1.5" /> Complete Service Job Now 🚀
+                                </Button>
+                              </div>
+
+                              {/* Collapsible optional override for final amount if partner wants to modify */}
+                              <details className="text-[11px] text-gray-400 cursor-pointer pt-0.5 group">
+                                <summary className="hover:text-gray-200 list-none flex items-center gap-1.5 select-none">
+                                  <span className="underline decoration-dotted">Need to customize final amount manually? (Optional)</span>
+                                </summary>
+                                <div className="mt-2.5 p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-md">
+                                  <div className="flex-1 w-full">
+                                    <label className="block text-[10px] font-bold text-gray-400 mb-1">
+                                      Custom Final Amount (₹) (Default from bill: ₹{invTotal})
+                                    </label>
+                                    <input
+                                      type="number"
+                                      placeholder={`₹${invTotal}`}
+                                      value={finalAmount}
+                                      onChange={(e) => setFinalAmount(e.target.value)}
+                                      className="w-full px-3 py-1.5 text-xs border border-gray-700 rounded-lg bg-slate-900 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                  </div>
+                                </div>
+                              </details>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
 
                         {job.status === "COMPLETED" && (
                           <div className="space-y-4">
@@ -817,7 +895,7 @@ export default function PartnerJobsPage() {
 
                             {/* Settlement Breakdown Card as per Specification */}
                             {(() => {
-                              const totalVal = (job.advanceAmount || 0) + (job.finalAmount || 0) || job.estimatedCost || 0;
+                              const totalVal = job.invoice?.grandTotal || (job.advanceAmount || 0) + (job.finalAmount || 0) || job.estimatedCost || 0;
                               const platformFee = Math.round(totalVal * 0.15);
                               const netPayable = totalVal - platformFee;
 
@@ -887,11 +965,13 @@ export default function PartnerJobsPage() {
                                 );
                               }
 
+                              const cleanRemainingDue = Math.round(remainingDue * 100) / 100;
+
                               return (
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-800 border border-slate-700">
                                   <div>
                                     <p className="text-xs text-gray-400 font-medium">Final Remaining Due:</p>
-                                    <p className="text-xl font-extrabold text-primary-orange">₹{remainingDue.toLocaleString('en-IN')}</p>
+                                    <p className="text-xl font-extrabold text-primary-orange">₹{cleanRemainingDue.toLocaleString('en-IN')}</p>
                                     {advancePaid > 0 && (
                                       <p className="text-[10px] text-emerald-400 font-medium">Advance Deducted: -₹{advancePaid.toLocaleString('en-IN')}</p>
                                     )}
@@ -899,9 +979,9 @@ export default function PartnerJobsPage() {
                                   <Button
                                     className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2 px-4 rounded-xl w-full sm:w-auto"
                                     isLoading={markOfflinePaymentMutation.isPending}
-                                    onClick={() => handleMarkOfflinePayment(job.bookingId?._id || job.bookingId, remainingDue, 'FINAL')}
+                                    onClick={() => handleMarkOfflinePayment(job.bookingId?._id || job.bookingId, cleanRemainingDue, 'FINAL')}
                                   >
-                                    Mark Received in Cash (₹{remainingDue})
+                                    Mark Received in Cash (₹{cleanRemainingDue.toLocaleString('en-IN')})
                                   </Button>
                                 </div>
                               );
@@ -1192,9 +1272,15 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
     return items.slice(1).reduce((sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0)), 0);
   }, [items]);
 
-  const numericTax = tax === "" ? 0 : Math.max(0, Number(tax) || 0);
   const numericDiscount = discount === "" ? 0 : Math.max(0, Number(discount) || 0);
-  const grandTotal = Math.max(0, subtotal + numericTax - numericDiscount);
+
+  // Option A: All-Inclusive Pricing (18% GST Included)
+  const grandTotal = Math.max(0, subtotal - numericDiscount);
+  const gstRateMultiplier = gstMode === "0" ? 0 : 0.18;
+  const numericTax = gstRateMultiplier === 0 
+    ? 0 
+    : Number((grandTotal - (grandTotal / (1 + gstRateMultiplier))).toFixed(2));
+  const taxableSubtotal = Number((grandTotal - numericTax).toFixed(2));
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -1208,7 +1294,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
           quantity: Number(it.quantity) || 1,
           unitPrice: Number(it.unitPrice) || 0
         })),
-        subtotal,
+        subtotal: taxableSubtotal,
         taxAmount: numericTax,
         discount: numericDiscount,
         grandTotal,
@@ -1238,11 +1324,32 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
     <div className="bg-white border border-gray-200/80 p-6 rounded-2xl shadow-sm space-y-5">
       {/* Header and format switcher */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-        <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary-orange" />
+        <div className="flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border ${
+            job.status === "COMPLETED"
+              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+              : "bg-orange-100 text-primary-orange border-orange-200"
+          }`}>
+            {job.status === "COMPLETED" ? <CheckCircle2 className="w-4 h-4" /> : "1"}
+          </div>
           <div>
-            <h4 className="font-bold text-gray-900 text-sm">Invoice &amp; Bill Submission</h4>
-            <p className="text-[11px] text-gray-500">Agreed customer package is locked. Add any additional parts or labor below.</p>
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-gray-900 text-sm">
+                {job.status === "COMPLETED" ? "Final Itemized Invoice Summary" : "Step 1: Itemized Bill / Invoice Submission"}
+              </h4>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                job.status === "COMPLETED"
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                  : "bg-orange-100 text-orange-800 border border-orange-200"
+              }`}>
+                {job.status === "COMPLETED" ? "Invoice Finalized" : "Step 1 of 2"}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500">
+              {job.status === "COMPLETED"
+                ? "Service is completed. Final itemized breakdown of services and parts."
+                : "Agreed customer package is locked. Add any additional parts or labor and submit bill below."}
+            </p>
           </div>
         </div>
 
@@ -1275,16 +1382,16 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
             ? "bg-emerald-50 border-emerald-200 text-emerald-900"
             : existingInvoice.status === "FORWARDED_TO_CUSTOMER"
             ? "bg-blue-50 border-blue-200 text-blue-900"
-            : "bg-amber-50 border-amber-200 text-amber-900"
+            : "bg-emerald-50 border-emerald-200 text-emerald-900"
         }`}>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="font-bold">
               {existingInvoice.status === "PAID"
-                ? "Invoice Paid by Customer 🎉"
+                ? "Step 1 Done: Invoice Paid by Customer 🎉"
                 : existingInvoice.status === "FORWARDED_TO_CUSTOMER"
-                ? "Invoice Approved & Forwarded to Customer"
-                : "Invoice Submitted — Pending Executive Review"}
+                ? "Step 1 Done: Invoice Approved & Forwarded to Customer"
+                : "Step 1 Done: Bill Submitted Successfully (Under Review)"}
             </span>
           </div>
           <span className="font-extrabold text-sm">₹{existingInvoice.grandTotal?.toLocaleString("en-IN")}</span>
@@ -1471,96 +1578,53 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
               <p className="text-[10px] text-gray-500 mt-1">Direct discount deducted from total.</p>
             </div>
 
-            {/* GST / Tax - Manually Editable */}
+            {/* GST / Tax - All-Inclusive Indian GST Standard */}
             <div>
               <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
                 <div className="flex items-center gap-1.5">
-                  <label className="block text-[11px] font-bold text-gray-700">Tax / GST (₹)</label>
+                  <label className="block text-[11px] font-bold text-gray-700">GST (18% Included)</label>
                   <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded border border-emerald-200">
-                    ✍️ Manually Editable
+                    ✓ All-Inclusive
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => { setTax(0); setGstMode("0"); }}
+                    onClick={() => setGstMode("18")}
                     className={`text-[10px] px-2 py-0.5 rounded font-bold transition-all ${
-                      gstMode === "0" && numericTax === 0
-                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs font-extrabold"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    0% (No Tax)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const autoTax = Math.round(subtotal * 0.05);
-                      setTax(autoTax);
-                      setGstMode("5");
-                    }}
-                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold transition-all ${
-                      gstMode === "5"
-                        ? "bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs font-extrabold"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    5%
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const autoTax = Math.round(subtotal * 0.12);
-                      setTax(autoTax);
-                      setGstMode("12");
-                    }}
-                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold transition-all ${
-                      gstMode === "12"
-                        ? "bg-indigo-100 text-indigo-800 border border-indigo-300 shadow-2xs font-extrabold"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    12%
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const autoTax = Math.round(subtotal * 0.18);
-                      setTax(autoTax);
-                      setGstMode("18");
-                    }}
-                    className={`text-[10px] px-2 py-0.5 rounded font-bold transition-all ${
-                      gstMode === "18"
+                      gstMode !== "0"
                         ? "bg-blue-100 text-blue-800 border border-blue-300 shadow-2xs font-extrabold"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
-                    18% (₹{Math.round(subtotal * 0.18)})
+                    18% GST Included (Standard)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGstMode("0")}
+                    className={`text-[10px] px-2 py-0.5 rounded font-bold transition-all ${
+                      gstMode === "0"
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs font-extrabold"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    0% (Exempt)
                   </button>
                 </div>
               </div>
 
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Enter GST in ₹ (e.g. 0, 150, 270)"
-                  value={tax}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    setTax(raw);
-                    setGstMode("custom");
-                  }}
-                  onBlur={() => {
-                    if (tax === "") setTax(0);
-                  }}
-                  className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-primary-orange"
-                />
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs select-none">₹</span>
+              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs space-y-1">
+                <div className="flex justify-between text-gray-600 font-medium">
+                  <span>Taxable Base Value:</span>
+                  <span className="font-mono font-bold text-gray-900">₹{taxableSubtotal.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-blue-700 font-medium">
+                  <span>GST (18% Included):</span>
+                  <span className="font-mono font-bold text-blue-900">₹{numericTax.toLocaleString("en-IN")}</span>
+                </div>
               </div>
-              <p className="text-[10px] text-gray-500 mt-1 flex items-center justify-between">
-                <span>Directly type any ₹ amount above, or click a % button.</span>
-                {numericTax > 0 && <span className="font-bold text-gray-700">~{((numericTax / (subtotal || 1)) * 100).toFixed(1)}% of subtotal</span>}
+              <p className="text-[10px] text-gray-500 mt-1">
+                Customer quote already includes 18% GST. Tax is reverse-calculated automatically.
               </p>
             </div>
           </div>
@@ -1568,28 +1632,62 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
           {/* Total Breakdown Bar */}
           <div className="bg-orange-50/70 p-4 rounded-xl border border-orange-200/80 space-y-2">
             <div className="flex flex-wrap items-center justify-between text-xs text-gray-600 border-b border-orange-200/60 pb-2 gap-2">
-              <span>Agreed Base Package: <strong className="text-gray-900">₹{actualQuotedAmount.toLocaleString("en-IN")}</strong> <span className="text-[10px] text-amber-700 font-bold">(Locked)</span></span>
+              <span>Agreed Base Package: <strong className="text-gray-900">₹{actualQuotedAmount.toLocaleString("en-IN")}</strong> <span className="text-[10px] text-amber-700 font-bold">(Locked, Incl. 18% GST)</span></span>
               {extraCharges > 0 && <span>Extra Added Parts: <strong className="text-primary-orange">₹{extraCharges.toLocaleString("en-IN")}</strong></span>}
               {numericDiscount > 0 && <span>Discount: <strong className="text-emerald-700">-₹{numericDiscount.toLocaleString("en-IN")}</strong></span>}
-              {numericTax > 0 && <span>GST / Tax: <strong className="text-gray-700">+₹{numericTax.toLocaleString("en-IN")}</strong></span>}
+              <span>GST (18% Included): <strong className="text-blue-700">₹{numericTax.toLocaleString("en-IN")}</strong></span>
             </div>
 
             <div className="flex justify-between items-center font-extrabold text-gray-900 pt-1">
-              <span className="text-sm">Grand Total Itemized Amount:</span>
+              <div>
+                <span className="text-sm block">Customer Final Payable Amount:</span>
+                <span className="text-[11px] font-normal text-gray-500">(All-Inclusive of 18% GST)</span>
+              </div>
               <span className="text-primary-orange text-2xl font-black font-heading">
                 ₹{grandTotal.toLocaleString("en-IN")}
               </span>
             </div>
           </div>
 
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            isLoading={isSubmitting}
-            className="w-full bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-3 rounded-xl shadow-sm"
-          >
-            Submit Itemized Invoice for Executive Review
-          </Button>
+          {job.status === "COMPLETED" ? (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
+              <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Final Bill Confirmed (₹{grandTotal.toLocaleString("en-IN")}) — Service Completed
+              </span>
+              <details className="text-[11px] text-gray-500 cursor-pointer">
+                <summary className="font-semibold text-gray-600 hover:text-gray-900 underline">
+                  Need to amend bill?
+                </summary>
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    isLoading={isSubmitting}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs font-bold border-gray-300"
+                  >
+                    Re-submit Updated Bill (₹{grandTotal.toLocaleString("en-IN")})
+                  </Button>
+                </div>
+              </details>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              isLoading={isSubmitting}
+              className="w-full bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-3 rounded-xl shadow-sm flex items-center justify-center gap-1.5"
+            >
+              {isSubmitting ? (
+                "Submitting Step 1 Bill..."
+              ) : existingInvoice ? (
+                <>Update &amp; Re-submit Step 1 Bill (₹{grandTotal.toLocaleString("en-IN")})</>
+              ) : (
+                <>Submit Step 1: Itemized Bill for Review (₹{grandTotal.toLocaleString("en-IN")}) &rarr;</>
+              )}
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -1606,7 +1704,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
             isLoading={uploadInvoiceMutation.isPending}
             onClick={handleUploadPdf}
           >
-            {pdfUrl ? "Save & Submit PDF Invoice" : "Upload & Save PDF Invoice"}
+            {pdfUrl ? "Submit Step 1: PDF Invoice &rarr;" : "Upload & Save PDF Invoice"}
           </Button>
         </div>
       )}

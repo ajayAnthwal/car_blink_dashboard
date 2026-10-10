@@ -12,6 +12,7 @@ import {
   updateFollowUp,
   getPartnerStatus,
   assignLeadToPartner,
+  getEligiblePartnersForLead,
   forwardQuoteToCustomer,
   confirmQuoteSelection,
   getExecutiveTickets,
@@ -264,6 +265,18 @@ export const usePartnerStatus = (page?: number, limit?: number, filterStr?: stri
         page: res?.page || res?.data?.page || page || 1,
         limit: res?.limit || res?.data?.limit || limit || 10,
       };
+    },
+  });
+};
+
+export const useEligiblePartnersForLead = (id?: string, params?: { includeAll?: boolean; cityId?: string; maxRadiusKm?: number }) => {
+  return useQuery({
+    queryKey: ["executive", "leads", id, "eligible-partners", params],
+    enabled: Boolean(id),
+    staleTime: 5000,
+    queryFn: async () => {
+      const res = await getEligiblePartnersForLead(id as string, params);
+      return res?.data || res;
     },
   });
 };

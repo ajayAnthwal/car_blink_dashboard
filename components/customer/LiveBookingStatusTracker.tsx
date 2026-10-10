@@ -94,6 +94,14 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
   const [selectedBookingIndex, setSelectedBookingIndex] = useState<number>(0);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
 
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("carblink_dismissed_live_tracker") === "true") {
+        setIsDismissed(true);
+      }
+    } catch (e) {}
+  }, []);
+
   // Real-time WebSocket sync to automatically update booking status live
   useEffect(() => {
     if (!socket) return;
@@ -272,6 +280,9 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
   const handleDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDismissed(true);
+    try {
+      localStorage.setItem("carblink_dismissed_live_tracker", "true");
+    } catch (e) {}
     if (onDismiss) onDismiss();
   };
 

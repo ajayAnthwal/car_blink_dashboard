@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import { UploadCloud, X, Loader2, Image as ImageIcon, FileText } from "lucide-react";
 import { uploadFile } from "@/lib/services";
+import toast from "react-hot-toast";
 
 interface FileUploadProps {
   label?: string;
@@ -31,12 +32,17 @@ export function FileUpload({
     setIsUploading(true);
     try {
       const response: any = await uploadFile(file, folder);
-      // The response is the data payload { fileUrl: "..." }
-      onUploadSuccess(response.fileUrl || response.data?.fileUrl || response);
-    } catch (error: unknown) {
+      const fileUrl = response?.fileUrl || response?.data?.fileUrl || response?.data || response;
+      if (!fileUrl || typeof fileUrl !== "string") {
+        throw new Error("Invalid response received from upload server.");
+      }
+      onUploadSuccess(fileUrl);
+      toast.success("File uploaded successfully!");
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || error?.message || "Upload failed. Please check the file and try again.";
+      toast.error(errorMsg);
       if (onUploadError) {
-        const err = error as Error;
-        onUploadError(err.message || "Upload failed");
+        onUploadError(errorMsg);
       }
     } finally {
       setIsUploading(false);
@@ -57,8 +63,15 @@ export function FileUpload({
       
       {currentValue ? (
         <div className="relative rounded-xl border border-neutral-muted/20 overflow-hidden bg-neutral-bg group h-40">
-          {currentValue.match(/\.(jpeg|jpg|gif|png|webp)$/i) || currentValue.includes("image/upload") ? (
+          {currentValue.match(/\.(jpeg|jpg|gif|png|webp|heic|heif|avif|bmp|svg)$/i) || (currentValue.includes("image/upload") && !currentValue.endsWith('.pdf')) ? (
             <img src={currentValue} alt="Uploaded" className="w-full h-full object-cover" />
+          ) : currentValue.includes("cloudinary.com") && currentValue.match(/\.pdf$/i) ? (
+            <div className="relative w-full h-full">
+              <img src={currentValue.replace(/\.pdf$/i, '.jpg')} alt="Invoice PDF Preview" className="w-full h-full object-cover" />
+              <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-xs flex items-center gap-1">
+                <FileText className="w-3 h-3 text-primary-orange" /> PDF Document
+              </div>
+            </div>
           ) : currentValue.match(/\.pdf$/i) ? (
             <div className="w-full h-full flex flex-col items-center justify-center bg-primary-orange/5 text-primary-navy">
               <FileText className="w-10 h-10 mb-2 text-primary-orange" />
@@ -100,7 +113,7 @@ export function FileUpload({
             {isUploading ? "Uploading..." : "Click or drag file to this area"}
           </p>
           <p className="text-xs text-neutral-muted mt-1">
-            Support for a single image, PDF, or document.
+            Support for JPG, PNG, WebP, HEIC, AVIF, or PDF documents.
           </p>
         </div>
       )}
@@ -110,7 +123,7 @@ export function FileUpload({
         ref={fileInputRef} 
         onChange={handleFileChange} 
         className="hidden" 
-        accept="image/*,application/pdf"
+        accept="image/*,application/pdf,.heic,.heif,.avif,.webp,.png,.jpg,.jpeg"
       />
     </div>
   );
