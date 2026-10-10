@@ -355,7 +355,7 @@ export default function PartnerStatusPage() {
         <div className="fixed inset-0 bg-slate-900/80 z-[70] overflow-y-auto p-3 sm:p-6 backdrop-blur-sm animate-in fade-in">
           <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden p-4 sm:p-6 my-4">
             <PartnerVerificationReviewScreen
-              partnerId={selectedPartner._id}
+              partnerId={selectedPartner._id || selectedPartner.id}
               userRole="EXECUTIVE"
               onBack={() => {
                 setSelectedPartner(null);

@@ -1182,8 +1182,18 @@ export const manualAssignSuperAdminBooking = async (id: string, data: any) => {
   return response.data;
 };
 
-export const getSuperAdminPartners = async (query = "") => {
-  const response = await apiClient.get(`/super-admin/partners?${query}`);
+export const getSuperAdminPartners = async (pageOrQuery: any = 1, limit: any = 50, status?: string) => {
+  let queryStr = "";
+  if (typeof pageOrQuery === "string" && (!limit || typeof limit !== "number")) {
+    queryStr = pageOrQuery.startsWith("?") ? pageOrQuery.slice(1) : pageOrQuery;
+  } else {
+    const params = new URLSearchParams();
+    if (pageOrQuery) params.append("page", String(pageOrQuery));
+    if (limit) params.append("limit", String(limit));
+    if (status) params.append("verificationStatus", status);
+    queryStr = params.toString();
+  }
+  const response = await apiClient.get(`/super-admin/partners?${queryStr}`);
   return response.data;
 };
 

@@ -112,13 +112,18 @@ export default function PartnerKycPage() {
         apiClient.get("/partner/kyc/checklist"),
       ]);
 
-      const bData = businessRes.data?.data || businessRes.data;
-      const cData = checklistRes.data?.data || checklistRes.data;
+      const bRaw = businessRes?.data;
+      const bData = bRaw?.data && !Array.isArray(bRaw.data) ? bRaw.data : bRaw;
+
+      const cRaw = checklistRes?.data;
+      const cData = cRaw?.partnerId || cRaw?.checklist || cRaw?.completedItems
+        ? cRaw
+        : (cRaw?.data && !Array.isArray(cRaw.data) ? cRaw.data : cRaw);
 
       if (cData) {
         setChecklistData(cData);
-        if (cData.data) {
-          const d = cData.data;
+        const d = (cData.data && typeof cData.data === 'object' && !Array.isArray(cData.data)) ? cData.data : cData;
+        if (d) {
           if (d.exteriorPhotoRef) setExteriorPhotoRef(d.exteriorPhotoRef);
           if (d.interiorPhotoRef) setInteriorPhotoRef(d.interiorPhotoRef);
           if (d.signboardPhotoRef) setSignboardPhotoRef(d.signboardPhotoRef);
@@ -599,75 +604,151 @@ export default function PartnerKycPage() {
 
       {/* ================= TAB 0: CHECKLIST ================= */}
       {activeTab === "checklist" && (
-        <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="pb-3 border-b border-gray-100">
-            <CardTitle className="text-sm sm:text-base font-bold text-gray-800 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Mandatory Onboarding Checklist
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              {Object.entries(checklistData?.checklist || {}).map(([key, isDone]: any) => {
-                const labels: Record<string, { title: string; step: string }> = {
-                  panSubmitted: { title: "PAN Card Registration", step: "Step 1: Business KYC" },
-                  gstOrAlternateProofSubmitted: { title: "GSTIN / Alternate Proof", step: "Step 1: Business KYC" },
-                  representativeAuthorizationSubmitted: { title: "Representative Authorization", step: "Step 1: Business KYC" },
-                  exteriorPhotoSubmitted: { title: "Workshop Exterior Photo", step: "Step 2: Workshop Proof" },
-                  interiorPhotoSubmitted: { title: "Workshop Interior Photo", step: "Step 2: Workshop Proof" },
-                  signboardPhotoSubmitted: { title: "Workshop Signboard Photo", step: "Step 2: Workshop Proof" },
-                  addressProofSubmitted: { title: "Workshop Address Proof", step: "Step 2: Workshop Proof" },
-                  mapLocationSubmitted: { title: "Google Maps Location Coordinates", step: "Step 2: Workshop Proof" },
-                  bankAccountSubmitted: { title: "Bank Account Number", step: "Step 3: Bank & Settlement" },
-                  bankIfscSubmitted: { title: "Bank IFSC Code", step: "Step 3: Bank & Settlement" },
-                  bankProofSubmitted: { title: "Cancelled Cheque Proof", step: "Step 3: Bank & Settlement" },
-                  servicesSelected: { title: "Services Offered Selected", step: "Step 4: Capabilities" },
-                  serviceBaysSpecified: { title: "Service Bays Capacity", step: "Step 4: Capabilities" },
-                  techniciansSpecified: { title: "Technicians Count", step: "Step 4: Capabilities" },
-                  authorizedProofSubmitted: { title: "Authorized Service Proof", step: "Step 4: Capabilities" },
-                };
-
-                const info = labels[key] || { title: key, step: "KYC Step" };
-
-                return (
-                  <div
-                    key={key}
-                    className={`p-3 rounded-xl border flex items-center justify-between ${
-                      isDone ? "bg-emerald-50/60 border-emerald-200" : "bg-amber-50/60 border-amber-200"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                          isDone ? "bg-emerald-500 text-white" : "bg-amber-400 text-white"
-                        }`}
-                      >
-                        {isDone ? <Check className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-900">{info.title}</p>
-                        <p className="text-[10px] text-gray-500">{info.step}</p>
-                      </div>
-                    </div>
-                    <Badge className={isDone ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}>
-                      {isDone ? "Done" : "Pending"}
-                    </Badge>
+        <div className="space-y-4">
+          {/* Under Review Verification Pipeline Card */}
+          {(checklistData?.verificationStatus === "UNDER_REVIEW" || completionPercent === 100) && (
+            <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-5 sm:p-6 text-white shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                    <CheckCircle2 className="w-6 h-6" />
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-bold font-heading text-white">
+                        Application Submitted &amp; Under Verification
+                      </h3>
+                      <Badge className="bg-purple-500 text-white text-[10px] uppercase font-bold tracking-wider">
+                        UNDER REVIEW
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      All 4 mandatory onboarding steps have been saved for <span className="text-emerald-300 font-semibold">{checklistData?.workshopName || "your workshop"}</span>.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-            <div className="pt-2 flex justify-end space-x-3">
-              <Button
-                onClick={() => setActiveTab("business")}
-                className="bg-primary-orange hover:bg-primary-orange-dark text-white font-bold text-xs h-10"
-              >
-                Start Completing Pending Steps
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
+              {/* 3-Stage Progress Timeline */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                <div className="bg-slate-800/80 border border-emerald-500/40 rounded-xl p-3.5 text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-300 mb-1">
+                    <Check className="w-4 h-4 text-emerald-400" /> Stage 1: Online KYC
+                  </div>
+                  <p className="text-[11px] text-slate-300 font-medium">Completed ✓ All 15 requirements uploaded and recorded.</p>
+                </div>
+
+                <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-3.5 text-xs shadow-inner">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300 mb-1">
+                    <Clock className="w-4 h-4 text-amber-400 animate-spin" /> Stage 2: Executive On-Site
+                  </div>
+                  <p className="text-[11px] text-amber-100 font-medium">In Progress ⏳ Field executive will visit your workshop within 24–48 hrs.</p>
+                </div>
+
+                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3.5 text-xs opacity-80">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-400 mb-1">
+                    <ShieldCheck className="w-4 h-4 text-slate-400" /> Stage 3: Super Admin Final
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium">Pending Stage 2 clearance. Unique Partner ID will be issued.</p>
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          <Card className="border-gray-200 shadow-sm">
+            <CardHeader className="pb-3 border-b border-gray-100">
+              <CardTitle className="text-sm sm:text-base font-bold text-gray-800 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Mandatory Onboarding Checklist
+                </span>
+                <span className="text-xs font-semibold text-gray-500">
+                  {completedCount} of {totalCount} Completed
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {Object.entries(checklistData?.checklist || {}).map(([key, isDone]: any) => {
+                  const labels: Record<string, { title: string; step: string }> = {
+                    panSubmitted: { title: "PAN Card Registration", step: "Step 1: Business KYC" },
+                    gstOrAlternateProofSubmitted: { title: "GSTIN / Alternate Proof", step: "Step 1: Business KYC" },
+                    representativeAuthorizationSubmitted: { title: "Representative Authorization", step: "Step 1: Business KYC" },
+                    exteriorPhotoSubmitted: { title: "Workshop Exterior Photo", step: "Step 2: Workshop Proof" },
+                    interiorPhotoSubmitted: { title: "Workshop Interior Photo", step: "Step 2: Workshop Proof" },
+                    signboardPhotoSubmitted: { title: "Workshop Signboard Photo", step: "Step 2: Workshop Proof" },
+                    addressProofSubmitted: { title: "Workshop Address Proof", step: "Step 2: Workshop Proof" },
+                    mapLocationSubmitted: { title: "Google Maps Location Coordinates", step: "Step 2: Workshop Proof" },
+                    bankAccountSubmitted: { title: "Bank Account Number", step: "Step 3: Bank & Settlement" },
+                    bankIfscSubmitted: { title: "Bank IFSC Code", step: "Step 3: Bank & Settlement" },
+                    bankProofSubmitted: { title: "Cancelled Cheque Proof", step: "Step 3: Bank & Settlement" },
+                    servicesSelected: { title: "Services Offered Selected", step: "Step 4: Capabilities" },
+                    serviceBaysSpecified: { title: "Service Bays Capacity", step: "Step 4: Capabilities" },
+                    techniciansSpecified: { title: "Technicians Count", step: "Step 4: Capabilities" },
+                    authorizedProofSubmitted: { title: "Authorized Service Proof", step: "Step 4: Capabilities" },
+                  };
+
+                  const info = labels[key] || { title: key, step: "KYC Step" };
+
+                  return (
+                    <div
+                      key={key}
+                      className={`p-3 rounded-xl border flex items-center justify-between ${
+                        isDone ? "bg-emerald-50/60 border-emerald-200" : "bg-amber-50/60 border-amber-200"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                            isDone ? "bg-emerald-500 text-white" : "bg-amber-400 text-white"
+                          }`}
+                        >
+                          {isDone ? <Check className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{info.title}</p>
+                          <p className="text-[10px] text-gray-500">{info.step}</p>
+                        </div>
+                      </div>
+                      <Badge className={isDone ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}>
+                        {isDone ? "Done" : "Pending"}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row justify-end items-center gap-2 sm:gap-3">
+                {pendingCount > 0 ? (
+                  <Button
+                    onClick={() => setActiveTab("business")}
+                    className="w-full sm:w-auto bg-primary-orange hover:bg-primary-orange-dark text-white font-bold text-xs h-10"
+                  >
+                    Start Completing Pending Steps
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => setActiveTab("business")}
+                      className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-100 font-bold text-xs h-10"
+                    >
+                      View / Review Submitted Steps
+                    </Button>
+                    <Button
+                      onClick={loadData}
+                      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 shadow-sm"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                      All Requirements Met ✓ (Refresh Status)
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* ================= TAB 1: BUSINESS KYC ================= */}

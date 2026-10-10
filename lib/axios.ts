@@ -139,8 +139,12 @@ apiClient.interceptors.response.use(
       if (payload && typeof payload === 'object' && !Array.isArray(payload) && !('role' in payload) && !('email' in payload)) {
         const arrayKey = Object.keys(payload).find(key => Array.isArray(payload[key]));
         if (arrayKey && arrayKey !== 'deviceTokens') {
-          payload.docs = payload[arrayKey];
-          payload.data = payload[arrayKey];
+          if (!('docs' in payload)) {
+            payload.docs = payload[arrayKey];
+          }
+          if (!('data' in payload)) {
+            payload.data = payload[arrayKey];
+          }
         }
       }
 

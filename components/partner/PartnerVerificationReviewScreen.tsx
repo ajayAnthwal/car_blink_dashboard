@@ -66,8 +66,23 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
         ? `/executive/partner-status/${partnerId}/review`
         : `/super-admin/partners/${partnerId}/review`;
 
-      const res = await apiClient.get(endpoint);
-      const resData = res.data?.data || res.data;
+      let res: any;
+      try {
+        res = await apiClient.get(endpoint);
+      } catch (err: any) {
+        const fallbackEndpoint = endpoint.includes('/super-admin/')
+          ? `/executive/partner-status/${partnerId}/review`
+          : `/super-admin/partners/${partnerId}/review`;
+        res = await apiClient.get(fallbackEndpoint);
+      }
+
+      const resData = res?.data?.partner
+        ? res.data
+        : res?.partner
+        ? res
+        : res?.data?.data?.partner
+        ? res.data.data
+        : res?.data || res;
       setData(resData);
     } catch (err: any) {
       console.error("Failed to load partner review details:", err);
@@ -121,12 +136,23 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
         ? `/executive/partner-status/${partnerId}/review-action`
         : `/super-admin/partners/${partnerId}/review-action`;
 
-      const res = await apiClient.post(endpoint, {
-        action: mappedAction,
-        notes: modalNotes.trim() || undefined,
-      });
+      let res: any;
+      try {
+        res = await apiClient.post(endpoint, {
+          action: mappedAction,
+          notes: modalNotes.trim() || undefined,
+        });
+      } catch (postErr: any) {
+        const fallbackEndpoint = endpoint.includes('/super-admin/')
+          ? `/executive/partner-status/${partnerId}/review-action`
+          : `/super-admin/partners/${partnerId}/review-action`;
+        res = await apiClient.post(fallbackEndpoint, {
+          action: mappedAction,
+          notes: modalNotes.trim() || undefined,
+        });
+      }
 
-      const message = res.data?.message || "Action executed successfully";
+      const message = res?.data?.message || "Action executed successfully";
       toast.success(message);
       setActiveModal(null);
       setModalNotes("");

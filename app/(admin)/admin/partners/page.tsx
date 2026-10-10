@@ -160,7 +160,7 @@ export default function AdminPartnersPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <Link href={`/admin/partners/${partner._id}`}>
+                          <Link href={`/admin/partners/${partner._id || partner.id}`}>
                             <button className="text-primary-navy hover:text-blue-700 font-medium flex items-center justify-end gap-1 text-sm ml-auto">
                               Review <ChevronRight className="w-4 h-4" />
                             </button>
