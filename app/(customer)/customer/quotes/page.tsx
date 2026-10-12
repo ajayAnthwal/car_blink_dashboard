@@ -293,6 +293,9 @@ function BookingQuoteCard({
                               <p className="text-2xl font-extrabold text-gray-900 font-heading">
                                 ₹{bid.quotedAmount?.toLocaleString()}
                               </p>
+                              <span className="text-[10px] text-emerald-700 font-bold block sm:text-right">
+                                ✓ Incl. 18% GST
+                              </span>
                             </div>
 
                             {actionable && !booking.acceptedBidId && (

@@ -135,15 +135,24 @@ export default function LeadsPage() {
               </div>
 
               <form onSubmit={handlePlaceBid} className="space-y-4">
-                <Input
-                  label="Quoted Amount (₹)"
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 1500"
-                  value={quotedAmount}
-                  onChange={(e) => setQuotedAmount(e.target.value)}
-                  required
-                />
+                <div>
+                  <Input
+                    label="Quoted Amount (₹) (All-Inclusive 18% GST)"
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 1500"
+                    value={quotedAmount}
+                    onChange={(e) => setQuotedAmount(e.target.value)}
+                    required
+                  />
+                  {quotedAmount && !isNaN(Number(quotedAmount)) && Number(quotedAmount) > 0 && (
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                      <span>Base Value: <strong>₹{(Number(quotedAmount) / 1.18).toFixed(2)}</strong></span>
+                      <span>18% GST: <strong>₹{(Number(quotedAmount) - (Number(quotedAmount) / 1.18)).toFixed(2)}</strong></span>
+                      <span className="text-emerald-700 font-bold">Total: ₹{Number(quotedAmount).toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                </div>
                 
                 <Input
                   label="Estimated Duration"

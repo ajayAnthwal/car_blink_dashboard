@@ -810,9 +810,13 @@ export default function CustomerBookingDetailsPage() {
                 <p className="text-3xl font-black text-primary-orange font-heading mt-0.5">
                   ₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')}
                 </p>
-                <p className="text-[11px] text-slate-500 font-semibold mt-1">
-                  Total Quote: ₹{calculatedTotalAmount.toLocaleString('en-IN')}
+                <p className="text-[11px] text-slate-600 font-semibold mt-1">
+                  Total Quote: ₹{calculatedTotalAmount.toLocaleString('en-IN')} <span className="text-emerald-700 font-bold">(Incl. 18% GST)</span>
                 </p>
+                <div className="mt-1.5 inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-200">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span>No Extra Taxes at Workshop</span>
+                </div>
               </div>
             </div>
 
