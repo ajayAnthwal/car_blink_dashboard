@@ -774,7 +774,7 @@ export default function CustomerBookingDetailsPage() {
       {/* STAGE 2: ADVANCE PAYMENT TO LOCK SERVICE SLOT            */}
       {/* -------------------------------------------------------- */}
       {isStage2 && (
-        <Card className="border-2 border-primary-orange shadow-lg rounded-3xl overflow-hidden bg-gradient-to-br from-orange-50/70 via-white to-amber-50/40">
+        <Card id="advance-payment-section" className="border-2 border-primary-orange shadow-lg rounded-3xl overflow-hidden bg-gradient-to-br from-orange-50/70 via-white to-amber-50/40">
           <div className="bg-gradient-to-r from-primary-orange to-amber-600 px-6 py-3.5 text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5" />
@@ -818,7 +818,7 @@ export default function CustomerBookingDetailsPage() {
 
             {/* Payment Action Buttons */}
             <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+              <div className="max-w-md">
                 <Button 
                   className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-extrabold text-sm shadow-md flex items-center justify-center gap-2" 
                   onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
@@ -826,16 +826,6 @@ export default function CustomerBookingDetailsPage() {
                 >
                   <IndianRupee className="w-4 h-4 text-primary-orange" />
                   <span>Pay Online Advance (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})</span>
-                </Button>
-
-                <Button 
-                  variant="outline"
-                  className="w-full border-emerald-300 bg-emerald-50/60 hover:bg-emerald-100 text-emerald-900 rounded-xl py-6 font-extrabold text-sm shadow-2xs flex items-center justify-center gap-2" 
-                  onClick={() => handlePayAtWorkshop(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
-                  isLoading={isExtensionProcessing}
-                >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Pay at Workshop (Cash)</span>
                 </Button>
               </div>
 

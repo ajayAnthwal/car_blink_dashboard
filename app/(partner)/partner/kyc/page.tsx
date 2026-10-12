@@ -411,12 +411,12 @@ export default function PartnerKycPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 font-heading">
+          <h1 className="text-xl sm:text-2xl font-bold text-white font-heading">
             Partner KYC & Workshop Verification
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
             {checklistData?.workshopName || "Workshop"} • {checklistData?.ownerName || "Partner"}
           </p>
         </div>
