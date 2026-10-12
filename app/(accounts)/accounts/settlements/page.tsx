@@ -14,7 +14,7 @@ import {
 } from "@/features/accounts/hooks/useAccountsQueries";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File, CreditCard, Wallet, CheckCircle, XCircle } from "lucide-react";
+import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File, CreditCard, Wallet, CheckCircle, XCircle, Copy, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function SettlementsPage() {
@@ -77,9 +77,18 @@ export default function SettlementsPage() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [securityPin, setSecurityPin] = useState("");
+  const [transactionReference, setTransactionReference] = useState("");
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showProcessFor, setShowProcessFor] = useState<string | null>(null);
   const [processItem, setProcessItem] = useState<any>(null);
   const [selectedSettlement, setSelectedSettlement] = useState<any>(null); // For details modal
+
+  const copyToClipboard = (text: string, field: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   const [reconFile, setReconFile] = useState<File | null>(null);
   const [isUploadingRecon, setIsUploadingRecon] = useState(false);
@@ -88,7 +97,12 @@ export default function SettlementsPage() {
 
   const handleProcess = async () => {
     if (!showProcessFor || !securityPin || securityPin.length < 4) {
-      setMessage({ type: "error", text: "Please enter a valid 4-digit Security PIN." });
+      setMessage({ type: "error", text: "Please enter a valid 4-digit Security PIN (Default: 1234)." });
+      return;
+    }
+
+    if (processItem?.isWithdrawal && (!transactionReference || transactionReference.trim().length < 3)) {
+      setMessage({ type: "error", text: "Please enter Bank UTR / Transaction Reference ID from your IMPS/NEFT/UPI transfer." });
       return;
     }
     
@@ -96,16 +110,21 @@ export default function SettlementsPage() {
     setMessage({ type: "", text: "" });
     try {
       if (processItem?.isWithdrawal) {
-        await processWithdrawalMut.mutateAsync({ id: showProcessFor, pin: securityPin });
-        setMessage({ type: "success", text: "Partner withdrawal request approved & paid out successfully!" });
+        await processWithdrawalMut.mutateAsync({ 
+          id: showProcessFor, 
+          pin: securityPin, 
+          referenceId: transactionReference.trim() 
+        });
+        setMessage({ type: "success", text: `Partner withdrawal of ₹${Number(processItem?.amount || 0).toLocaleString()} approved and marked as PAID!` });
         refetchWithdrawals();
       } else {
-        await processMutation.mutateAsync({ id: showProcessFor, transactionReference: "", pin: securityPin });
+        await processMutation.mutateAsync({ id: showProcessFor, transactionReference: transactionReference.trim(), pin: securityPin });
         setMessage({ type: "success", text: "Settlement processed successfully." });
         refetchSettlements();
       }
       setShowProcessFor(null);
       setSecurityPin("");
+      setTransactionReference("");
       setProcessItem(null);
     } catch (err: unknown) {
       setMessage({ type: "error", text: err?.message || `Failed to process payout.` });
@@ -309,8 +328,32 @@ export default function SettlementsPage() {
                             <div className="text-[10px] text-gray-400">Ref: #{String(w._id).slice(-8)}</div>
                           </td>
                           <td className="px-4 py-3 text-xs">
-                            <div className="font-semibold text-gray-800">A/C: {bank.accountNumber || 'N/A'}</div>
-                            <div className="text-gray-500">IFSC: {bank.ifscCode || 'N/A'}</div>
+                            <div className="flex items-center gap-1 font-semibold text-gray-800">
+                              <span>A/C: {bank.accountNumber || 'N/A'}</span>
+                              {bank.accountNumber && (
+                                <button 
+                                  type="button" 
+                                  onClick={() => copyToClipboard(bank.accountNumber, `row-acc-${w._id}`)}
+                                  className="p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-700 transition"
+                                  title="Copy A/C Number"
+                                >
+                                  {copiedField === `row-acc-${w._id}` ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-500">
+                              <span>IFSC: {bank.ifscCode || 'N/A'}</span>
+                              {bank.ifscCode && (
+                                <button 
+                                  type="button" 
+                                  onClick={() => copyToClipboard(bank.ifscCode, `row-ifsc-${w._id}`)}
+                                  className="p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-700 transition"
+                                  title="Copy IFSC"
+                                >
+                                  {copiedField === `row-ifsc-${w._id}` ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              )}
+                            </div>
                             <div className="text-gray-500 font-medium">Holder: {bank.accountHolderName || pName}</div>
                           </td>
                           <td className="px-4 py-3 font-extrabold text-base text-orange-600">
@@ -339,6 +382,7 @@ export default function SettlementsPage() {
                                     setShowProcessFor(w._id);
                                     setProcessItem({ ...w, isWithdrawal: true });
                                     setSecurityPin("");
+                                    setTransactionReference("");
                                   }}
                                 >
                                   <CheckCircle className="w-3.5 h-3.5 mr-1" /> Approve & Pay
@@ -621,50 +665,115 @@ export default function SettlementsPage() {
 
       {/* Process Modal Overlay */}
       {showProcessFor && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg shadow-xl bg-white rounded-2xl overflow-hidden">
-            <CardHeader className="border-b bg-gray-50/50 pb-4">
-              <CardTitle className="text-lg font-bold text-gray-900">Process Settlement (RazorpayX Payout)</CardTitle>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg shadow-2xl bg-white rounded-2xl overflow-hidden border-0">
+            <CardHeader className="border-b bg-gray-50/80 pb-4">
+              <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <BadgeIndianRupee className="w-5 h-5 text-emerald-600" />
+                {processItem?.isWithdrawal ? "Manual Bank Transfer & Payout Approval" : "Process Settlement"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
-              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-blue-800 leading-relaxed">
-                Review the partner's bank details and payout amount below before entering your Security PIN to initiate automatic transfer.
-              </div>
+              {processItem?.isWithdrawal ? (
+                <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900 leading-relaxed space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-emerald-800">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> Manual Bank Transfer:
+                  </p>
+                  <p>1. Transfer the exact amount to the Partner's bank account shown below via your Bank App / Net Banking / UPI (IMPS/NEFT).</p>
+                  <p>2. Enter the Bank Transaction Reference / UTR Number below and confirm with your Security PIN.</p>
+                </div>
+              ) : (
+                <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-blue-800 leading-relaxed">
+                  Review the partner's bank details and payout amount below before entering your Security PIN.
+                </div>
+              )}
 
               {/* Bank Details & Payout Summary */}
               {processItem && (
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-2.5">
                   <div className="flex justify-between items-center text-xs pb-1 border-b border-gray-200">
                     <span className="text-gray-500 font-medium">Partner Name:</span>
-                    <span className="font-bold text-gray-900">{processItem.partnerId?.businessName || 'Partner'}</span>
+                    <span className="font-bold text-gray-900">
+                      {processItem.partnerId?.businessName || processItem.bankDetails?.accountHolderName || 'Partner'}
+                    </span>
                   </div>
+                  {processItem.partnerId?.phone && (
+                    <div className="flex justify-between items-center text-xs pb-1 border-b border-gray-200">
+                      <span className="text-gray-500 font-medium">Phone Number:</span>
+                      <span className="font-medium text-gray-800">{processItem.partnerId.phone}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-xs pb-1 border-b border-gray-200">
-                    <span className="text-gray-500 font-medium">Net Payout Amount:</span>
-                    <span className="font-extrabold text-emerald-600 text-base">₹{Number(processItem.netPayoutAmount || 0).toLocaleString('en-IN')}</span>
+                    <span className="text-gray-500 font-medium">Payout Amount:</span>
+                    <span className="font-extrabold text-emerald-600 text-lg">
+                      ₹{Number(processItem.amount || processItem.netPayoutAmount || 0).toLocaleString('en-IN')}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500 font-medium">A/C Holder Name:</span>
-                    <span className="font-semibold text-gray-900">{processItem.partnerId?.bankDetails?.accountHolderName || processItem.partnerId?.businessName || 'Not Updated'}</span>
+                    <span className="font-semibold text-gray-900">
+                      {processItem.bankDetails?.accountHolderName || processItem.partnerId?.bankDetails?.accountHolderName || processItem.partnerId?.businessName || 'N/A'}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500 font-medium">Account Number:</span>
-                    <span className="font-mono font-bold text-gray-900">{processItem.partnerId?.bankDetails?.accountNumber || 'Not Updated'}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-gray-900">
+                        {processItem.bankDetails?.accountNumber || processItem.partnerId?.bankDetails?.accountNumber || 'Not Updated'}
+                      </span>
+                      {(processItem.bankDetails?.accountNumber || processItem.partnerId?.bankDetails?.accountNumber) && (
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(processItem.bankDetails?.accountNumber || processItem.partnerId?.bankDetails?.accountNumber, "acc")}
+                          className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-800 transition"
+                          title="Copy Account Number"
+                        >
+                          {copiedField === "acc" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500 font-medium">IFSC Code:</span>
-                    <span className="font-mono font-bold text-gray-900">{processItem.partnerId?.bankDetails?.ifscCode || 'Not Updated'}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-gray-900">
+                        {processItem.bankDetails?.ifscCode || processItem.partnerId?.bankDetails?.ifscCode || 'Not Updated'}
+                      </span>
+                      {(processItem.bankDetails?.ifscCode || processItem.partnerId?.bankDetails?.ifscCode) && (
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(processItem.bankDetails?.ifscCode || processItem.partnerId?.bankDetails?.ifscCode, "ifsc")}
+                          className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-800 transition"
+                          title="Copy IFSC Code"
+                        >
+                          {copiedField === "ifsc" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {processItem.partnerId?.bankDetails?.bankName && (
+                  {(processItem.bankDetails?.bankName || processItem.partnerId?.bankDetails?.bankName) && (
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500 font-medium">Bank Name:</span>
-                      <span className="font-semibold text-gray-900">{processItem.partnerId?.bankDetails?.bankName}</span>
+                      <span className="font-semibold text-gray-900">
+                        {processItem.bankDetails?.bankName || processItem.partnerId?.bankDetails?.bankName}
+                      </span>
                     </div>
                   )}
                 </div>
               )}
 
+              {/* UTR / Transaction Reference */}
               <Input
-                label="Security PIN"
+                label="Bank Reference / UTR Number"
+                type="text"
+                placeholder="e.g. 428394829381 or AXIS00192837 or UPI Ref"
+                value={transactionReference}
+                onChange={(e) => setTransactionReference(e.target.value)}
+                required
+              />
+
+              <Input
+                label="Security PIN (Default: 1234)"
                 type="password"
                 placeholder="Enter 4-digit PIN"
                 value={securityPin}
@@ -673,18 +782,19 @@ export default function SettlementsPage() {
                 required
               />
               <div className="flex justify-end space-x-3 pt-2">
-                <Button variant="outline" onClick={() => { setShowProcessFor(null); setProcessItem(null); setSecurityPin(""); }}>
+                <Button variant="outline" onClick={() => { setShowProcessFor(null); setProcessItem(null); setSecurityPin(""); setTransactionReference(""); }}>
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleProcess}
                   isLoading={actionId === showProcessFor}
-                  disabled={!securityPin || securityPin.length < 4}
-                  className="bg-primary-navy hover:bg-primary-navy/90 text-white font-bold"
+                  disabled={!securityPin || securityPin.length < 4 || (processItem?.isWithdrawal && !transactionReference)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                 >
-                  Initiate Automatic Payout
+                  <CheckCircle className="w-4 h-4 mr-1.5" /> Confirm & Mark as Paid
                 </Button>
-              </div></CardContent>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
