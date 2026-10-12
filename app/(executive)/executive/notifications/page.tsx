@@ -79,8 +79,8 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="w-full min-w-0 max-w-4xl mx-auto space-y-6 pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-primary-navy">Notifications</h1>
           <p className="text-neutral-muted text-sm mt-1">
@@ -91,7 +91,7 @@ export default function NotificationsPage() {
           <Button 
             variant="outline" 
             onClick={handleMarkAllAsRead}
-            className="flex items-center text-sm border-neutral-muted/20 hover:bg-neutral-muted/10 text-neutral-dark"
+            className="flex items-center justify-center text-sm border-neutral-muted/20 hover:bg-neutral-muted/10 text-neutral-dark w-full sm:w-auto"
           >
             <CheckCircle2 className="w-4 h-4 mr-2" />
             Mark all as read

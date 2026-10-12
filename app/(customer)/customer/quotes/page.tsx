@@ -26,6 +26,8 @@ import {
   useBookingQuotes,
   useSelectQuote
 } from "@/features/customer/hooks/useCustomerQueries";
+import { useSocket } from "@/lib/SocketContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Vehicle {
   _id: string;
@@ -352,8 +354,31 @@ function BookingQuoteCard({
 
 export default function QuotesPage() {
   const router = useRouter();
+  const { socket } = useSocket();
+  const queryClient = useQueryClient();
   const { data: bookingsData, isLoading } = useCustomerBookings();
   const bookings = (bookingsData?.bookings || []) as Booking[];
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleLiveQuoteUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ["customer", "bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["customer", "booking-quotes"] });
+    };
+
+    socket.on("quote_received", handleLiveQuoteUpdate);
+    socket.on("new_bid", handleLiveQuoteUpdate);
+    socket.on("booking_updated", handleLiveQuoteUpdate);
+    socket.on("booking_status_update", handleLiveQuoteUpdate);
+
+    return () => {
+      socket.off("quote_received", handleLiveQuoteUpdate);
+      socket.off("new_bid", handleLiveQuoteUpdate);
+      socket.off("booking_updated", handleLiveQuoteUpdate);
+      socket.off("booking_status_update", handleLiveQuoteUpdate);
+    };
+  }, [socket, queryClient]);
 
   const selectQuoteMutation = useSelectQuote();
   const [selectingBidId, setSelectingBidId] = useState<string | null>(null);

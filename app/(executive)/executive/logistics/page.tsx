@@ -48,7 +48,7 @@ export default function LogisticsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="w-full min-w-0 max-w-2xl mx-auto space-y-6 pb-12">
       <div>
         <h2 className="text-2xl font-bold text-primary-navy flex items-center">
           <Truck className="w-6 h-6 mr-2 text-primary-orange" /> 
@@ -91,7 +91,7 @@ export default function LogisticsPage() {
               </select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Driver Name"
                 placeholder="E.g. Ramesh Kumar"

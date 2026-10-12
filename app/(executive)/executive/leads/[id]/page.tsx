@@ -175,7 +175,7 @@ export default function LeadDetailsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10 relative">
+    <div className="w-full min-w-0 max-w-5xl mx-auto space-y-6 pb-12 relative">
       
       {callMessage.text && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-elevated border flex items-center space-x-3 animate-in slide-in-from-right-8 ${
@@ -348,7 +348,7 @@ export default function LeadDetailsPage() {
               Vehicle Details
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 grid grid-cols-2 gap-4">
+          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col">
               <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Brand</span>
               <span className="text-gray-900 font-medium">{vehicleObj?.brand || "N/A"}</span>
@@ -731,7 +731,7 @@ export default function LeadDetailsPage() {
           <CardContent className="pt-6 space-y-6">
             
             {/* Top Metric Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/70">
                 <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
                   Total Payable

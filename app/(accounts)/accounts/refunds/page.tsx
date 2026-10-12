@@ -96,7 +96,7 @@ export default function RefundsPage() {
                   <tr>
                     <th className="px-4 py-3 rounded-l-lg">ID / Booking</th>
                     <th className="px-4 py-3">Amount</th>
-                    <th className="px-4 py-3">Reason</th>
+                    <th className="px-4 py-3">Executive Handover & Reasons</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 rounded-r-lg text-right">Actions</th>
                   </tr>
@@ -112,9 +112,31 @@ export default function RefundsPage() {
                             : String(refund?.bookingId || "").slice(-6).toUpperCase()}
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-bold text-primary-navy">₹{refund?.amount || 0}</td>
-                      <td className="px-4 py-3 text-neutral-dark max-w-[200px] truncate" title={String(refund?.reason || "")}>
-                        {String(refund?.reason || "")}
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-primary-navy text-base">₹{refund?.amount || 0}</div>
+                        {Number(refund?.deductionAmount) > 0 && (
+                          <div className="text-[11px] text-red-600 font-medium">
+                            Deduction: -₹{refund.deductionAmount}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 max-w-[280px]">
+                        {Array.isArray(refund?.reasons) && refund.reasons.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-1">
+                            {refund.reasons.map((r: string) => (
+                              <span key={r} className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-xs text-neutral-700 truncate" title={String(refund?.executiveNotes || refund?.reason || "")}>
+                          {refund?.executiveNotes ? (
+                            <span><strong className="text-primary-navy">Exec:</strong> {refund.executiveNotes}</span>
+                          ) : (
+                            String(refund?.reason || "Standard Refund")
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 text-xs rounded-full ${refund?.status === 'PROCESSED' ? 'bg-green-100 text-green-700' :
@@ -199,9 +221,25 @@ export default function RefundsPage() {
               <CardTitle>Process Refund (RazorpayX)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-primary-navy/5 border border-primary-navy/10 rounded-lg">
-                <p className="text-sm text-primary-navy/80 font-medium leading-relaxed">
-                  This will automatically deduct funds from your RazorpayX account and transfer them back to the customer's original payment method.
+              <div className="p-4 bg-primary-navy/5 border border-primary-navy/10 rounded-lg space-y-2">
+                <div className="flex justify-between items-center text-sm font-semibold text-primary-navy">
+                  <span>Refund Disbursal Amount:</span>
+                  <span className="text-lg font-black text-emerald-600">₹{showProcessFor?.amount || 0}</span>
+                </div>
+                {Number(showProcessFor?.deductionAmount) > 0 && (
+                  <div className="flex justify-between items-center text-xs text-neutral-500">
+                    <span>Retained Platform Deduction:</span>
+                    <span>₹{showProcessFor?.deductionAmount}</span>
+                  </div>
+                )}
+                {showProcessFor?.executiveNotes && (
+                  <div className="pt-2 border-t border-primary-navy/10 text-xs text-neutral-600">
+                    <span className="font-semibold text-neutral-800">Executive Handover: </span>
+                    <span className="italic">"{showProcessFor.executiveNotes}"</span>
+                  </div>
+                )}
+                <p className="text-xs text-neutral-500 pt-1">
+                  Transfers directly via RazorpayX back to customer's source account.
                 </p>
               </div>
               <Input

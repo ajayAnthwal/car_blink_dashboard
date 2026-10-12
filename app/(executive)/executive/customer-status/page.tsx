@@ -41,7 +41,7 @@ export default function CustomerStatusPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto pb-10">
+    <div className="space-y-6 max-w-[1400px] mx-auto w-full min-w-0 pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-primary-navy flex items-center font-heading">

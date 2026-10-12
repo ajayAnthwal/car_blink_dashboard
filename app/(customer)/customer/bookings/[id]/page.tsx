@@ -104,6 +104,8 @@ export default function CustomerBookingDetailsPage() {
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [selectedCancelReasons, setSelectedCancelReasons] = useState<string[]>([]);
+  const [customCancelRemarks, setCustomCancelRemarks] = useState("");
   const [showCancel, setShowCancel] = useState(false);
   const [isExtensionProcessing, setIsExtensionProcessing] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -134,6 +136,8 @@ export default function CustomerBookingDetailsPage() {
     socket.on("quote_received", handleLiveBookingUpdate);
     socket.on("booking_confirmed", handleLiveBookingUpdate);
     socket.on("booking_status_update", handleLiveBookingUpdate);
+    socket.on("extra_work_requested", handleLiveBookingUpdate);
+    socket.on("extra_work_responded", handleLiveBookingUpdate);
 
     return () => {
       socket.off("booking_updated", handleLiveBookingUpdate);
@@ -143,6 +147,8 @@ export default function CustomerBookingDetailsPage() {
       socket.off("quote_received", handleLiveBookingUpdate);
       socket.off("booking_confirmed", handleLiveBookingUpdate);
       socket.off("booking_status_update", handleLiveBookingUpdate);
+      socket.off("extra_work_requested", handleLiveBookingUpdate);
+      socket.off("extra_work_responded", handleLiveBookingUpdate);
     };
   }, [socket, id, refetchBooking, refetchQuotes]);
 
@@ -235,18 +241,28 @@ export default function CustomerBookingDetailsPage() {
   };
 
   const handleCancelBooking = async () => {
-    if (!cancelReason.trim()) {
-      toast.error("Please provide a reason for cancellation");
+    if (selectedCancelReasons.length === 0 && !customCancelRemarks.trim() && !cancelReason.trim()) {
+      toast.error("Please select at least one reason for cancellation");
       return;
     }
     setIsCancelling(true);
     try {
-      await cancelBookingMutation.mutateAsync({ id, reason: cancelReason });
-      toast.success("Booking cancelled successfully");
+      const reasonsToSubmit = selectedCancelReasons.length > 0 
+        ? selectedCancelReasons 
+        : [cancelReason.trim() || "Customer requested cancellation"];
+      const remarksToSubmit = customCancelRemarks.trim() || cancelReason.trim();
+
+      await cancelBookingMutation.mutateAsync({
+        id,
+        reasons: reasonsToSubmit,
+        customerRemarks: remarksToSubmit,
+        reason: reasonsToSubmit.join(", ") + (remarksToSubmit ? ` - ${remarksToSubmit}` : ""),
+      });
+      toast.success("Cancellation request submitted. An executive will connect with you shortly.");
       setShowCancel(false);
       refetchBooking();
     } catch (err: any) {
-      toast.error(err?.message || "Failed to cancel booking");
+      toast.error(err?.message || "Failed to submit cancellation request");
     } finally {
       setIsCancelling(false);
     }
@@ -440,6 +456,8 @@ export default function CustomerBookingDetailsPage() {
         return <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 px-3 py-1 font-bold">Service Underway</Badge>;
       case 'COMPLETED':
         return <Badge className="bg-emerald-600 text-white border-none px-3 py-1 font-bold">✓ Completed</Badge>;
+      case 'CANCELLATION_REQUESTED':
+        return <Badge className="bg-amber-100 text-amber-900 border-amber-300 px-3 py-1 font-bold animate-pulse">⏳ Cancellation Requested</Badge>;
       case 'CANCELLED':
         return <Badge className="bg-red-100 text-red-800 border-red-200 px-3 py-1 font-bold">Cancelled</Badge>;
       default:
@@ -508,8 +526,12 @@ export default function CustomerBookingDetailsPage() {
     (quotes.length === 1 ? quotes[0]?.quotedAmount : 0) ||
     0;
 
-  const approvedExtensions = booking.jobDetails?.jobExtensions?.filter((e: any) => e.status === 'APPROVED') || [];
-  const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + ext.cost, 0);
+  const allJobExtensions = booking.jobDetails?.jobExtensions || booking.jobExtensions || [];
+  const pendingCustomerExtensions = allJobExtensions.filter((e: any) =>
+    ['PENDING', 'EXECUTIVE_APPROVED', 'PENDING_EXECUTIVE_REVIEW', 'PENDING_CUSTOMER_APPROVAL'].includes(e.status)
+  );
+  const approvedExtensions = allJobExtensions.filter((e: any) => e.status === 'APPROVED');
+  const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + (Number(ext.cost) || 0), 0);
 
   // Option A: Base package is the agreed customer gross quote (All-Inclusive 18% GST)
   const baseAmount = booking.pricing?.customerGrossQuote || booking.acceptedQuoteAmount || acceptedQuoteAmount || booking.jobDetails?.finalAmount || booking.finalAmount || (booking.serviceId?.basePrice || 0);
@@ -526,7 +548,8 @@ export default function CustomerBookingDetailsPage() {
     : (calculatedAdvance.advanceAmount || fallbackAdv);
   const remainingForAdvance = Math.max(0, advanceAmount - totalPaidAmount);
 
-  const needsAdvance = !hasPaidAdvance && remainingAmount > 0 && !['ACCEPTED', 'CONFIRMED', 'VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(booking.status);
+  const hasAcceptedQuote = Boolean(booking.acceptedBidId) || ['CUSTOMER_ACCEPTED', 'AWAITING_15_PERCENT_ADVANCE'].includes(booking.status);
+  const needsAdvance = !hasPaidAdvance && remainingAmount > 0 && hasAcceptedQuote && !['CONFIRMED', 'VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(booking.status);
   const needsFinal = booking.status === 'COMPLETED' && remainingAmount > 0;
   const effectivePaymentMode = selectedPaymentPreference || booking.paymentMode || "ONLINE";
   const isCashMode = effectivePaymentMode === "CASH";
@@ -542,8 +565,8 @@ export default function CustomerBookingDetailsPage() {
   const isStage5 = booking.status === 'COMPLETED';
   const isStage4 = ['WORK_STARTED', 'IN_PROGRESS', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED'].includes(booking.status) && !isStage5;
   const isStage3 = (hasPaidAdvance || ['CONFIRMED', 'VERIFIED'].includes(booking.status)) && !isStage4 && !isStage5;
-  const isStage2 = (Boolean(booking.acceptedBidId) || ['CUSTOMER_ACCEPTED', 'AWAITING_15_PERCENT_ADVANCE'].includes(booking.status) || needsAdvance) && !isStage3 && !isStage4 && !isStage5;
-  const isStage1 = !isStage2 && !isStage3 && !isStage4 && !isStage5;
+  const isStage2 = (hasAcceptedQuote || needsAdvance) && !isStage3 && !isStage4 && !isStage5;
+  const isStage1 = !hasAcceptedQuote && !isStage2 && !isStage3 && !isStage4 && !isStage5;
 
   const currentStageNum = isStage5 ? 5 : isStage4 ? 4 : isStage3 ? 3 : isStage2 ? 2 : 1;
 
@@ -602,7 +625,7 @@ export default function CustomerBookingDetailsPage() {
               <span>Need Help?</span>
             </Button>
 
-            {!isStage5 && booking.status !== 'CANCELLED' && !showCancel && (
+            {!isStage5 && booking.status !== 'CANCELLED' && booking.status !== 'CANCELLATION_REQUESTED' && !showCancel && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -615,6 +638,116 @@ export default function CustomerBookingDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Cancellation Requested Banner */}
+      {booking.status === 'CANCELLATION_REQUESTED' && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0 mt-0.5 shadow-2xs">
+              <Clock className="w-6 h-6 text-amber-700 animate-spin" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-heading font-black text-base sm:text-lg text-amber-950">
+                  Cancellation Request in Executive Review
+                </h3>
+                <span className="bg-amber-200/80 text-amber-900 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Reviewing
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-amber-800 mt-1 max-w-2xl leading-relaxed">
+                Your cancellation request has been received. Our Senior Customer Service Executive is reviewing your booking and will connect with you via phone shortly to resolve any concerns or process your refund to Accounts.
+              </p>
+              {booking.cancellationDetails?.reasons && booking.cancellationDetails.reasons.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  <span className="text-[11px] font-bold text-amber-900 mr-1 self-center">Selected Feedback:</span>
+                  {booking.cancellationDetails.reasons.map((r: string, idx: number) => (
+                    <span key={idx} className="bg-white/90 border border-amber-200 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-900 shadow-2xs">
+                      {r.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* ⚠️ PENDING EXTRA PART APPROVAL ACTION BANNER             */}
+      {/* ======================================================== */}
+      {pendingCustomerExtensions.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-3xl p-5 sm:p-6 text-white shadow-lg space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+                <Wrench className="w-6 h-6 text-white animate-pulse" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-black/25 px-2.5 py-0.5 rounded-full inline-block mb-1">
+                  Customer Action Required
+                </span>
+                <h3 className="font-heading font-black text-lg sm:text-xl">
+                  Extra Part Request Awaiting Your Approval ({pendingCustomerExtensions.length})
+                </h3>
+                <p className="text-white/90 text-xs sm:text-sm mt-0.5">
+                  The partner workshop requested extra parts to complete your service. Review each item below to approve or decline.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {pendingCustomerExtensions.map((ext: any, idx: number) => (
+              <div key={idx} className="bg-white text-gray-900 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm border border-white">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-heading font-black text-base text-gray-950">{ext.partName}</h4>
+                    <span className="text-[10px] font-black uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md border border-amber-200">
+                      Extra Part
+                    </span>
+                  </div>
+                  {ext.reason && (
+                    <p className="text-xs text-gray-600"><span className="font-bold text-gray-700">Reason:</span> {ext.reason}</p>
+                  )}
+                  {ext.description && (
+                    <p className="text-xs text-gray-500">{ext.description}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Extra Part Cost</span>
+                    <span className="font-heading font-black text-xl text-primary-orange font-mono">
+                      +₹{Number(ext.cost || 0).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold px-3.5 h-9 rounded-xl"
+                      onClick={() => handleExtensionResponse(ext._id, 'REJECTED')}
+                      disabled={isExtensionProcessing}
+                    >
+                      ✕ Reject
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 h-9 rounded-xl shadow-sm"
+                      onClick={() => handleExtensionResponse(ext._id, 'APPROVED')}
+                      isLoading={isExtensionProcessing}
+                    >
+                      ✓ Approve (+₹{Number(ext.cost || 0).toLocaleString("en-IN")})
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* 2. PROGRESS TRACKER: Clean 5-Step Milestones Stepper     */}
@@ -994,54 +1127,68 @@ export default function CustomerBookingDetailsPage() {
                 )}
               </div>
 
-              {/* Pending Job Extensions (Additional Parts Approvals) */}
+              {/* Additional Parts Requested by Workshop */}
               {booking.jobDetails?.jobExtensions && booking.jobDetails.jobExtensions.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <h4 className="text-sm font-black text-primary-navy uppercase tracking-wider flex items-center gap-2">
                     <FileText className="w-4 h-4 text-primary-orange" /> Additional Parts Requested by Workshop:
                   </h4>
                   <div className="space-y-2.5">
-                    {booking.jobDetails.jobExtensions.map((ext: any, idx: number) => (
-                      <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-slate-900 text-sm">{ext.partName}</p>
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full inline-block mt-1 ${
-                            ext.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
-                            ext.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                            'bg-amber-100 text-amber-800'
-                          }`}>
-                            {ext.status || 'PENDING APPROVAL'}
-                          </span>
-                        </div>
+                    {booking.jobDetails.jobExtensions.map((ext: any, idx: number) => {
+                      const isPending = ['PENDING', 'EXECUTIVE_APPROVED', 'PENDING_EXECUTIVE_REVIEW', 'PENDING_CUSTOMER_APPROVAL'].includes(ext.status);
+                      const isApproved = ext.status === 'APPROVED';
+                      const isRejected = ext.status === 'REJECTED';
 
-                        <div className="flex items-center gap-4">
-                          <span className="font-black text-base text-primary-orange font-heading">
-                            +₹{ext.cost}
-                          </span>
-                          {ext.status === 'PENDING' && (
+                      return (
+                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div>
                             <div className="flex items-center gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold" 
-                                onClick={() => handleExtensionResponse(ext._id, 'REJECTED')} 
-                                disabled={isExtensionProcessing}
-                              >
-                                Reject
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold" 
-                                onClick={() => handleExtensionResponse(ext._id, 'APPROVED')} 
-                                isLoading={isExtensionProcessing}
-                              >
-                                Approve
-                              </Button>
+                              <p className="font-bold text-slate-900 text-sm">{ext.partName}</p>
+                              <span className="text-[9px] font-black uppercase tracking-wider bg-orange-100 text-primary-orange px-1.5 py-0.5 rounded">
+                                Extra Part
+                              </span>
                             </div>
-                          )}
+                            {ext.reason && (
+                              <p className="text-xs text-slate-500 mt-0.5 italic">Reason: {ext.reason}</p>
+                            )}
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full inline-block mt-1 ${
+                              isApproved ? 'bg-emerald-100 text-emerald-800' :
+                              isRejected ? 'bg-red-100 text-red-800' :
+                              'bg-amber-100 text-amber-800 animate-pulse'
+                            }`}>
+                              {isApproved ? '✓ APPROVED & AUTHORIZED' : isRejected ? '✕ REJECTED (NO CHARGE)' : 'AWAITING YOUR APPROVAL'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <span className="font-black text-base text-primary-orange font-heading font-mono">
+                              +₹{Number(ext.cost || 0).toLocaleString("en-IN")}
+                            </span>
+                            {isPending && (
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl" 
+                                  onClick={() => handleExtensionResponse(ext._id, 'REJECTED')} 
+                                  disabled={isExtensionProcessing}
+                                >
+                                  ✕ Reject
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs" 
+                                  onClick={() => handleExtensionResponse(ext._id, 'APPROVED')} 
+                                  isLoading={isExtensionProcessing}
+                                >
+                                  ✓ Approve (+₹{Number(ext.cost || 0).toLocaleString("en-IN")})
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1404,9 +1551,14 @@ export default function CustomerBookingDetailsPage() {
                 </div>
 
                 {approvedExtensions.map((ext: any, idx: number) => (
-                  <div key={idx} className="flex justify-between text-gray-600">
-                    <span>{ext.partName} (Added)</span>
-                    <span className="font-mono font-bold text-gray-900">+₹{ext.cost.toLocaleString("en-IN")}</span>
+                  <div key={idx} className="flex justify-between items-center text-gray-700 bg-amber-50/70 p-2 rounded-lg border border-amber-200/60">
+                    <span className="font-semibold flex items-center gap-1.5">
+                      <span className="bg-primary-orange text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-2xs">
+                        Extra Part
+                      </span>
+                      <span>{ext.partName}</span>
+                    </span>
+                    <span className="font-mono font-bold text-gray-900">+₹{Number(ext.cost || 0).toLocaleString("en-IN")}</span>
                   </div>
                 ))}
 
@@ -1475,58 +1627,119 @@ export default function CustomerBookingDetailsPage() {
       {/* 5. CANCELLATION MODAL                                    */}
       {/* ======================================================== */}
       {showCancel && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-              <h3 className="font-heading font-black text-xl text-primary-navy">
-                Cancel Booking Request
-              </h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-heading font-black text-xl text-primary-navy">
+                  Request Booking Cancellation
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Select your reason(s) so our executive team can assist you with resolution or refund.
+                </p>
+              </div>
               <button 
                 onClick={() => setShowCancel(false)}
-                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg"
+                className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-gray-600 leading-relaxed">
-              {totalPaidAmount > 0 
-                ? `Since you have paid ₹${totalPaidAmount.toLocaleString("en-IN")}, an automatic refund request will be initiated as per CarBlink Refund Policy.`
-                : "Are you sure you want to cancel this booking?"}
-            </p>
+            {totalPaidAmount > 0 ? (
+              <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl text-xs text-primary-navy flex items-start gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-primary-orange shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-bold text-gray-900 block">
+                    Paid Amount: ₹{totalPaidAmount.toLocaleString("en-IN")}
+                  </span>
+                  <span className="text-gray-600 leading-relaxed block">
+                    Our Senior Customer Service Executive will review your request, connect with you, and forward your authorized refund to our Accounts desk for gateway release.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl text-xs text-amber-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>No advance was charged for this booking. You can cancel free of charge.</span>
+              </div>
+            )}
 
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-primary-navy flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-primary-orange shrink-0" />
-              <span>Refunds are credited to original payment source within 3-5 business days.</span>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                Select Cancellation Reason(s) *
+              </label>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                {[
+                  { id: "SLOW_RESPONSE", label: "Slow response / quotes taking long", icon: "⏱️" },
+                  { id: "HIGH_PRICING", label: "Pricing higher than expected", icon: "💰" },
+                  { id: "ALTERNATE_FOUND", label: "Found another local workshop", icon: "🔧" },
+                  { id: "PICKUP_DELAY", label: "Vehicle pickup / driver delay", icon: "🚗" },
+                  { id: "PARTNER_CONCERNS", label: "Workshop location or rating issue", icon: "📍" },
+                  { id: "EMERGENCY_CANCEL", label: "Personal emergency / Trip cancelled", icon: "🚨" },
+                  { id: "NO_LONGER_NEEDED", label: "Car issue resolved automatically", icon: "✅" },
+                  { id: "OTHER", label: "Other feedback / concerns", icon: "📝" },
+                ].map((item) => {
+                  const isChecked = selectedCancelReasons.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedCancelReasons(prev =>
+                          prev.includes(item.id) ? prev.filter(r => r !== item.id) : [...prev, item.id]
+                        );
+                      }}
+                      className={`p-2.5 rounded-xl border text-xs font-medium cursor-pointer transition-all flex items-start gap-2 ${
+                        isChecked
+                          ? "bg-primary-navy/5 border-primary-navy text-primary-navy font-bold shadow-2xs"
+                          : "bg-gray-50/70 hover:bg-gray-100/70 border-gray-200 text-gray-700"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}}
+                        className="mt-0.5 rounded border-gray-300 text-primary-navy focus:ring-primary-navy pointer-events-none"
+                      />
+                      <span className="flex-1 leading-snug">
+                        <span className="mr-1">{item.icon}</span>
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Reason for cancellation *
+                Additional Comments / Remarks (Optional)
               </label>
               <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Please tell us why you are cancelling..."
-                rows={3}
-                className="w-full p-3 border border-gray-300 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-red-500"
+                value={customCancelRemarks}
+                onChange={(e) => setCustomCancelRemarks(e.target.value)}
+                placeholder="Share any additional details or feedback..."
+                rows={2}
+                className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-navy/20 resize-none font-medium"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-2 border-t border-gray-100">
               <Button 
                 variant="outline" 
                 onClick={() => setShowCancel(false)}
-                className="text-xs font-bold rounded-xl"
+                className="w-full sm:w-auto text-xs font-bold rounded-xl"
               >
                 Keep Booking
               </Button>
               <Button 
                 onClick={handleCancelBooking}
                 isLoading={isCancelling}
-                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl"
+                disabled={selectedCancelReasons.length === 0 && !customCancelRemarks.trim()}
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs disabled:opacity-50"
               >
-                Confirm Cancellation
+                Submit Cancellation Request
               </Button>
             </div>
           </div>

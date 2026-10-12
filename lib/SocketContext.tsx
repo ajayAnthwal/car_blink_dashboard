@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { Bell, X } from "lucide-react";
 
 interface SocketContextType {
@@ -63,9 +64,22 @@ const playNotificationSound = (type: 'lead' | 'alert' | 'info' = 'lead') => {
 
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const { accessToken, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [toast, setToast] = useState<{ title: string; message: string; type?: string; id: number } | null>(null);
+
+  const invalidateQueriesGlobally = () => {
+    try {
+      queryClient.invalidateQueries({ queryKey: ["customer", "bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["customer", "booking-quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["customer", "bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["executive"] });
+      queryClient.invalidateQueries({ queryKey: ["partner"] });
+    } catch (e) {
+      console.warn("[SOCKET] Failed to invalidate queries:", e);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
@@ -130,10 +144,20 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       const amountStr = payload?.amount ? `₹${payload.amount}` : "";
       const message = payload?.message || `${partnerName} has placed a bid ${amountStr} on a booking.`;
       triggerToast(title, message, 'lead', 8000);
+      invalidateQueriesGlobally();
     };
 
     newSocket.on("new_bid", handlePartnerBid);
     newSocket.on("quote_received", handlePartnerBid);
+
+    // 1b2. Listen to booking updates & quotes forwarded
+    const handleBookingUpdate = (payload: any) => {
+      console.log("[SOCKET] Live Booking Update Received:", payload);
+      invalidateQueriesGlobally();
+    };
+
+    newSocket.on("booking_updated", handleBookingUpdate);
+    newSocket.on("booking_status_update", handleBookingUpdate);
 
     // 1c. Listen to customer satisfaction response
     newSocket.on("satisfaction_response", (payload: any) => {
@@ -144,7 +168,32 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       const ratingStr = payload?.rating ? `(${payload.rating}/5 Stars)` : "";
       const message = `${customerName} responded ${isSatisfied ? "Satisfied" : "Dissatisfied"} ${ratingStr}. ${payload?.feedback || ""}`;
       triggerToast(title, message, isSatisfied ? 'lead' : 'info', 10000);
+      invalidateQueriesGlobally();
     });
+
+    // 1d. Listen to extra work / extra part requests & responses
+    const handleExtraWorkRequest = (payload: any) => {
+      console.log("[SOCKET] Extra Work Requested:", payload);
+      const title = "🔧 EXTRA PART REQUESTED";
+      const partName = payload?.partName || "Extra Part";
+      const costStr = payload?.cost ? ` (+₹${payload.cost})` : "";
+      const message = `Workshop requested ${partName}${costStr}. Customer/Executive review required.`;
+      triggerToast(title, message, 'lead', 8000);
+      invalidateQueriesGlobally();
+    };
+
+    const handleExtraWorkResponse = (payload: any) => {
+      console.log("[SOCKET] Extra Work Responded:", payload);
+      const isApproved = payload?.status === 'APPROVED';
+      const title = isApproved ? "✓ EXTRA PART APPROVED" : "✕ EXTRA PART REJECTED";
+      const partName = payload?.partName || "Extra Part";
+      const message = payload?.message || `Extra part "${partName}" has been ${payload?.status?.toLowerCase()}.`;
+      triggerToast(title, message, isApproved ? 'lead' : 'info', 8000);
+      invalidateQueriesGlobally();
+    };
+
+    newSocket.on("extra_work_requested", handleExtraWorkRequest);
+    newSocket.on("extra_work_responded", handleExtraWorkResponse);
 
     // 2. Listen to generic system notifications
     newSocket.on("notification:new", (payload) => {
@@ -152,12 +201,14 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       const title = payload.title || "New Notification";
       const message = payload.message || "You have a new system update.";
       triggerToast(title, message, 'info');
+      invalidateQueriesGlobally();
     });
 
     // 3. Listen to booking confirmed
     newSocket.on("booking_confirmed", (payload) => {
       console.log("[SOCKET] Booking Confirmed Received:", payload);
       triggerToast("✅ Booking Confirmed", payload?.message || "A booking has been confirmed.", 'info');
+      invalidateQueriesGlobally();
     });
 
     // 4. Listen to new escalations

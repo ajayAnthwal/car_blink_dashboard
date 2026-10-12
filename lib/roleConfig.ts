@@ -157,6 +157,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         items: [
           { name: "Website Leads", href: "/executive/website-leads", icon: Target },
           { name: "Leads / Assignments", href: "/executive/leads", icon: Target },
+          { name: "Cancellations & Retention", href: "/executive/cancellations", icon: Undo2 },
           { name: "Extra Work Review", href: "/executive/extra-work", icon: Wrench },
           { name: "All Warranties", href: "/executive/warranties", icon: ShieldCheck },
           { name: "Website Ads & Banners", href: "/executive/ads", icon: Image },
@@ -185,6 +186,7 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         label: "Finance",
         items: [
           { name: "Transactions", href: "/accounts/transactions", icon: CreditCard },
+          { name: "Refunds", href: "/accounts/refunds", icon: Undo2 },
           { name: "Partner Settlements", href: "/accounts/settlements", icon: Landmark },
           { name: "Executive Payouts", href: "/accounts/payouts", icon: IndianRupee },
           { name: "Invoices", href: "/accounts/invoices", icon: FileText },

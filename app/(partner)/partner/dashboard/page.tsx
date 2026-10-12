@@ -166,7 +166,7 @@ export default function PartnerDashboardPage() {
   const showProfileAlert = isProfileIncomplete || isKycPending || isKycRejected;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-10">
+    <div className="max-w-7xl mx-auto w-full min-w-0 space-y-6 pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center space-x-3 flex-wrap gap-y-2">
@@ -383,12 +383,12 @@ export default function PartnerDashboardPage() {
       {/* Middle Section: Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Earnings Trend */}
-        <Card className="col-span-1 lg:col-span-8 shadow-subtle border-gray-100 flex flex-col">
+        <Card className="col-span-1 lg:col-span-8 shadow-subtle border-gray-100 flex flex-col min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>Earnings Trend</CardTitle>
             <CardDescription>Your revenue over the last 6 months</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 min-h-[280px]">
+          <CardContent className="flex-1 min-h-[280px] min-w-0 overflow-hidden">
             {lineChartData.length > 0 && lineChartData.some(d => d.earnings > 0 || (d as unknown).amount > 0) ? (
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={lineChartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
@@ -427,12 +427,12 @@ export default function PartnerDashboardPage() {
         </Card>
 
         {/* Jobs by Status */}
-        <Card className="col-span-1 lg:col-span-4 shadow-subtle border-gray-100 flex flex-col">
+        <Card className="col-span-1 lg:col-span-4 shadow-subtle border-gray-100 flex flex-col min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>Jobs by Status</CardTitle>
             <CardDescription>Current state of your assigned jobs</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col justify-center min-h-[280px]">
+          <CardContent className="flex-1 flex flex-col justify-center min-h-[280px] min-w-0 overflow-hidden">
             {jobs.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={barChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }} layout="vertical">

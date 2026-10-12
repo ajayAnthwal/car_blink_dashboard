@@ -187,7 +187,7 @@ export default function PartnerProfilePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto w-full min-w-0 pb-12">
       <h2 className="text-2xl font-bold text-primary-navy">My Profile</h2>
 
       {message.text && (
@@ -232,7 +232,7 @@ export default function PartnerProfilePage() {
                   onChange={handleInputChange}
                   required
                 />
-                <div className="mt-3 flex items-center justify-between p-3 bg-neutral-bg border border-neutral-muted/20 rounded-lg">
+                <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-neutral-bg border border-neutral-muted/20 rounded-lg">
                   <div className="flex items-center">
                     {formData.latitude && formData.longitude ? (
                       <span className="text-sm font-semibold text-success flex items-center">
@@ -245,7 +245,7 @@ export default function PartnerProfilePage() {
                       </span>
                     )}
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={handleGetLocation}>
+                  <Button type="button" variant="outline" size="sm" onClick={handleGetLocation} className="w-full sm:w-auto">
                     <MapPin className="w-4 h-4 mr-2" /> Get Current Location
                   </Button>
                 </div>
@@ -367,8 +367,8 @@ export default function PartnerProfilePage() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
-                <Button onClick={handleKycUpload} disabled={!kycFile || uploadKycMutation.isPending} isLoading={uploadKycMutation.isPending}>
+              <div className="flex justify-end pt-2 w-full">
+                <Button onClick={handleKycUpload} disabled={!kycFile || uploadKycMutation.isPending} isLoading={uploadKycMutation.isPending} className="w-full sm:w-auto">
                   <Upload className="w-4 h-4 mr-2" /> Upload Document
                 </Button>
               </div>

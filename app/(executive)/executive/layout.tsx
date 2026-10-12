@@ -50,7 +50,7 @@ export default function ExecutiveLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-neutral-bg flex">
+    <div className="min-h-screen bg-neutral-bg flex w-full min-w-0 max-w-full overflow-x-hidden">
       {/* Fixed Sidebar */}
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
@@ -58,10 +58,10 @@ export default function ExecutiveLayout({ children }: { children: React.ReactNod
       />
       
       {/* Main Content Area (offset by sidebar width) */}
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+      <div className={`flex-1 flex flex-col min-h-screen min-w-0 w-full max-w-full overflow-x-hidden transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         <Header />
         
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
+        <main className="flex-1 min-w-0 w-full max-w-full p-3 sm:p-4 md:p-6 overflow-x-hidden">
           {children}
         </main>
       </div>

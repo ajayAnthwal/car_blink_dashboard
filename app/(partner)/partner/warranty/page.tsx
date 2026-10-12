@@ -68,7 +68,7 @@ export default function PartnerWarrantyPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto w-full min-w-0 pb-12">
       <h2 className="text-2xl font-bold text-primary-navy">Issue Warranty</h2>
       
       <p className="text-neutral-muted text-sm mb-6">
@@ -140,8 +140,8 @@ export default function PartnerWarrantyPage() {
                 </div>
               </div>
               
-              <div className="flex justify-end pt-4 border-t border-neutral-muted/10">
-                <Button type="submit" isLoading={issueMutation.isPending} disabled={completedJobs.length === 0 || !warrantyUrl}>
+              <div className="flex justify-end pt-4 border-t border-neutral-muted/10 w-full">
+                <Button type="submit" isLoading={issueMutation.isPending} disabled={completedJobs.length === 0 || !warrantyUrl} className="w-full sm:w-auto">
                   Issue Warranty
                 </Button>
               </div>
@@ -160,7 +160,7 @@ export default function PartnerWarrantyPage() {
              </div>
           ) : (
             issuedWarranties.map((warranty) => (
-              <div key={warranty._id} className="bg-neutral-white p-4 rounded-xl border border-neutral-muted/20 flex items-start space-x-3 justify-between">
+              <div key={warranty._id} className="bg-neutral-white p-4 rounded-xl border border-neutral-muted/20 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div className="flex items-start space-x-3">
                   <div className="bg-success/10 p-2 rounded-lg">
                     <ShieldCheck className="w-5 h-5 text-success" />

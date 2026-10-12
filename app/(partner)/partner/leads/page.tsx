@@ -45,7 +45,7 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto relative pb-10">
+    <div className="space-y-6 max-w-5xl mx-auto w-full min-w-0 relative pb-10">
       <h2 className="text-2xl font-bold text-primary-navy">Available Leads</h2>
       
       <p className="text-neutral-muted text-sm mb-6">

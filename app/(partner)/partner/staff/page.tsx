@@ -66,7 +66,7 @@ export default function StaffPage() {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+    <div className="space-y-8 w-full min-w-0 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
       <div>
         <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Staff Management</h2>
         <p className="text-gray-500 mt-2">Manage mechanics and other staff members in your garage.</p>

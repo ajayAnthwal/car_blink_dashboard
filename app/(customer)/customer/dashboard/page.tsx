@@ -196,7 +196,9 @@ export default function CustomerDashboardPage() {
       if (!b) return false;
       const bData = b as any;
       const jobExts = bData.jobDetails?.jobExtensions || bData.jobExtensions || bData.jobDetails?.extensions || [];
-      const hasPendingExts = Array.isArray(jobExts) && jobExts.some((ext: any) => String(ext?.status || '').toUpperCase() === 'PENDING');
+      const hasPendingExts = Array.isArray(jobExts) && jobExts.some((ext: any) =>
+        ['PENDING', 'EXECUTIVE_APPROVED', 'PENDING_EXECUTIVE_REVIEW', 'PENDING_CUSTOMER_APPROVAL'].includes(String(ext?.status || '').toUpperCase())
+      );
 
       const rawAddParts = bData.additionalParts || bData.pendingAdditionalParts || [];
       const hasPendingParts = Array.isArray(rawAddParts) && rawAddParts.some((part: any) => !part?.status || String(part?.status || '').toUpperCase() === 'PENDING');
@@ -672,7 +674,9 @@ export default function CustomerDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {additionalPartsPending.map((booking: any) => {
               const jobExts = booking.jobDetails?.jobExtensions || booking.jobExtensions || booking.jobDetails?.extensions || [];
-              const pendingJobExts = jobExts.filter((ext: any) => String(ext.status || '').toUpperCase() === 'PENDING');
+              const pendingJobExts = jobExts.filter((ext: any) =>
+                ['PENDING', 'EXECUTIVE_APPROVED', 'PENDING_EXECUTIVE_REVIEW', 'PENDING_CUSTOMER_APPROVAL'].includes(String(ext.status || '').toUpperCase())
+              );
 
               let partsList: any[] = [];
               if (pendingJobExts.length > 0) {

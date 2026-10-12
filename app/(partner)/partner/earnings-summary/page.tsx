@@ -10,7 +10,7 @@ export default function EarningsSummaryPage() {
   const { data: summary, isLoading } = usePartnerEarnings();
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto w-full min-w-0 pb-12">
       <h2 className="text-2xl font-bold text-primary-navy">Lifetime Earnings Summary</h2>
       
       {isLoading ? (

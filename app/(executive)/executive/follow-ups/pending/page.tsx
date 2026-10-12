@@ -33,7 +33,7 @@ export default function PendingFollowUpsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto w-full min-w-0 pb-12">
       <div>
         <h2 className="text-2xl font-bold text-primary-navy">Pending Follow-ups</h2>
         <p className="text-neutral-muted text-sm mt-1">Calls that require your attention today.</p>
@@ -83,9 +83,9 @@ export default function PendingFollowUpsPage() {
                   </div>
                 </div>
                 
-                <div className="shrink-0 flex md:flex-col space-x-2 md:space-x-0 md:space-y-2">
+                <div className="shrink-0 flex flex-col sm:flex-row md:flex-col gap-2 w-full md:w-auto">
                   <Button 
-                    className="flex-1 bg-success hover:bg-success/90"
+                    className="w-full md:w-auto bg-success hover:bg-success/90"
                     onClick={() => handleResolve(log._id)}
                     isLoading={updatingId === log._id}
                     disabled={updatingId === log._id}

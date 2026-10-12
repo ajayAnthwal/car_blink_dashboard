@@ -149,7 +149,7 @@ export function WalletDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0">
       {/* Global Message Banner */}
       {message.text && (
         <div className={`p-4 rounded-xl text-sm font-bold border flex items-center justify-between shadow-sm animate-in fade-in ${
@@ -170,16 +170,16 @@ export function WalletDashboard() {
       {/* Main Wallet Balance Card */}
       <Card className="bg-gradient-to-r from-primary-navy via-slate-900 to-primary-navy text-white shadow-xl rounded-2xl border-0 overflow-hidden relative">
         <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-primary-orange/10 rounded-full blur-2xl pointer-events-none"></div>
-        <CardContent className="p-8">
+        <CardContent className="p-5 sm:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2">
               <span className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Wallet className="w-4 h-4 text-primary-orange" /> Partner Wallet Balance
               </span>
-              <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight font-heading flex items-center text-white">
-                <IndianRupee className="w-9 h-9 mr-1 text-primary-orange" />
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight font-heading flex flex-wrap items-center text-white">
+                <IndianRupee className="w-7 h-7 sm:w-9 sm:h-9 mr-1 text-primary-orange" />
                 {Math.abs(balance).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                {isNegative && <span className="text-base ml-3 bg-red-500/20 text-red-300 border border-red-500/30 px-3 py-1 rounded-full font-bold uppercase">(Negative Due)</span>}
+                {isNegative && <span className="text-xs sm:text-base ml-2 sm:ml-3 bg-red-500/20 text-red-300 border border-red-500/30 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full font-bold uppercase">(Negative Due)</span>}
               </h2>
               {isNegative ? (
                 <p className="text-xs text-red-300 font-medium">
@@ -192,12 +192,12 @@ export function WalletDashboard() {
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full md:w-auto">
               {isNegative ? (
                 <Button 
                   onClick={handlePayDues} 
                   disabled={duesOrderMutation.isPending || verifyDuesMutation.isPending}
-                  className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg border-0 text-xs uppercase tracking-wider"
+                  className="w-full md:w-auto bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg border-0 text-xs uppercase tracking-wider"
                 >
                   {(duesOrderMutation.isPending || verifyDuesMutation.isPending) ? (
                     <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Processing...</span>
@@ -206,7 +206,7 @@ export function WalletDashboard() {
               ) : (
                 <Button 
                   onClick={() => setShowWithdrawModal(true)}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold px-6 py-3.5 rounded-xl shadow-lg border-0 text-xs uppercase tracking-wider flex items-center gap-2"
+                  className="w-full md:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold px-6 py-3.5 rounded-xl shadow-lg border-0 text-xs uppercase tracking-wider flex items-center justify-center gap-2"
                 >
                   <ArrowUpCircle className="w-4 h-4" /> Withdraw Funds
                 </Button>

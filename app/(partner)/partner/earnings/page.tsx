@@ -22,19 +22,19 @@ export default function EarningsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-10">
+    <div className="space-y-6 max-w-4xl mx-auto w-full min-w-0 pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-primary-navy">Earnings Report</h2>
           <p className="text-neutral-muted text-sm mt-1">View your recent earnings from completed jobs.</p>
         </div>
         
-        <div className="flex bg-neutral-white border border-neutral-muted/20 rounded-lg p-1 shadow-sm">
+        <div className="flex bg-neutral-white border border-neutral-muted/20 rounded-lg p-1 shadow-sm w-full sm:w-auto justify-between sm:justify-start">
           {(["today", "week", "month"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors ${
+              className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md capitalize transition-colors flex-1 sm:flex-initial text-center ${
                 period === p 
                   ? "bg-primary-navy text-neutral-white shadow" 
                   : "text-neutral-muted hover:text-primary-navy hover:bg-neutral-bg"
@@ -46,23 +46,23 @@ export default function EarningsPage() {
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-primary-navy to-primary-navy-light rounded-2xl p-6 text-neutral-white shadow-lg flex items-center justify-between">
+      <div className="bg-gradient-to-r from-primary-navy to-primary-navy-light rounded-2xl p-4 sm:p-6 text-neutral-white shadow-lg flex items-center justify-between">
         <div>
           <p className="text-neutral-white/70 font-medium mb-1 flex items-center">
             <Filter className="w-4 h-4 mr-2" /> 
             Total for selected period
           </p>
-          <h3 className="text-4xl font-bold flex items-center">
-            <IndianRupee className="w-8 h-8 mr-1" />
+          <h3 className="text-3xl sm:text-4xl font-bold flex items-center">
+            <IndianRupee className="w-7 h-7 sm:w-8 sm:h-8 mr-1" />
             {isLoadingEarnings ? "..." : summary.totalEarnings.toLocaleString('en-IN')}
           </h3>
         </div>
-        <div className="bg-neutral-white/10 p-4 rounded-full">
-          <IndianRupee className="w-10 h-10 text-neutral-white" />
+        <div className="bg-neutral-white/10 p-3 sm:p-4 rounded-full">
+          <IndianRupee className="w-8 h-8 sm:w-10 sm:h-10 text-neutral-white" />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white p-4 rounded-2xl border shadow-sm">
           <p className="text-sm text-neutral-muted">Online Earnings</p>
           <h4 className="text-xl font-bold text-success-dark">₹{summary.onlineEarnings.toLocaleString('en-IN')}</h4>

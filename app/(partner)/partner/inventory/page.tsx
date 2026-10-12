@@ -71,7 +71,7 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 w-full min-w-0 pb-12">
       <div>
         <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Spare Parts Inventory</h2>
         <p className="text-gray-500 mt-2">Manage your stock, track quantities, and update prices.</p>
@@ -91,7 +91,7 @@ export default function InventoryPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Input label="Item Name" placeholder="e.g. Engine Oil 5W-30" value={itemName} onChange={e => setItemName(e.target.value)} required />
                 <Input label="Part Number (SKU)" placeholder="e.g. OIL-5W30" value={partNumber} onChange={e => setPartNumber(e.target.value)} required />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="Quantity" type="number" min="0" value={quantity} onChange={e => setQuantity(e.target.value)} required />
                   <Input label="Price (₹)" type="number" min="0" value={price} onChange={e => setPrice(e.target.value)} required />
                 </div>

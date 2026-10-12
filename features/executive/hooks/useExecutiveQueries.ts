@@ -27,7 +27,11 @@ import {
   createExecutiveAd,
   updateExecutiveAd,
   deleteExecutiveAd,
-  getActiveWebsiteAds
+  getActiveWebsiteAds,
+  getExecutiveCancellations,
+  logExecutiveCancellationCall,
+  retainExecutiveCancellation,
+  forwardExecutiveCancellationToAccounts
 } from "@/lib/services";
 import { Lead, Escalation, FollowUp } from "@/lib/types";
 
@@ -469,6 +473,77 @@ export const useActiveWebsiteAds = (placement?: string) => {
       const res = await getActiveWebsiteAds(placement);
       const payload = res?.data || res;
       return Array.isArray(payload) ? payload : (Array.isArray(payload?.docs) ? payload.docs : []);
+    },
+  });
+};
+
+export const useExecutiveCancellations = (params?: { page?: number; limit?: number; status?: string }) => {
+  return useQuery({
+    queryKey: ["executive", "cancellations", params],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const res = await getExecutiveCancellations(params);
+      const anyRes = res as any;
+      return {
+        cancellations: extractArray(res, "cancellations"),
+        total: anyRes?.total || anyRes?.data?.total || extractArray(res, "cancellations").length,
+        totalPages: anyRes?.totalPages || anyRes?.data?.totalPages || 1,
+      };
+    },
+  });
+};
+
+export const useLogCancellationCallMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, callOutcome, notes }: { id: string; callOutcome?: string; notes?: string }) =>
+      logExecutiveCancellationCall(id, { callOutcome, notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "cancellations"] });
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+    },
+  });
+};
+
+export const useRetainCancellationMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes, couponCode }: { id: string; notes: string; couponCode?: string }) =>
+      retainExecutiveCancellation(id, { notes, couponCode }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "cancellations"] });
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+    },
+  });
+};
+
+export const useForwardCancellationToAccountsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes, deductionAmount, deductionReason, authorizedRefundAmount }: {
+      id: string;
+      notes: string;
+      deductionAmount?: number;
+      deductionReason?: string;
+      authorizedRefundAmount?: number;
+    }) => forwardExecutiveCancellationToAccounts(id, { notes, deductionAmount, deductionReason, authorizedRefundAmount }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "cancellations"] });
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts", "refunds"] });
+    },
+  });
+};
+export const usePendingExtraWork = () => {
+  return useQuery({
+    queryKey: ["executive", "extra-work-pending"],
+    staleTime: 5000,
+    queryFn: async () => {
+      const { apiClient } = await import("@/lib/axios");
+      const res: any = await apiClient.get("/executive/extra-work/pending");
+      const list = res.data?.items || res.items || res.data || [];
+      return Array.isArray(list) ? list : [];
     },
   });
 };

@@ -42,26 +42,26 @@ export default function PartnerReviewsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-12">
+    <div className="max-w-7xl mx-auto w-full min-w-0 space-y-8 pb-12">
       {/* Header Section */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary-navy via-primary-navy/90 to-primary-orange/80 p-8 md:p-12 text-white shadow-xl">
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary-navy via-primary-navy/90 to-primary-orange/80 p-5 sm:p-8 md:p-12 text-white shadow-xl">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-primary-orange/20 rounded-full blur-3xl"></div>
         
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3">Customer Reviews</h1>
-            <p className="text-lg text-white/80 max-w-xl">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-2 sm:mb-3">Customer Reviews</h1>
+            <p className="text-sm sm:text-lg text-white/80 max-w-xl">
               See what your customers are saying about your service. Build trust and grow your business with 5-star experiences.
             </p>
           </div>
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-3xl text-center min-w-[200px]">
-            <p className="text-sm font-semibold text-white/70 uppercase tracking-widest mb-2">Overall Rating</p>
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 sm:p-6 rounded-3xl text-center w-full md:w-auto min-w-[180px]">
+            <p className="text-xs sm:text-sm font-semibold text-white/70 uppercase tracking-widest mb-2">Overall Rating</p>
             <div className="flex items-center justify-center space-x-2">
-              <span className="text-5xl font-extrabold">{avgRating}</span>
-              <Star className="w-8 h-8 text-yellow-400 fill-yellow-400" />
+              <span className="text-4xl sm:text-5xl font-extrabold">{avgRating}</span>
+              <Star className="w-7 h-7 sm:w-8 sm:h-8 text-yellow-400 fill-yellow-400" />
             </div>
-            <p className="text-sm text-white/80 mt-2">Based on {reviews.length} reviews</p>
+            <p className="text-xs sm:text-sm text-white/80 mt-2">Based on {reviews.length} reviews</p>
           </div>
         </div>
       </div>

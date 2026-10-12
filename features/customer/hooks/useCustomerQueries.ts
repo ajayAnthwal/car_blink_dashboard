@@ -108,6 +108,9 @@ export const useBookingDetails = (id: string | null) => {
     },
     enabled: !!id,
     retry: 1,
+    refetchOnMount: true,
+    staleTime: 0,
+    refetchInterval: 3000,
   });
 };
 
@@ -338,7 +341,8 @@ export const useCreateBooking = () => {
 export const useCancelBooking = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => cancelBooking(id, { reason }),
+    mutationFn: ({ id, reason, reasons, customerRemarks }: { id: string; reason?: string; reasons?: string[]; customerRemarks?: string }) =>
+      cancelBooking(id, { reason, reasons, customerRemarks }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customer", "bookings"] });
     },
@@ -384,6 +388,10 @@ export const useBookingQuotes = (bookingId: string | null) => {
       return Array.isArray(res) ? res : (res?.docs || res?.data?.bids || res?.bids || res?.data || []);
     },
     enabled: !!bookingId,
+    retry: 1,
+    refetchOnMount: true,
+    staleTime: 0,
+    refetchInterval: 3000,
   });
 };
 

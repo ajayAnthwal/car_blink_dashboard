@@ -106,7 +106,7 @@ export default function PartnerJobsPage() {
     setVerifyStatusResult({ type: "", text: "" });
     try {
       const res = await verifyCustomerCodeMutation.mutateAsync({ verificationCode: quickPinCode.trim() });
-      setVerifyStatusResult({ type: "success", text: res?.message || "✓ Customer Verified! Booking status updated to VERIFIED & IN_PROGRESS." });
+      setVerifyStatusResult({ type: "success", text: res?.message || "✓ Customer verified successfully!" });
       setQuickPinCode("");
       refetchJobs();
     } catch (err: any) {
@@ -302,9 +302,9 @@ export default function PartnerJobsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-16">
+    <div className="space-y-6 max-w-6xl mx-auto w-full min-w-0 pb-16">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-primary-navy via-slate-800 to-primary-navy p-6 rounded-2xl text-white shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-primary-navy via-slate-800 to-primary-navy p-4 sm:p-6 rounded-2xl text-white shadow-xl">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-primary-orange text-white text-[10px] font-black px-2.5 py-0.5 rounded uppercase tracking-wider">
@@ -321,12 +321,12 @@ export default function PartnerJobsPage() {
         </div>
 
         {/* Header Action Summary */}
-        <div className="flex items-center gap-3">
-          <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center min-w-[90px]">
+        <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto">
+          <div className="flex-1 md:flex-initial bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center min-w-[90px]">
             <span className="text-[10px] text-gray-300 uppercase font-bold block">In Progress</span>
             <span className="text-xl font-extrabold text-blue-400">{stats.inProgress}</span>
           </div>
-          <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center min-w-[90px]">
+          <div className="flex-1 md:flex-initial bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center min-w-[90px]">
             <span className="text-[10px] text-gray-300 uppercase font-bold block">Completed</span>
             <span className="text-xl font-extrabold text-emerald-400">{stats.completed}</span>
           </div>
@@ -350,19 +350,19 @@ export default function PartnerJobsPage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
             <input
               type="text"
               maxLength={4}
               placeholder="Enter 4-Digit PIN"
               value={quickPinCode}
               onChange={(e) => setQuickPinCode(e.target.value.replace(/\D/g, ''))}
-              className="px-3 py-2 text-sm font-mono tracking-widest font-bold border-2 border-orange-200 rounded-xl focus:outline-none focus:border-primary-orange text-center w-36 bg-white"
+              className="px-3 py-2 text-sm font-mono tracking-widest font-bold border-2 border-orange-200 rounded-xl focus:outline-none focus:border-primary-orange text-center w-full sm:w-36 bg-white"
             />
             <Button
               onClick={handleQuickVerifyCode}
               isLoading={verifyCustomerCodeMutation.isPending}
-              className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl shrink-0"
+              className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl shrink-0 w-full sm:w-auto"
             >
               Verify Customer
             </Button>
@@ -713,6 +713,66 @@ export default function PartnerJobsPage() {
                             >
                               Send Extension Request to Customer
                             </Button>
+
+                            {/* Requested Extra Parts Status List */}
+                            {Array.isArray(job.jobExtensions) && job.jobExtensions.length > 0 && (
+                              <div className="pt-3 border-t border-orange-100 space-y-2">
+                                <span className="text-[11px] font-bold text-gray-700 block">
+                                  Requested Extra Parts Status:
+                                </span>
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                  {job.jobExtensions.map((ext: any, extIdx: number) => {
+                                    const isApproved = ext.status === "APPROVED";
+                                    const isRejected = ext.status === "REJECTED" || ext.status === "EXECUTIVE_REJECTED";
+                                    const isPending = !isApproved && !isRejected;
+
+                                    return (
+                                      <div
+                                        key={extIdx}
+                                        className={`p-2.5 rounded-xl border text-xs flex flex-col gap-1 ${
+                                          isApproved
+                                            ? "bg-emerald-50/80 border-emerald-200 text-emerald-950"
+                                            : isRejected
+                                            ? "bg-red-50/80 border-red-200 text-red-950"
+                                            : "bg-amber-50/80 border-amber-200 text-amber-950"
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between font-bold">
+                                          <span>{ext.partName}</span>
+                                          <span className="font-mono">+₹{Number(ext.cost || 0).toLocaleString("en-IN")}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-[11px]">
+                                          <span className={`font-extrabold px-2 py-0.5 rounded-full text-[10px] ${
+                                            isApproved
+                                              ? "bg-emerald-200 text-emerald-900"
+                                              : isRejected
+                                              ? "bg-red-200 text-red-900"
+                                              : "bg-amber-200 text-amber-900"
+                                          }`}>
+                                            {isApproved ? "✓ AUTHORIZED TO PROCEED" : isRejected ? "✕ REJECTED — DO NOT PERFORM WORK" : "⏳ AWAITING CUSTOMER APPROVAL"}
+                                          </span>
+                                        </div>
+                                        {isApproved && (
+                                          <p className="text-[10px] text-emerald-700 font-medium">
+                                            ✓ Customer approved. Cost added to customer bill as Extra Part.
+                                          </p>
+                                        )}
+                                        {isRejected && (
+                                          <p className="text-[10px] text-red-700 font-medium">
+                                            ✕ Customer declined. No work should be performed and ₹0 added.
+                                          </p>
+                                        )}
+                                        {isPending && (
+                                          <p className="text-[10px] text-amber-700 font-medium">
+                                            Hold work for this part until customer approval is granted.
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1410,7 +1470,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
 
           {/* Line Items List */}
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase px-1">
+            <div className="hidden sm:flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase px-1">
               <span className="flex-1">Item / Service Description</span>
               <span className="w-16 text-center">Qty</span>
               <span className="w-36 text-left pl-2">Unit Price (₹)</span>
@@ -1424,14 +1484,14 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
               return (
                 <div
                   key={idx}
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                  className={`flex flex-col sm:flex-row sm:items-center gap-2.5 p-2.5 rounded-xl border transition-all ${
                     isBase
                       ? "bg-slate-50 border-slate-300 shadow-2xs"
                       : "bg-white border-gray-200 hover:border-gray-300"
                   }`}
                 >
                   {/* Description */}
-                  <div className="flex-1 relative flex items-center">
+                  <div className="flex-1 w-full relative flex items-center">
                     <input
                       type="text"
                       placeholder="Item Description (e.g. Brake Pads, Extra Oil)"
@@ -1452,67 +1512,73 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
                     )}
                   </div>
 
-                  {/* Quantity */}
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="Qty"
-                    value={item.quantity}
-                    readOnly={isBase}
-                    disabled={isBase}
-                    onChange={(e) => handleItemChange(idx, "quantity", Number(e.target.value) || 1)}
-                    className={`w-16 px-2 py-2 text-xs text-center border rounded-lg font-bold ${
-                      isBase
-                        ? "bg-slate-100 text-slate-800 border-slate-300 cursor-not-allowed select-none"
-                        : "bg-white border-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-orange"
-                    }`}
-                  />
+                  {/* Quantity + Unit Price + Total + Action */}
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                    {/* Quantity */}
+                    <div className="flex items-center gap-1">
+                      <span className="sm:hidden text-[10px] font-bold text-gray-500">Qty:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Qty"
+                        value={item.quantity}
+                        readOnly={isBase}
+                        disabled={isBase}
+                        onChange={(e) => handleItemChange(idx, "quantity", Number(e.target.value) || 1)}
+                        className={`w-16 px-2 py-2 text-xs text-center border rounded-lg font-bold ${
+                          isBase
+                            ? "bg-slate-100 text-slate-800 border-slate-300 cursor-not-allowed select-none"
+                            : "bg-white border-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-orange"
+                        }`}
+                      />
+                    </div>
 
-                  {/* Unit Price */}
-                  <div className="relative w-36">
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={!isBase && item.unitPrice === 0 ? "" : (item.unitPrice ?? "")}
-                      readOnly={isBase}
-                      disabled={isBase}
-                      onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
-                      className={`w-full pl-7 pr-3 py-2 text-xs border rounded-lg font-extrabold ${
-                        isBase
-                          ? "bg-slate-100 text-slate-900 border-slate-300 cursor-not-allowed select-none"
-                          : "bg-white border-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-orange text-gray-900"
-                      }`}
-                    />
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs select-none">₹</span>
-                    {isBase && (
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded font-extrabold flex items-center gap-0.5 select-none pointer-events-none">
-                        <Lock className="w-2.5 h-2.5 text-amber-700" /> Locked
-                      </span>
-                    )}
-                  </div>
+                    {/* Unit Price */}
+                    <div className="relative w-28 sm:w-36">
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={!isBase && item.unitPrice === 0 ? "" : (item.unitPrice ?? "")}
+                        readOnly={isBase}
+                        disabled={isBase}
+                        onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
+                        className={`w-full pl-6 sm:pl-7 pr-2 sm:pr-3 py-2 text-xs border rounded-lg font-extrabold ${
+                          isBase
+                            ? "bg-slate-100 text-slate-900 border-slate-300 cursor-not-allowed select-none"
+                            : "bg-white border-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-orange text-gray-900"
+                        }`}
+                      />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs select-none">₹</span>
+                      {isBase && (
+                        <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-[9px] sm:text-[10px] text-amber-800 bg-amber-100/90 px-1 py-0.5 rounded font-extrabold flex items-center gap-0.5 select-none pointer-events-none">
+                          <Lock className="w-2 h-2 text-amber-700" /> Locked
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Total Amount */}
-                  <span className="text-xs font-extrabold text-gray-900 w-24 text-right pr-2">
-                    ₹{((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)).toLocaleString("en-IN")}
-                  </span>
+                    {/* Total Amount */}
+                    <span className="text-xs font-extrabold text-gray-900 w-20 sm:w-24 text-right pr-1 sm:pr-2 shrink-0">
+                      ₹{((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)).toLocaleString("en-IN")}
+                    </span>
 
-                  {/* Action Column */}
-                  <div className="w-8 flex items-center justify-center">
-                    {isBase ? (
-                      <span title="Agreed base package cannot be removed">
-                        <Lock className="w-3.5 h-3.5 text-slate-400" />
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveExtraLine(idx)}
-                        className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg text-sm font-bold transition-colors"
-                        title="Remove extra line item"
-                      >
-                        ×
-                      </button>
-                    )}
+                    {/* Action Column */}
+                    <div className="w-7 sm:w-8 flex items-center justify-center shrink-0">
+                      {isBase ? (
+                        <span title="Agreed base package cannot be removed">
+                          <Lock className="w-3.5 h-3.5 text-slate-400" />
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExtraLine(idx)}
+                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg text-sm font-bold transition-colors"
+                          title="Remove extra line item"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

@@ -9,7 +9,8 @@ import {
   useEscalations, 
   useExecutiveLeads, 
   useWebsiteLeads,
-  usePartnerStatus
+  usePartnerStatus,
+  usePendingExtraWork
 } from "@/features/executive/hooks/useExecutiveQueries";
 import { useSocket } from "@/lib/SocketContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PhoneCall, AlertTriangle, Target, ArrowRight, Clock, User, Activity, CheckCircle2, ChevronRight, Sparkles, X, Building2, Briefcase } from "lucide-react";
+import { PhoneCall, AlertTriangle, Target, ArrowRight, Clock, User, Activity, CheckCircle2, ChevronRight, Sparkles, X, Building2, Briefcase, Wrench } from "lucide-react";
 import { 
   BarChart, 
   Bar, 
@@ -45,6 +46,7 @@ export default function ExecutiveDashboardPage() {
   const { data: leadsData, isLoading: loadingLeads } = useExecutiveLeads({ page: 1, limit: 100 });
   const { data: websiteLeadsData, isLoading: loadingWebsiteLeads } = useWebsiteLeads({ page: 1, limit: 100 });
   const { data: pendingPartnersData, isLoading: loadingPendingPartners } = usePartnerStatus(1, 100, "verificationStatus=PENDING");
+  const { data: pendingExtraWorkData } = usePendingExtraWork();
 
   // Real-time socket refresh + Live Lead, Partner Registration & Bid Alert Triggers
   useEffect(() => {
@@ -147,12 +149,35 @@ export default function ExecutiveDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ["executive", "follow-ups"] });
     };
 
+    const handleExtraWorkAlert = (payload?: any) => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "extra-work-pending"] });
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+      if (payload) {
+        setLiveLeadAlert({
+          id: payload?.extensionId || Date.now().toString(),
+          name: `Extra Part: ${payload?.partName || 'New Part'} (+₹${payload?.cost || 0})`,
+          phone: "",
+          source: "EXTRA PART REQUEST",
+          city: "",
+          partnerName: payload?.partnerName || "Partner Workshop",
+          message: payload?.message || `Workshop requested extra part "${payload?.partName || 'Part'}" costing ₹${payload?.cost || 0}. Review and authorize now.`,
+          timestamp: new Date(),
+          isLive: true,
+          isExtraWork: true,
+          bookingId: payload?.bookingId,
+          jobId: payload?.jobId,
+        });
+      }
+    };
+
     socket.on("new_lead", refreshLeads);
     socket.on("new_bid", handleLiveBid);
     socket.on("quote_received", handleLiveBid);
     socket.on("job_verified", handleJobVerifiedAlert);
     socket.on("new_partner_registered", handlePartnerReg);
     socket.on("notification:new", handleNewNotification);
+    socket.on("extra_work_requested", handleExtraWorkAlert);
+    socket.on("extra_work_responded", handleExtraWorkAlert);
     socket.on("booking_status_update", refreshLeads);
     socket.on("booking_confirmed", refreshLeads);
     socket.on("new_escalation", refreshEscalations);
@@ -166,6 +191,8 @@ export default function ExecutiveDashboardPage() {
       socket.off("job_verified", handleJobVerifiedAlert);
       socket.off("new_partner_registered", handlePartnerReg);
       socket.off("notification:new", handleNewNotification);
+      socket.off("extra_work_requested", handleExtraWorkAlert);
+      socket.off("extra_work_responded", handleExtraWorkAlert);
       socket.off("booking_status_update", refreshLeads);
       socket.off("booking_confirmed", refreshLeads);
       socket.off("new_escalation", refreshEscalations);
@@ -320,7 +347,7 @@ export default function ExecutiveDashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      <div className="space-y-6 max-w-7xl mx-auto w-full min-w-0 pb-10">
         <div className="flex justify-between items-center">
           <div className="space-y-2">
             <Skeleton className="h-8 w-64" />
@@ -341,14 +368,14 @@ export default function ExecutiveDashboardPage() {
   // Empty State (Zero leads ever)
   if (safeLeads.length === 0 && safeEscalations.length === 0) {
     return (
-      <div className="space-y-6 pb-10 max-w-7xl mx-auto">
+      <div className="space-y-6 pb-10 max-w-7xl mx-auto w-full min-w-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">Executive Dashboard</h1>
             <p className="text-gray-500 mt-1 font-body">Welcome, {user?.fullName || "Executive"}!</p>
           </div>
         </div>
-        <div className="mt-10 bg-white rounded-2xl shadow-subtle border border-gray-100 p-12 text-center flex flex-col items-center justify-center max-w-2xl mx-auto">
+        <div className="mt-10 bg-white rounded-2xl shadow-subtle border border-gray-100 p-8 sm:p-12 text-center flex flex-col items-center justify-center max-w-2xl mx-auto">
           <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
             <Activity className="w-10 h-10 text-gray-400" />
           </div>
@@ -360,7 +387,7 @@ export default function ExecutiveDashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-10">
+    <div className="max-w-7xl mx-auto w-full min-w-0 space-y-6 pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-heading">Operations Overview</h1>
@@ -378,7 +405,9 @@ export default function ExecutiveDashboardPage() {
       {/* ⚡ Live Incoming Lead / Verification / Partner Registration / Bid Alert Banner */}
       {latestNewLead && (
         <div className={`rounded-2xl p-5 shadow-xl text-white relative overflow-hidden animate-in slide-in-from-top-4 duration-500 border ${
-          latestNewLead.isPartnerRegistration
+          latestNewLead.isExtraWork
+            ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-slate-900 shadow-orange-700/20 border-orange-400/40'
+            : latestNewLead.isPartnerRegistration
             ? 'bg-gradient-to-r from-purple-700 via-indigo-700 to-slate-900 shadow-purple-700/20 border-purple-400/40'
             : latestNewLead.isVerification
             ? 'bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 shadow-blue-700/20 border-blue-400/40'
@@ -391,15 +420,15 @@ export default function ExecutiveDashboardPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
             <div className="flex items-start space-x-3.5">
               <div className="bg-white/20 backdrop-blur-md p-3 rounded-xl shrink-0 text-white mt-0.5 shadow-inner">
-                {latestNewLead.isPartnerRegistration ? <Building2 className="w-6 h-6 animate-bounce text-purple-200" /> : latestNewLead.isVerification ? <CheckCircle2 className="w-6 h-6 animate-pulse text-emerald-300" /> : <Sparkles className="w-6 h-6 animate-pulse" />}
+                {latestNewLead.isExtraWork ? <Wrench className="w-6 h-6 animate-pulse text-amber-200" /> : latestNewLead.isPartnerRegistration ? <Building2 className="w-6 h-6 animate-bounce text-purple-200" /> : latestNewLead.isVerification ? <CheckCircle2 className="w-6 h-6 animate-pulse text-emerald-300" /> : <Sparkles className="w-6 h-6 animate-pulse" />}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 bg-white ${
-                    latestNewLead.isPartnerRegistration ? 'text-purple-800 font-black' : (latestNewLead.isVerification ? 'text-blue-700 font-black' : (latestNewLead.isBid ? 'text-teal-700' : 'text-orange-600'))
+                    latestNewLead.isExtraWork ? 'text-orange-700 font-black' : (latestNewLead.isPartnerRegistration ? 'text-purple-800 font-black' : (latestNewLead.isVerification ? 'text-blue-700 font-black' : (latestNewLead.isBid ? 'text-teal-700' : 'text-orange-600')))
                   }`}>
-                    <span className={`w-2 h-2 rounded-full animate-ping ${latestNewLead.isPartnerRegistration ? 'bg-purple-600' : (latestNewLead.isVerification ? 'bg-emerald-500' : (latestNewLead.isBid ? 'bg-teal-600' : 'bg-orange-600'))}`}></span>
-                    {latestNewLead.isPartnerRegistration ? "🤝 NEW PARTNER REGISTERED (VERIFICATION PENDING)" : (latestNewLead.isVerification ? "✓ CUSTOMER VERIFICATION COMPLETED" : (latestNewLead.isBid ? "LIVE PARTNER BID PLACED" : (latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING")))}
+                    <span className={`w-2 h-2 rounded-full animate-ping ${latestNewLead.isExtraWork ? 'bg-orange-600' : (latestNewLead.isPartnerRegistration ? 'bg-purple-600' : (latestNewLead.isVerification ? 'bg-emerald-500' : (latestNewLead.isBid ? 'bg-teal-600' : 'bg-orange-600')))}`}></span>
+                    {latestNewLead.isExtraWork ? "🔧 EXTRA PART REQUEST PENDING REVIEW" : (latestNewLead.isPartnerRegistration ? "🤝 NEW PARTNER REGISTERED (VERIFICATION PENDING)" : (latestNewLead.isVerification ? "✓ CUSTOMER VERIFICATION COMPLETED" : (latestNewLead.isBid ? "LIVE PARTNER BID PLACED" : (latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING"))))}
                   </span>
                   <span className="text-xs text-white/80 font-medium">
                     {latestNewLead.timestamp ? new Date(latestNewLead.timestamp).toLocaleTimeString() : "Just now"}
@@ -410,7 +439,11 @@ export default function ExecutiveDashboardPage() {
                   {latestNewLead.name}
                 </h3>
 
-                {latestNewLead.isPartnerRegistration ? (
+                {latestNewLead.isExtraWork ? (
+                  <p className="text-xs md:text-sm text-white/90 font-medium mt-0.5">
+                    {latestNewLead.message}
+                  </p>
+                ) : latestNewLead.isPartnerRegistration ? (
                   <p className="text-xs md:text-sm text-white/90 font-medium mt-0.5">
                     {latestNewLead.message}
                   </p>
@@ -435,10 +468,10 @@ export default function ExecutiveDashboardPage() {
 
             <div className="flex items-center space-x-3 self-end md:self-center shrink-0 w-full md:w-auto">
               <Button asChild size="default" className={`font-bold shadow-lg transition-all w-full md:w-auto bg-white ${
-                latestNewLead.isPartnerRegistration ? 'text-purple-800 hover:bg-purple-50' : (latestNewLead.isVerification ? 'text-blue-700 hover:bg-blue-50' : (latestNewLead.isBid ? 'text-teal-700 hover:bg-teal-50' : 'text-orange-600 hover:bg-orange-50'))
+                latestNewLead.isExtraWork ? 'text-orange-700 hover:bg-orange-50' : (latestNewLead.isPartnerRegistration ? 'text-purple-800 hover:bg-purple-50' : (latestNewLead.isVerification ? 'text-blue-700 hover:bg-blue-50' : (latestNewLead.isBid ? 'text-teal-700 hover:bg-teal-50' : 'text-orange-600 hover:bg-orange-50')))
               }`}>
-                <Link href={latestNewLead.isPartnerRegistration ? `/executive/partner-status` : (latestNewLead.isVerification ? `/executive/leads` : (latestNewLead.isBid ? "/executive/leads" : (latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads")))}>
-                  {latestNewLead.isPartnerRegistration ? "Review & Verify Partner" : (latestNewLead.isVerification ? "View Booking & Monitor Status" : (latestNewLead.isBid ? "Review Bids & Assign Partner" : "View Lead & Convert"))} <ArrowRight className="w-4 h-4 ml-1.5" />
+                <Link href={latestNewLead.isExtraWork ? `/executive/extra-work` : (latestNewLead.isPartnerRegistration ? `/executive/partner-status` : (latestNewLead.isVerification ? `/executive/leads` : (latestNewLead.isBid ? "/executive/leads" : (latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads"))))}>
+                  {latestNewLead.isExtraWork ? "Review Extra Work" : (latestNewLead.isPartnerRegistration ? "Review & Verify Partner" : (latestNewLead.isVerification ? "View Booking & Monitor Status" : (latestNewLead.isBid ? "Review Bids & Assign Partner" : "View Lead & Convert")))} <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Link>
               </Button>
               {latestNewLead.isLive && (
@@ -452,6 +485,35 @@ export default function ExecutiveDashboardPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Extra Work Executive Review Callout */}
+      {pendingExtraWorkData && pendingExtraWorkData.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center">
+            <div className="bg-amber-100 p-2.5 rounded-xl mr-3.5 shrink-0 text-amber-700">
+              <Wrench className="w-5 h-5 text-primary-orange animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+                  Extra Part Requests Pending Executive Review ({pendingExtraWorkData.length})
+                </h3>
+                <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                  Action Required
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium mt-0.5">
+                Workshop partners have submitted extra part requests that require executive review before customer approval.
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm" className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs shrink-0 rounded-xl shadow-xs">
+            <Link href="/executive/extra-work">
+              Review Extra Work <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+            </Link>
+          </Button>
         </div>
       )}
 
@@ -554,12 +616,12 @@ export default function ExecutiveDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Leads Status Chart */}
-        <Card className="col-span-1 lg:col-span-7 shadow-subtle border-gray-100 flex flex-col">
+        <Card className="col-span-1 lg:col-span-7 shadow-subtle border-gray-100 flex flex-col min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>Platform Leads Status</CardTitle>
             <CardDescription>Current state of all incoming leads</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col justify-center min-h-[300px]">
+          <CardContent className="flex-1 flex flex-col justify-center min-h-[300px] min-w-0 overflow-hidden">
             {leadsBarChartData.length > 0 && leadsBarChartData.some(d => d.Leads > 0) ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={leadsBarChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }} layout="vertical">
@@ -587,12 +649,12 @@ export default function ExecutiveDashboardPage() {
         </Card>
 
         {/* Escalations Severity Chart */}
-        <Card className="col-span-1 lg:col-span-5 shadow-subtle border-gray-100 flex flex-col">
+        <Card className="col-span-1 lg:col-span-5 shadow-subtle border-gray-100 flex flex-col min-w-0 overflow-hidden">
           <CardHeader className="border-b border-gray-50 pb-4">
             <CardTitle>Open Escalations</CardTitle>
             <CardDescription>Breakdown by severity level</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col justify-center min-h-[300px] pt-4">
+          <CardContent className="flex-1 flex flex-col justify-center min-h-[300px] pt-4 min-w-0 overflow-hidden">
             {escalationPieChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>

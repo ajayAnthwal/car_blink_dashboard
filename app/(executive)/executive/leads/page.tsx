@@ -114,6 +114,7 @@ export default function ExecutiveLeadsPage() {
     defaultValues: { partnerIds: [], notes: "" }
   });
 
+
   // Fetch strictly evaluated eligible partners for selected lead (distance, quotes, availability, performance)
   const { data: eligibleData, isLoading: isFetchingPartners } = useEligiblePartnersForLead(
     selectedLead?._id,
@@ -124,12 +125,43 @@ export default function ExecutiveLeadsPage() {
     }
   );
 
-  const partners: any[] = useMemo(() => {
+  const rawPartners: any[] = useMemo(() => {
     if (Array.isArray(eligibleData)) return eligibleData;
     if (Array.isArray(eligibleData?.partners)) return eligibleData.partners;
     if (Array.isArray(eligibleData?.data)) return eligibleData.data;
     return [];
   }, [eligibleData]);
+
+  const partners: any[] = useMemo(() => {
+    let list = rawPartners;
+
+    if (selectedServiceFilter === "lead_service") {
+      // Only partners eligible for the lead's requested service
+      list = list.filter((p: any) => p.isEligible !== false || p.serviceOfferedMatched === true);
+    } else if (selectedServiceFilter !== "all" && selectedServiceFilter) {
+      const targetService = allServices.find((s: any) => String(s._id) === String(selectedServiceFilter));
+      const targetName = (targetService?.name || "").toLowerCase().trim();
+
+      list = list.filter((p: any) => {
+        if (p.servicesOffered && Array.isArray(p.servicesOffered)) {
+          return p.servicesOffered.some((s: any) => {
+            const sId = typeof s === "object" ? s._id : s;
+            const sName = typeof s === "object" ? s.name : "";
+            return String(sId) === String(selectedServiceFilter) || (sName && sName.toLowerCase().includes(targetName));
+          });
+        }
+        if (p.matchedServices && Array.isArray(p.matchedServices)) {
+          return p.matchedServices.some((ms: string) => ms.toLowerCase().includes(targetName));
+        }
+        if (p.ineligibilityReasons?.some((r: string) => r.toLowerCase().includes("does not offer the requested service"))) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    return list;
+  }, [rawPartners, selectedServiceFilter, allServices]);
 
   const openAssignModal = (lead: any) => {
     setSelectedLead(lead);
@@ -220,7 +252,7 @@ export default function ExecutiveLeadsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto relative pb-10">
+    <div className="space-y-6 max-w-7xl mx-auto w-full min-w-0 relative pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -235,7 +267,7 @@ export default function ExecutiveLeadsPage() {
         </div>
 
         {/* Lead Type Quick Switcher */}
-        <div className="flex items-center bg-slate-200/70 p-1 rounded-xl border border-slate-300/60 shadow-2xs">
+        <div className="flex flex-wrap items-center bg-slate-200/70 p-1 rounded-xl border border-slate-300/60 shadow-2xs w-full md:w-auto">
           <Link
             href="/executive/leads"
             className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-primary-navy shadow-sm flex items-center gap-1.5"
@@ -251,8 +283,8 @@ export default function ExecutiveLeadsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-        <div className="flex items-center bg-gray-200/80 p-1 rounded-xl w-full sm:w-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div className="flex items-center bg-gray-200/80 p-1 rounded-xl w-full sm:w-auto overflow-x-auto custom-scrollbar">
           <button
             onClick={() => { setStatusFilter("ALL"); setPage(1); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === "ALL" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
@@ -410,7 +442,7 @@ export default function ExecutiveLeadsPage() {
                             : lead.status === 'ACCEPTED'
                             ? 'bg-teal-100 text-teal-800 border-teal-300'
                             : lead.status === 'CUSTOMER_ACCEPTED'
-                            ? ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) || lead.hasPaidAdvance)
+                            ? ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) || (lead.hasPaidAdvance && lead.isAdvancePaid))
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                 : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse') 
                             : lead.assignment?.assignedPartnerIds?.length > 0 
@@ -426,7 +458,7 @@ export default function ExecutiveLeadsPage() {
                             : lead.status === 'ACCEPTED'
                             ? 'PARTNER ASSIGNED ✓'
                             : lead.status === 'CUSTOMER_ACCEPTED' 
-                            ? ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) || lead.hasPaidAdvance)
+                            ? ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) || (lead.hasPaidAdvance && lead.isAdvancePaid))
                                 ? 'CUSTOMER ACCEPTED & PAID ✓'
                                 : 'AWAITING ADVANCE PAYMENT ⏳') 
                             : lead.assignment?.assignedPartnerIds?.length > 0 
@@ -493,7 +525,7 @@ export default function ExecutiveLeadsPage() {
                         )}
 
                         {lead.status === 'CUSTOMER_ACCEPTED' && (
-                          ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))) || lead.hasPaidAdvance) ? (
+                          ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0))) || (lead.hasPaidAdvance && lead.isAdvancePaid)) ? (
                             <Button
                               size="sm"
                               className="w-full text-[11px] font-bold h-8 bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap shadow-sm"
@@ -708,7 +740,7 @@ export default function ExecutiveLeadsPage() {
 
               <form id="assignForm" onSubmit={assignForm.handleSubmit(handleAssignSubmit)} className="space-y-5">
                 {/* Filters */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <div>
                     <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">City Scope</label>
                     <select
@@ -734,7 +766,27 @@ export default function ExecutiveLeadsPage() {
                       <option value="30">Within 30 km</option>
                     </select>
                   </div>
-                  <div className="col-span-2 sm:col-span-1 flex flex-col justify-end">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">Service Scope</label>
+                    <select
+                      value={selectedServiceFilter}
+                      onChange={(e) => setSelectedServiceFilter(e.target.value)}
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 bg-white text-gray-800 outline-none focus:ring-1 focus:ring-primary-navy font-medium"
+                    >
+                      <option value="all">All Services (Show All)</option>
+                      <option value="lead_service">Match Lead ({selectedLead?.serviceId?.name || "Requested Service"})</option>
+                      {allServices && allServices.length > 0 && (
+                        <optgroup label="Filter by Service">
+                          {allServices.map((s: any) => (
+                            <option key={s._id} value={s._id}>
+                              {s.name} {s.category ? `(${s.category})` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+                  <div className="flex flex-col justify-end">
                     <span className="text-[11px] text-gray-500 font-medium">Eligible Workshops</span>
                     <span className="font-bold text-sm text-emerald-700">
                       {partners.filter((p: any) => p.isEligible !== false).length} of {partners.length} eligible

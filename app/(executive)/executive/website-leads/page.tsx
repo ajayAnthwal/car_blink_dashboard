@@ -240,25 +240,25 @@ export default function MarketingLeadsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in pb-12 p-4">
-      <div className="bg-gradient-to-r from-primary-orange to-red-500 rounded-3xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-elevated">
-        <div className="flex items-center gap-5 text-white">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center border border-white/30 shrink-0">
-            <Megaphone className="w-8 h-8 text-white" />
+    <div className="max-w-7xl mx-auto w-full min-w-0 space-y-6 animate-in fade-in pb-12">
+      <div className="bg-gradient-to-r from-primary-orange to-red-500 rounded-2xl sm:rounded-3xl p-4 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-elevated">
+        <div className="flex items-center gap-3.5 sm:gap-5 text-white">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-2xl flex items-center justify-center border border-white/30 shrink-0">
+            <Megaphone className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-3xl font-bold font-heading">Website Leads</h1>
-              <span className="bg-white/20 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full border border-white/30">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-bold font-heading">Website Leads</h1>
+              <span className="bg-white/20 text-white text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full border border-white/30">
                 Quotes & Callbacks
               </span>
             </div>
-            <p className="text-white/90 font-medium text-sm">View and convert quote requests and callbacks from the CarBlink website.</p>
+            <p className="text-white/90 font-medium text-xs sm:text-sm">View and convert quote requests and callbacks from the CarBlink website.</p>
           </div>
         </div>
 
         {/* Lead Type Quick Switcher */}
-        <div className="flex items-center bg-black/20 p-1 rounded-xl border border-white/20 backdrop-blur-md shrink-0">
+        <div className="flex flex-wrap items-center bg-black/20 p-1 rounded-xl border border-white/20 backdrop-blur-md w-full md:w-auto">
           <Link
             href="/executive/leads"
             className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white/80 hover:text-white flex items-center gap-1.5 transition-colors"

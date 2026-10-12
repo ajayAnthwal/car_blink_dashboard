@@ -104,13 +104,13 @@ export default function FollowUpsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto w-full min-w-0 pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-primary-navy">All Follow-ups</h2>
           <p className="text-neutral-muted text-sm mt-1">Log and track your customer and partner calls.</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} className="flex items-center">
+        <Button onClick={() => setShowCreateModal(true)} className="flex items-center w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" /> Log Call
         </Button>
       </div>
@@ -129,15 +129,15 @@ export default function FollowUpsPage() {
               {callMessage.text}
             </div>
           )}
-          <form onSubmit={handleQuickCall} className="flex space-x-3">
+          <form onSubmit={handleQuickCall} className="flex flex-col sm:flex-row gap-3">
             <Input 
               placeholder="Enter phone number (e.g. +91 9876543210)" 
               value={callNumber}
               onChange={(e) => setCallNumber(e.target.value)}
-              className="flex-1"
+              className="flex-1 w-full"
               required
             />
-            <Button type="submit" isLoading={isCalling} className="bg-success hover:bg-success-dark">
+            <Button type="submit" isLoading={isCalling} className="bg-success hover:bg-success-dark w-full sm:w-auto">
               Call Now
             </Button>
           </form>

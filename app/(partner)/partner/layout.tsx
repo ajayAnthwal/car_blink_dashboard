@@ -162,7 +162,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
     }
 
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col text-slate-100">
+      <div className="min-h-screen bg-slate-950 flex flex-col text-slate-100 w-full min-w-0 max-w-full overflow-x-hidden">
         {/* Onboarding Top Navigation Shell */}
         <header className="bg-slate-900/95 border-b border-slate-800 px-4 md:px-8 py-3.5 sticky top-0 z-40 backdrop-blur-md shadow-lg">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -273,7 +273,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
         </div>
 
         {/* KYC Content & Upload Pending Checklist */}
-        <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-4">
+        <main className="flex-1 max-w-7xl mx-auto w-full min-w-0 px-4 py-4 overflow-x-hidden">
           {children}
         </main>
       </div>
@@ -281,7 +281,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className="min-h-screen bg-neutral-bg flex">
+    <div className="min-h-screen bg-neutral-bg flex w-full min-w-0 max-w-full overflow-x-hidden">
       {/* Fixed Sidebar */}
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
@@ -289,10 +289,10 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
       />
       
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+      <div className={`flex-1 flex flex-col min-h-screen min-w-0 w-full max-w-full overflow-x-hidden transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         <Header />
         
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
+        <main className="flex-1 min-w-0 w-full max-w-full p-3 sm:p-4 md:p-6 overflow-x-hidden">
           {children}
         </main>
       </div>

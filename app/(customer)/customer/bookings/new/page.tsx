@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -39,78 +39,79 @@ export default function NewBookingPage() {
   const [formResetKey, setFormResetKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Optional background geolocation fetch - NEVER blocks booking creation
+  const [deviceCoords, setDeviceCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "geolocation" in navigator) {
+      // Try to silently read cached/granted location in the background
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (position?.coords?.latitude && position?.coords?.longitude) {
+            setDeviceCoords({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+          }
+        },
+        () => {
+          // If denied, dismissed, or blocked, fail completely silently with ZERO impact on user
+        },
+        { timeout: 3000, enableHighAccuracy: false, maximumAge: 600000 }
+      );
+    }
+  }, []);
+
   const handleCreateBooking = (data: BookingFormValues) => {
     if (isSubmitting || createBookingMutation.isPending) return;
     setIsSubmitting(true);
 
-    let executed = false;
-    const doCreateBooking = (lat?: number, lng?: number) => {
-      if (executed) return;
-      executed = true;
-
-      let combinedDate = new Date(data.preferredDate);
-      if (data.preferredTime) {
-        const timeMatch = data.preferredTime.match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
-        if (timeMatch) {
-          let hours = parseInt(timeMatch[1], 10);
-          const minutes = parseInt(timeMatch[2], 10);
-          const modifier = timeMatch[3]?.toUpperCase();
-          if (modifier === "PM" && hours < 12) hours += 12;
-          if (modifier === "AM" && hours === 12) hours = 0;
-          combinedDate.setHours(hours, minutes, 0, 0);
-        }
+    let combinedDate = new Date(data.preferredDate);
+    if (data.preferredTime) {
+      const timeMatch = data.preferredTime.match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+      if (timeMatch) {
+        let hours = parseInt(timeMatch[1], 10);
+        const minutes = parseInt(timeMatch[2], 10);
+        const modifier = timeMatch[3]?.toUpperCase();
+        if (modifier === "PM" && hours < 12) hours += 12;
+        if (modifier === "AM" && hours === 12) hours = 0;
+        combinedDate.setHours(hours, minutes, 0, 0);
       }
+    }
 
-      const isoDate = !isNaN(combinedDate.getTime())
-        ? combinedDate.toISOString()
-        : (!isNaN(new Date(data.preferredDate).getTime()) ? new Date(data.preferredDate).toISOString() : new Date().toISOString());
+    const isoDate = !isNaN(combinedDate.getTime())
+      ? combinedDate.toISOString()
+      : (!isNaN(new Date(data.preferredDate).getTime()) ? new Date(data.preferredDate).toISOString() : new Date().toISOString());
 
-      createBookingMutation.mutate(
-        {
-          ...data,
-          preferredDate: isoDate,
-          ...(lat && lng ? { latitude: lat, longitude: lng } : {})
-        },
-        {
-          onSuccess: (res: any) => {
-            const newBookingId = res?.data?._id || res?._id || res?.data?.id;
-            toast.success("Booking request created successfully!");
-            if (newBookingId) {
-              router.push(`/customer/bookings/${newBookingId}`);
-            } else {
-              router.push("/customer/bookings");
-            }
-          },
-          onError: (err: any) => {
-            setIsSubmitting(false);
-            toast.error(err?.message || "Failed to create booking.");
-          }
-        }
-      );
+    const payload: any = {
+      ...data,
+      preferredDate: isoDate,
     };
 
-    // Fast 1.5s fallback so booking NEVER hangs indefinitely on browser geolocation prompt
-    const fallbackTimer = setTimeout(() => {
-      doCreateBooking();
-    }, 1500);
-
-    if (typeof window !== "undefined" && "geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          clearTimeout(fallbackTimer);
-          doCreateBooking(position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          clearTimeout(fallbackTimer);
-          console.warn("Geolocation failed", error);
-          doCreateBooking();
-        },
-        { timeout: 1500, enableHighAccuracy: false }
-      );
-    } else {
-      clearTimeout(fallbackTimer);
-      doCreateBooking();
+    // Include coordinates if silently available, otherwise booking proceeds cleanly without them
+    if (deviceCoords?.latitude && deviceCoords?.longitude) {
+      payload.latitude = deviceCoords.latitude;
+      payload.longitude = deviceCoords.longitude;
     }
+
+    createBookingMutation.mutate(
+      payload,
+      {
+        onSuccess: (res: any) => {
+          const newBookingId = res?.data?._id || res?._id || res?.data?.id;
+          toast.success("Booking request created successfully!");
+          if (newBookingId) {
+            router.push(`/customer/bookings/${newBookingId}`);
+          } else {
+            router.push("/customer/bookings");
+          }
+        },
+        onError: (err: any) => {
+          setIsSubmitting(false);
+          toast.error(err?.message || "Failed to create booking.");
+        }
+      }
+    );
   };
 
   return (

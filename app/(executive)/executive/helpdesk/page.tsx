@@ -13,15 +13,15 @@ export default function AdminHelpdeskPage() {
   const tickets = (ticketsData || []) as unknown[];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in pb-12 p-4">
-      <div className="bg-gradient-to-r from-primary-navy to-indigo-900 rounded-3xl p-6 flex items-center justify-between shadow-elevated">
-        <div className="flex items-center gap-5 text-white">
-          <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20">
-            <LifeBuoy className="w-8 h-8 text-white" />
+    <div className="w-full min-w-0 max-w-7xl mx-auto space-y-6 animate-in fade-in pb-12">
+      <div className="bg-gradient-to-r from-primary-navy to-indigo-900 rounded-3xl p-4 sm:p-6 flex items-center justify-between shadow-elevated">
+        <div className="flex items-center gap-3 sm:gap-5 text-white">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20">
+            <LifeBuoy className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold font-heading">Helpdesk & Support</h1>
-            <p className="text-white/80 mt-1 font-medium">Manage and resolve customer support tickets.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold font-heading">Helpdesk & Support</h1>
+            <p className="text-white/80 text-xs sm:text-sm mt-1 font-medium">Manage and resolve customer support tickets.</p>
           </div>
         </div>
       </div>
@@ -53,7 +53,7 @@ export default function AdminHelpdeskPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
+              <table className="w-full min-w-[640px] text-sm text-left">
                 <thead className="bg-gray-50/50 text-gray-500 text-xs uppercase border-b border-gray-100">
                   <tr>
                     <th className="px-6 py-4 font-bold tracking-wider">Ticket Info</th>

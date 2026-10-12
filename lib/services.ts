@@ -246,7 +246,7 @@ export const getBookingById = async (id: string) => {
   return response.data;
 };
 
-export const cancelBooking = async (id: string, data: { reason: string }) => {
+export const cancelBooking = async (id: string, data: { reason?: string; reasons?: string[]; customerRemarks?: string }) => {
   const response = await apiClient.patch(`/customer/bookings/${id}/cancel`, data);
   return response.data;
 };
@@ -1460,3 +1460,26 @@ export const rejectAccountsWithdrawal = async (id: string, data: { pin: string; 
   const response = await apiClient.patch(`/accounts/withdrawals/${id}/reject`, data);
   return response.data;
 };
+
+// EXECUTIVE CANCELLATION & RETENTION APIs
+export const getExecutiveCancellations = async (params: { page?: number; limit?: number; status?: string } = {}) => {
+  const query = new URLSearchParams(params as any).toString();
+  const response = await apiClient.get(`/executive/cancellations?${query}`);
+  return response.data;
+};
+
+export const logExecutiveCancellationCall = async (id: string, data: { callOutcome?: string; notes?: string }) => {
+  const response = await apiClient.post(`/executive/cancellations/${id}/call-log`, data);
+  return response.data;
+};
+
+export const retainExecutiveCancellation = async (id: string, data: { notes: string; couponCode?: string }) => {
+  const response = await apiClient.post(`/executive/cancellations/${id}/retain`, data);
+  return response.data;
+};
+
+export const forwardExecutiveCancellationToAccounts = async (id: string, data: { notes: string; deductionAmount?: number; deductionReason?: string; authorizedRefundAmount?: number }) => {
+  const response = await apiClient.post(`/executive/cancellations/${id}/forward-accounts`, data);
+  return response.data;
+};
+

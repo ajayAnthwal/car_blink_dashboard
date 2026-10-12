@@ -139,16 +139,16 @@ export default function ExecutiveAdsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-16 p-4">
+    <div className="w-full min-w-0 max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-16">
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-primary-navy via-indigo-900 to-gray-900 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl border border-white/10 text-white">
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
-            <ImageIcon className="w-8 h-8 text-primary-orange" />
+      <div className="bg-gradient-to-r from-primary-navy via-indigo-900 to-gray-900 rounded-3xl p-5 sm:p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl border border-white/10 text-white">
+        <div className="flex items-center gap-4 sm:gap-5">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
+            <ImageIcon className="w-6 h-6 sm:w-8 sm:h-8 text-primary-orange" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold font-heading">Website Banner Ads</h1>
-            <p className="text-white/80 mt-1 font-medium text-sm">
+            <h1 className="text-2xl sm:text-3xl font-bold font-heading">Website Banner Ads</h1>
+            <p className="text-white/80 mt-1 font-medium text-xs sm:text-sm">
               Manage promotional image banners displayed live on the customer website.
             </p>
           </div>
@@ -156,7 +156,7 @@ export default function ExecutiveAdsPage() {
 
         <button
           onClick={handleOpenAddModal}
-          className="bg-primary-orange hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg hover:shadow-orange-500/30 shrink-0"
+          className="w-full md:w-auto justify-center bg-primary-orange hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg hover:shadow-orange-500/30 shrink-0"
         >
           <Plus className="w-5 h-5" /> Add New Banner Ad
         </button>
@@ -428,7 +428,7 @@ export default function ExecutiveAdsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Placement
@@ -470,18 +470,18 @@ export default function ExecutiveAdsPage() {
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-100 transition-colors"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-100 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-6 py-2.5 rounded-xl bg-primary-navy hover:bg-blue-900 text-white text-sm font-bold transition-all shadow-md disabled:opacity-50"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary-navy hover:bg-blue-900 text-white text-sm font-bold transition-all shadow-md disabled:opacity-50"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? "Saving..."

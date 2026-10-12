@@ -7,8 +7,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/axios";
+import { useSocket } from "@/lib/SocketContext";
 
 export default function ExecutiveExtraWorkPage() {
+  const { socket } = useSocket();
   const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,7 +38,17 @@ export default function ExecutiveExtraWorkPage() {
 
   useEffect(() => {
     fetchPendingExtraWork();
-  }, []);
+    if (!socket) return;
+    const handleLiveRefresh = () => {
+      fetchPendingExtraWork();
+    };
+    socket.on("extra_work_requested", handleLiveRefresh);
+    socket.on("extra_work_responded", handleLiveRefresh);
+    return () => {
+      socket.off("extra_work_requested", handleLiveRefresh);
+      socket.off("extra_work_responded", handleLiveRefresh);
+    };
+  }, [socket]);
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +97,7 @@ export default function ExecutiveExtraWorkPage() {
   const totalPendingCost = items.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto w-full min-w-0 pb-12">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
@@ -297,7 +309,7 @@ export default function ExecutiveExtraWorkPage() {
             <form onSubmit={handleReviewSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Decision</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setReviewAction("APPROVE")}

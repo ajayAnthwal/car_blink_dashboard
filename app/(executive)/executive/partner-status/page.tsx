@@ -106,7 +106,7 @@ export default function PartnerStatusPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto pb-10">
+    <div className="space-y-6 max-w-[1400px] mx-auto w-full min-w-0 pb-10">
       <div>
         <h2 className="text-2xl md:text-3xl font-bold text-primary-navy flex items-center font-heading">
           <Briefcase className="w-7 h-7 mr-3 text-secondary-blue" /> 
@@ -117,7 +117,7 @@ export default function PartnerStatusPage() {
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-subtle border border-neutral-muted/20">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 w-full max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             placeholder="Search by business, owner name, phone, email..."

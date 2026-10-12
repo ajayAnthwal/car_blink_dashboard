@@ -63,7 +63,7 @@ export default function EscalationsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto relative">
+    <div className="w-full min-w-0 max-w-5xl mx-auto space-y-6 relative pb-12">
       <div>
         <h2 className="text-2xl font-bold text-primary-navy flex items-center">
           <ShieldAlert className="w-6 h-6 mr-2 text-danger" /> 
@@ -96,8 +96,8 @@ export default function EscalationsPage() {
           {escalations.map((esc) => (
             <Card key={esc._id} className={`transition-shadow ${esc.isSlaBreached ? 'border-danger/50 shadow-sm shadow-danger/20 bg-danger/5' : 'hover:shadow-md'}`}>
               <CardContent className="p-5">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-4">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${getSeverityStyles(esc.severity)}`}>
                       {esc.severity}
                     </span>
@@ -110,7 +110,7 @@ export default function EscalationsPage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-neutral-muted flex items-center">
+                  <span className="text-xs text-neutral-muted flex items-center shrink-0">
                     <Clock className="w-3 h-3 mr-1" />
                     {new Date(esc.createdAt).toLocaleDateString()}
                   </span>
@@ -154,7 +154,7 @@ export default function EscalationsPage() {
       {/* Resolve Modal */}
       {selectedEscalation && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl">
+          <Card className="w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="border-b border-neutral-muted/10 pb-4">
               <CardTitle>Resolve Escalation</CardTitle>
             </CardHeader>

@@ -38,7 +38,7 @@ export default function CapacityPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+    <div className="max-w-4xl mx-auto w-full min-w-0 space-y-6 pb-12">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-primary-navy flex items-center">
           <Calendar className="w-6 h-6 mr-2 text-primary-orange" />
@@ -103,8 +103,8 @@ export default function CapacityPage() {
         </Card>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSave} isLoading={updateCapacityMutation.isPending} className="bg-primary-orange hover:bg-orange-600 text-white min-w-[150px]">
+      <div className="flex justify-end w-full">
+        <Button onClick={handleSave} isLoading={updateCapacityMutation.isPending} className="bg-primary-orange hover:bg-orange-600 text-white w-full sm:w-auto min-w-[150px]">
           <Save className="w-4 h-4 mr-2" /> Save Changes
         </Button>
       </div>

@@ -112,9 +112,9 @@ export default function PartnerBidsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-16">
+    <div className="space-y-6 max-w-6xl mx-auto w-full min-w-0 pb-16">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-primary-navy via-slate-800 to-primary-navy p-6 rounded-2xl text-white shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-primary-navy via-slate-800 to-primary-navy p-4 sm:p-6 rounded-2xl text-white shadow-xl">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-primary-orange text-white text-[10px] font-black px-2.5 py-0.5 rounded uppercase tracking-wider">
@@ -131,12 +131,12 @@ export default function PartnerBidsPage() {
         </div>
 
         {/* Statistics Summary */}
-        <div className="flex items-center gap-3">
-          <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center min-w-[90px]">
+        <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto">
+          <div className="flex-1 md:flex-initial bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center min-w-[90px]">
             <span className="text-[10px] text-gray-300 uppercase font-bold block">Pending</span>
             <span className="text-xl font-extrabold text-amber-400">{stats.pending}</span>
           </div>
-          <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center min-w-[90px]">
+          <div className="flex-1 md:flex-initial bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center min-w-[90px]">
             <span className="text-[10px] text-gray-300 uppercase font-bold block">Accepted</span>
             <span className="text-xl font-extrabold text-emerald-400">{stats.accepted}</span>
           </div>
@@ -239,14 +239,14 @@ export default function PartnerBidsPage() {
 
             return (
               <Card key={bidId} className="hover:shadow-md transition-all duration-300 border border-gray-200/80 bg-white overflow-hidden">
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                     <div className="flex-1 space-y-4">
                       {/* Title & Badge */}
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-extrabold text-gray-900 font-heading">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-extrabold text-gray-900 font-heading">
                               {sData.name || "Service Proposal"}
                             </h3>
                             <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded font-bold">
@@ -262,7 +262,7 @@ export default function PartnerBidsPage() {
                       </div>
 
                       {/* Financial & Time Cards */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100">
                           <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Quoted Amount</p>
                           <p className="text-xl font-black text-primary-orange flex items-center">

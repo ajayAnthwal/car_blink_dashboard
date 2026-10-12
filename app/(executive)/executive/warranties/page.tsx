@@ -47,7 +47,7 @@ export default function ExecutiveWarrantiesPage() {
   const expiredCount = warranties.filter((w) => w.status === "EXPIRED").length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="w-full min-w-0 max-w-7xl mx-auto space-y-6 pb-12">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
@@ -113,7 +113,7 @@ export default function ExecutiveWarrantiesPage() {
             />
           </div>
 
-          <div className="flex items-center space-x-2 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <span className="text-xs font-semibold text-gray-500 uppercase">Status:</span>
             {["ALL", "ACTIVE", "EXPIRED"].map((st) => (
               <Button
@@ -148,7 +148,7 @@ export default function ExecutiveWarrantiesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full min-w-[700px] text-left text-sm">
                 <thead className="bg-gray-50 text-gray-500 uppercase text-[11px] font-semibold tracking-wider border-b border-gray-200">
                   <tr>
                     <th className="py-3.5 px-4">Service & Vehicle</th>

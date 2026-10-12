@@ -130,7 +130,7 @@ export default function POSPage() {
   };
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 w-full min-w-0 pb-12">
       <div>
         <h2 className="text-3xl font-bold text-gray-900 font-heading tracking-tight">Point of Sale (POS)</h2>
         <p className="text-gray-500 mt-2">Generate instant offline invoices for walk-in customers.</p>
@@ -147,15 +147,15 @@ export default function POSPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleGenerateInvoice} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="Customer Name" placeholder="Walk-in Customer" value={customerName} onChange={e => setCustomerName(e.target.value)} required />
                 <Input label="Phone Number" placeholder="e.g. 9876543210" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
               </div>
               
               <div className="border border-gray-200 p-4 rounded-xl space-y-4 bg-gray-50/50">
                 <label className="block text-sm font-bold text-gray-700">Add Items</label>
-                <div className="flex space-x-2">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex-1 w-full">
                     <Select 
                       label=""
                       value={selectedItem}
@@ -163,16 +163,17 @@ export default function POSPage() {
                       options={[{ value: "", label: "-- Select Item --" }, ...inventory.map((i: unknown) => ({ value: i._id, label: `${i.itemName} (₹${i.price})` }))]}
                     />
                   </div>
-                  <div className="w-24">
+                  <div className="w-full sm:w-24">
                     <Input label="" type="number" min="1" value={selectedQty} onChange={e => setSelectedQty(e.target.value)} />
                   </div>
-                  <Button type="button" onClick={handleAddItem} variant="outline" className="mt-1 h-10 border-gray-300">
-                    <Plus className="w-4 h-4" />
+                  <Button type="button" onClick={handleAddItem} variant="outline" className="mt-1 h-10 border-gray-300 w-full sm:w-auto">
+                    <Plus className="w-4 h-4 mr-1 sm:mr-0" />
+                    <span className="sm:hidden text-xs font-bold">Add Item</span>
                   </Button>
                 </div>
 
                 {items.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="mt-4 pt-4 border-t border-gray-200 overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-gray-500 font-medium border-b border-gray-100">

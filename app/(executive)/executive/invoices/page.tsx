@@ -156,7 +156,7 @@ export default function ExecutiveInvoicesPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="w-full min-w-0 max-w-7xl mx-auto space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -515,8 +515,8 @@ export default function ExecutiveInvoicesPage() {
                   </Button>
                 </div>
 
-                <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                  <table className="w-full text-xs text-left">
+                <div className="border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
+                  <table className="w-full min-w-[540px] text-xs text-left">
                     <thead className="bg-gray-100 font-bold text-gray-700 border-b border-gray-200">
                       <tr>
                         <th className="p-3 w-1/2">Item / Part Description</th>
@@ -628,21 +628,22 @@ export default function ExecutiveInvoicesPage() {
             </CardContent>
 
             {/* Modal Actions */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4">
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <Button
                 variant="ghost"
                 onClick={() => { setIsEditModalOpen(false); setSelectedInvoice(null); }}
                 disabled={submitting}
+                className="w-full sm:w-auto order-last sm:order-first"
               >
                 Cancel
               </Button>
 
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 <Button
                   onClick={handleSaveModifications}
                   disabled={submitting}
                   variant="outline"
-                  className="font-bold border-gray-300 text-gray-700"
+                  className="w-full sm:w-auto font-bold border-gray-300 text-gray-700"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Edit3 className="w-4 h-4 mr-1" />}
                   Save Modifications
@@ -651,7 +652,7 @@ export default function ExecutiveInvoicesPage() {
                 <Button
                   onClick={handleApproveAndForward}
                   disabled={submitting}
-                  className="bg-primary-orange hover:bg-orange-600 text-white font-bold shadow-md shadow-orange-500/20"
+                  className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold shadow-md shadow-orange-500/20"
                 >
                   {submitting ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-1" />

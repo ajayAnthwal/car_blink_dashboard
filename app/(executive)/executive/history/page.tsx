@@ -41,7 +41,7 @@ export default function ExecutiveHistoryPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto relative pb-10">
+    <div className="w-full min-w-0 max-w-7xl mx-auto space-y-6 relative pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-primary-navy flex items-center">
@@ -198,8 +198,8 @@ export default function ExecutiveHistoryPage() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
-            <span className="text-sm text-gray-500">
+          <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/50">
+            <span className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
               Showing page <span className="font-bold text-gray-900">{page}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
               <span className="text-gray-400 font-normal"> ({total} total leads)</span>
             </span>
