@@ -11,7 +11,6 @@ import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Store, MapPin, Briefcase, Loader2, ShieldCheck, Upload, File } from "lucide-react";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
-import { DeactivateAccount } from "@/features/users/components/DeactivateAccount";
 
 export default function PartnerProfilePage() {
   const [isNewProfile, setIsNewProfile] = useState(false);
@@ -378,7 +377,6 @@ export default function PartnerProfilePage() {
       )}
 
       <ChangePasswordForm />
-      <DeactivateAccount />
     </div>
   );
 }

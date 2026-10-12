@@ -332,38 +332,56 @@ export default function AboutCarBlinkPage() {
       {/* TAB 5: SUPPORT & CONTACT */}
       {activeTab === "support" && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="bg-white border-slate-200/80 shadow-sm rounded-2xl p-6 text-center">
-              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* Call Us */}
+            <Card className="bg-white border-slate-200/80 shadow-sm rounded-2xl p-6 text-center flex flex-col items-center justify-between hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-3">
                 <Phone className="w-6 h-6" />
               </div>
-              <h4 className="font-heading font-bold text-slate-900 text-base">Helpline Support</h4>
-              <p className="text-slate-500 text-xs mt-1">Speak directly with our service advisor</p>
-              <a href="tel:+919876543210" className="inline-block mt-3 text-sm font-bold text-primary-navy hover:underline">
-                +91 98765 43210
+              <h4 className="font-heading font-bold text-slate-900 text-base">Call Us</h4>
+              <a href="tel:+919068802453" className="inline-block mt-2 text-sm sm:text-base font-extrabold text-primary-navy hover:text-primary-orange hover:underline">
+                +91 9068802453
               </a>
+              <p className="text-slate-500 text-xs mt-2 font-medium">Mon–Sat, 9am – 8pm</p>
             </Card>
 
-            <Card className="bg-white border-slate-200/80 shadow-sm rounded-2xl p-6 text-center">
-              <div className="w-12 h-12 bg-orange-50 text-primary-orange rounded-2xl flex items-center justify-center mx-auto mb-3">
+            {/* Email Us */}
+            <Card className="bg-white border-slate-200/80 shadow-sm rounded-2xl p-6 text-center flex flex-col items-center justify-between hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 bg-orange-50 text-primary-orange rounded-2xl flex items-center justify-center mb-3">
                 <Mail className="w-6 h-6" />
               </div>
-              <h4 className="font-heading font-bold text-slate-900 text-base">Email Assistance</h4>
-              <p className="text-slate-500 text-xs mt-1">Send us your queries & support tickets</p>
-              <a href="mailto:support@carblink.in" className="inline-block mt-3 text-sm font-bold text-primary-orange hover:underline">
+              <h4 className="font-heading font-bold text-slate-900 text-base">Email Us</h4>
+              <a href="mailto:support@carblink.in" className="inline-block mt-2 text-sm sm:text-base font-extrabold text-primary-orange hover:underline break-all">
                 support@carblink.in
               </a>
+              <p className="text-slate-500 text-xs mt-2 font-medium">We reply within 24 hours</p>
             </Card>
 
-            <Card className="bg-white border-slate-200/80 shadow-sm rounded-2xl p-6 text-center">
-              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            {/* Visit Us */}
+            <Card className="bg-white border-slate-200/80 shadow-sm rounded-2xl p-6 text-center flex flex-col items-center justify-between hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-3">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <h4 className="font-heading font-bold text-slate-900 text-base">Visit Us</h4>
+              <p className="mt-2 text-xs font-bold text-slate-800 leading-relaxed max-w-[220px]">
+                3rd Floor, Mohabbewala, Dehradun, Uttarakhand – 248002.
+              </p>
+              <p className="text-slate-500 text-[11px] mt-2 font-medium">Headquarters</p>
+            </Card>
+
+            {/* Support Hours */}
+            <Card className="bg-white border-slate-200/80 shadow-sm rounded-2xl p-6 text-center flex flex-col items-center justify-between hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-3">
                 <Clock className="w-6 h-6" />
               </div>
-              <h4 className="font-heading font-bold text-slate-900 text-base">Operating Hours</h4>
-              <p className="text-slate-500 text-xs mt-1">Monday – Sunday</p>
-              <p className="mt-3 text-sm font-bold text-slate-800">
-                09:00 AM – 08:00 PM IST
-              </p>
+              <h4 className="font-heading font-bold text-slate-900 text-base">Support Hours</h4>
+              <div className="mt-2 text-xs font-bold text-slate-800 space-y-1">
+                <p>Mon – Sat: 9:00am – 8:00pm</p>
+                <p className="text-slate-600 font-medium">Sunday: 10:00am – 4:00pm</p>
+              </div>
+              <span className="inline-block text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full mt-2">
+                Active Support Team
+              </span>
             </Card>
           </div>
 
