@@ -955,23 +955,32 @@ export default function PartnerJobsPage() {
 
                             {/* Settlement Breakdown Card as per Specification */}
                             {(() => {
-                              const totalVal = job.invoice?.grandTotal || (job.advanceAmount || 0) + (job.finalAmount || 0) || job.estimatedCost || 0;
-                              const platformFee = Math.round(totalVal * 0.15);
-                              const netPayable = totalVal - platformFee;
+                              const totalVal = Number(
+                                job.invoice?.grandTotal ||
+                                bData.pricing?.customerGrossQuote ||
+                                bData.acceptedBidId?.quotedAmount ||
+                                job.bidId?.quotedAmount ||
+                                (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
+                                (job.advanceAmount || 0) + (job.finalAmount || 0) ||
+                                job.estimatedCost ||
+                                0
+                              );
+                              const platformFee = Number((totalVal * 0.15).toFixed(2));
+                              const netPayable = Number((totalVal - platformFee).toFixed(2));
 
                               return (
                                 <div className="bg-slate-800/90 border border-slate-700/80 p-4 rounded-2xl text-xs space-y-2.5 shadow-md">
                                   <div className="flex justify-between items-center text-gray-300 font-medium pb-2 border-b border-slate-700">
                                     <span>Total Service Value</span>
-                                    <span className="font-bold text-white">₹{totalVal.toLocaleString('en-IN')}</span>
+                                    <span className="font-bold text-white">₹{totalVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between items-center text-gray-400 font-medium">
                                     <span>CarBlink Platform Fee (15%)</span>
-                                    <span className="font-bold text-red-400">- ₹{platformFee.toLocaleString('en-IN')}</span>
+                                    <span className="font-bold text-red-400">- ₹{platformFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between items-center text-emerald-400 font-bold text-sm pt-2 border-t border-slate-700">
                                     <span>Partner Net Settlement</span>
-                                    <span className="text-base font-extrabold">₹{netPayable.toLocaleString('en-IN')}</span>
+                                    <span className="text-base font-extrabold">₹{netPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="mt-2 bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-xl text-[11px] text-blue-300 font-medium flex items-center justify-between">
                                     <span>Settlement Status:</span>
@@ -995,7 +1004,16 @@ export default function PartnerJobsPage() {
                               const isFinalPaid = finalPayment?.status === 'SUCCESS';
                               const isFinalPending = finalPayment?.status === 'PENDING' && finalPayment?.provider === 'CASH';
 
-                              const totalJobAmount = Number(job.finalAmount || job.bookingId?.finalAmount || 0);
+                              const totalJobAmount = Number(
+                                job.invoice?.grandTotal ||
+                                bData.pricing?.customerGrossQuote ||
+                                bData.acceptedBidId?.quotedAmount ||
+                                job.bidId?.quotedAmount ||
+                                (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
+                                bData.finalAmount ||
+                                job.finalAmount ||
+                                0
+                              );
                               const remainingDue = Math.max(0, totalJobAmount - advancePaid);
 
                               if (isFinalPaid || (remainingDue === 0 && advancePaid > 0)) {
@@ -1031,9 +1049,9 @@ export default function PartnerJobsPage() {
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-800 border border-slate-700">
                                   <div>
                                     <p className="text-xs text-gray-400 font-medium">Final Remaining Due:</p>
-                                    <p className="text-xl font-extrabold text-primary-orange">₹{cleanRemainingDue.toLocaleString('en-IN')}</p>
+                                    <p className="text-xl font-extrabold text-primary-orange">₹{cleanRemainingDue.toFixed(2)}</p>
                                     {advancePaid > 0 && (
-                                      <p className="text-[10px] text-emerald-400 font-medium">Advance Deducted: -₹{advancePaid.toLocaleString('en-IN')}</p>
+                                      <p className="text-[10px] text-emerald-400 font-medium">Advance Deducted: -₹{advancePaid.toFixed(2)}</p>
                                     )}
                                   </div>
                                   <Button
@@ -1041,7 +1059,7 @@ export default function PartnerJobsPage() {
                                     isLoading={markOfflinePaymentMutation.isPending}
                                     onClick={() => handleMarkOfflinePayment(job.bookingId?._id || job.bookingId, cleanRemainingDue, 'FINAL')}
                                   >
-                                    Mark Received in Cash (₹{cleanRemainingDue.toLocaleString('en-IN')})
+                                    Mark Received in Cash (₹{cleanRemainingDue.toFixed(2)})
                                   </Button>
                                 </div>
                               );
@@ -1198,9 +1216,12 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
   // 1. Calculate actual customer agreed / quoted amount
   const actualQuotedAmount = useMemo(() => {
     const val = Number(
-      job.finalAmount ||
-      job.bidId?.quotedAmount ||
+      job.invoice?.grandTotal ||
+      bData.pricing?.customerGrossQuote ||
       bData.acceptedBidId?.quotedAmount ||
+      job.bidId?.quotedAmount ||
+      (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
+      job.finalAmount ||
       sData.basePrice ||
       0
     );
@@ -1241,7 +1262,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
 
   const [discount, setDiscount] = useState<number | string>(existingInvoice?.discount ?? 0);
   const [gstMode, setGstMode] = useState<"0" | "5" | "12" | "18" | "custom">(
-    existingInvoice?.taxAmount ? "custom" : "0"
+    existingInvoice?.taxAmount !== undefined && existingInvoice?.taxAmount === 0 ? "0" : "18"
   );
   const [tax, setTax] = useState<number | string>(() => {
     if (existingInvoice?.taxAmount !== undefined) return existingInvoice.taxAmount;
