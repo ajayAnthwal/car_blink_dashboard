@@ -47,6 +47,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn(poppins.variable, inter.variable, "font-sans")}>
+      <head>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+      </head>
       <body>
         <QueryProvider>
           <AuthProvider>

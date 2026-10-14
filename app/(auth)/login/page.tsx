@@ -5,7 +5,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { loginUser, getCurrentUserProfile, sendSignupOtp, verifyOtp } from "@/lib/services";
+import { loginUser, getCurrentUserProfile, sendSignupOtp, sendLoginOtp, verifyOtp } from "@/lib/services";
 import { setApiAccessToken } from "@/lib/axios";
 import { ROLE_ROUTES, getRoleDestination } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -219,7 +219,7 @@ function LoginContent() {
     }
 
     try {
-      await sendSignupOtp({ phone: cleanPhone });
+      await sendLoginOtp({ phone: cleanPhone });
       setOtpStep(2);
       setResendTimer(30);
       setCanResend(false);
@@ -279,7 +279,7 @@ function LoginContent() {
     setIsLoading(true);
     try {
       const cleanPhone = otpPhone.replace(/[^0-9]/g, '');
-      await sendSignupOtp({ phone: cleanPhone });
+      await sendLoginOtp({ phone: cleanPhone });
       setResendTimer(30);
       setCanResend(false);
     } catch (err: any) {

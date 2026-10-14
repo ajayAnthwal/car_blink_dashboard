@@ -140,7 +140,16 @@ export default function LeadDetailsPage() {
     b.status === 'ACCEPTED'
   );
   const quotedAmount = lead.acceptedQuoteAmount || acceptedBid?.quotedAmount || (typeof lead.acceptedBidId === 'object' ? (lead.acceptedBidId as any)?.quotedAmount : 0) || 0;
-  const totalPayableAmount = lead.finalAmount || lead.job?.finalAmount || quotedAmount || 0;
+  
+  const allJobExtensions = lead.job?.jobExtensions || lead.jobExtensions || [];
+  const approvedExtensions = allJobExtensions.filter((e: any) => e.status === 'APPROVED');
+  const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + (Number(ext.cost) || 0), 0);
+
+  const totalPayableAmount = Math.max(
+    Number(lead.finalAmount || 0),
+    Number(lead.job?.finalAmount || 0),
+    Number(quotedAmount + approvedExtensionsCost) || 0
+  ) || quotedAmount || 0;
 
   const advancePayment = payments.find((p: any) => p.paymentType === 'ADVANCE' && p.status === 'SUCCESS') || 
                          payments.find((p: any) => p.paymentType === 'ADVANCE');
@@ -739,9 +748,15 @@ export default function LeadDetailsPage() {
                 <p className="text-2xl font-black text-gray-900 font-heading">
                   ₹{Number(totalPayableAmount || 0).toLocaleString('en-IN')}
                 </p>
-                <p className="text-[11px] text-gray-500 mt-1 font-medium">
-                  {lead.finalAmount ? 'Final invoice amount' : quotedAmount ? 'Accepted quote amount' : 'Estimated amount'}
-                </p>
+                {approvedExtensionsCost > 0 ? (
+                  <p className="text-[11px] text-amber-700 mt-1 font-bold">
+                    Base: ₹{Number(quotedAmount || 0).toLocaleString('en-IN')} + Extra: ₹{Number(approvedExtensionsCost).toLocaleString('en-IN')}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                    {lead.finalAmount ? 'Final invoice amount' : quotedAmount ? 'Accepted quote amount' : 'Estimated amount'}
+                  </p>
+                )}
               </div>
 
               <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
@@ -775,7 +790,9 @@ export default function LeadDetailsPage() {
                   ₹{(finalPayment ? Number(finalPayment.amount) : Number(remainingBalance || 0)).toLocaleString('en-IN')}
                 </p>
                 <div className="text-[11px] mt-1 font-semibold flex items-center gap-1 text-emerald-800">
-                  {finalPayment?.status === 'SUCCESS' ? (
+                  {remainingBalance > 0 && finalPayment?.status === 'SUCCESS' ? (
+                    <span className="text-amber-700 font-bold">⚠️ Extra Parts Due: ₹{Number(remainingBalance).toLocaleString('en-IN')}</span>
+                  ) : finalPayment?.status === 'SUCCESS' ? (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                       <span>{getProviderInfo(finalPayment, lead.paymentMode).label}</span>
@@ -928,6 +945,101 @@ export default function LeadDetailsPage() {
                 )}
               </div>
 
+            </div>
+
+            {/* Extra Part Charges & Scope Extensions */}
+            <div className="pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                  <Wrench className="w-4 h-4 text-primary-orange" /> Extra Part Charges & Scope Extensions ({allJobExtensions.length})
+                </h4>
+                {approvedExtensionsCost > 0 && (
+                  <Badge className="bg-amber-100 text-amber-900 border-amber-200 text-xs font-bold px-2.5 py-0.5">
+                    Approved Extra Parts: +₹{approvedExtensionsCost.toLocaleString('en-IN')}
+                  </Badge>
+                )}
+              </div>
+
+              {allJobExtensions.length === 0 ? (
+                <div className="p-4 bg-gray-50 rounded-xl text-xs text-gray-500 border border-gray-100 flex items-center justify-between">
+                  <span>No extra parts or job scope extensions requested for this booking.</span>
+                  <span className="font-mono text-gray-400 font-semibold">₹0.00</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase">
+                      <tr>
+                        <th className="py-2.5 px-3">Part / Item Name</th>
+                        <th className="py-2.5 px-3">Extra Part Amount</th>
+                        <th className="py-2.5 px-3">Specific Reason for Charge</th>
+                        <th className="py-2.5 px-3">Approval Status</th>
+                        <th className="py-2.5 px-3 text-right">Impact on Bill</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white font-medium text-gray-800">
+                      {allJobExtensions.map((ext: any, idx: number) => {
+                        const isApproved = ext.status === 'APPROVED';
+                        const isRejected = ext.status === 'REJECTED';
+
+                        return (
+                          <tr key={ext._id || idx} className="hover:bg-slate-50/50">
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-gray-900 text-sm">{ext.partName || 'Extra Part'}</span>
+                                <span className="bg-orange-100 text-primary-orange text-[9px] font-black uppercase px-1.5 py-0.5 rounded">
+                                  EXTRA PART
+                                </span>
+                              </div>
+                              {ext.description && ext.description !== ext.reason && (
+                                <p className="text-[11px] text-gray-500 mt-0.5">{ext.description}</p>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 font-black text-gray-900 font-heading text-sm">
+                              ₹{Number(ext.cost || 0).toLocaleString('en-IN')}
+                            </td>
+                            <td className="py-3 px-3 max-w-sm">
+                              <div className="text-gray-700 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs">
+                                <span className="font-bold text-gray-900 block mb-0.5">Specific Reason:</span>
+                                <span>{ext.reason || ext.description || "Partner requested replacement during workshop vehicle inspection."}</span>
+                                {ext.executiveNote && (
+                                  <p className="text-[11px] text-blue-700 mt-1 font-semibold border-t border-slate-200/60 pt-1">
+                                    Executive Note: {ext.executiveNote}
+                                  </p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                                isApproved ? 'bg-emerald-100 text-emerald-800' :
+                                isRejected ? 'bg-red-100 text-red-800' :
+                                'bg-amber-100 text-amber-800 animate-pulse'
+                              }`}>
+                                {isApproved ? '✓ Customer Approved' : isRejected ? '✕ Rejected' : '⏳ Pending Approval'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              {isApproved ? (
+                                <span className="font-mono font-bold text-emerald-700">
+                                  +₹{Number(ext.cost || 0).toLocaleString('en-IN')} (Added to Total)
+                                </span>
+                              ) : isRejected ? (
+                                <span className="font-mono text-gray-400 line-through">
+                                  ₹{Number(ext.cost || 0).toLocaleString('en-IN')} (Excluded)
+                                </span>
+                              ) : (
+                                <span className="font-mono text-amber-700 italic">
+                                  Pending (+₹{Number(ext.cost || 0).toLocaleString('en-IN')})
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* Complete Transaction History Table */}
