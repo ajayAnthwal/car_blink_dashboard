@@ -230,7 +230,7 @@ export default function CustomerBookingDetailsPage() {
     setMessage({ type: "", text: "" });
     try {
       await selectQuoteMutation.mutateAsync({ bookingId: id, bidId });
-      const finalPayAmt = Math.round(Number(payAmount || quoteAmount || baseAmount));
+      const finalPayAmt = Math.round(Number(payAmount || quoteAmount || (booking?.pricing?.customerGrossQuote || booking?.serviceId?.basePrice || 0)));
       toast.success("Quote accepted successfully!");
       refetchBooking();
     } catch (err: any) {
@@ -535,6 +535,7 @@ export default function CustomerBookingDetailsPage() {
 
   // Option A: Base package is the agreed customer gross quote (All-Inclusive 18% GST)
   const basePackageQuote = booking.pricing?.customerGrossQuote || booking.acceptedQuoteAmount || acceptedQuoteAmount || (booking.serviceId?.basePrice || 0);
+  const baseAmount = basePackageQuote;
   const invoiceGrandTotal = booking.invoice?.grandTotal || booking.jobDetails?.invoice?.grandTotal;
   const calculatedTotalAmount = invoiceGrandTotal 
     ? Number(invoiceGrandTotal)
@@ -1550,7 +1551,7 @@ export default function CustomerBookingDetailsPage() {
               <div className="space-y-2.5">
                 <div className="flex justify-between text-gray-600">
                   <span>Base Service Package (Incl. 18% GST)</span>
-                  <span className="font-mono font-bold text-gray-900">₹{baseAmount.toLocaleString("en-IN")}</span>
+                  <span className="font-mono font-bold text-gray-900">₹{(baseAmount || 0).toLocaleString("en-IN")}</span>
                 </div>
 
                 {approvedExtensions.map((ext: any, idx: number) => (
