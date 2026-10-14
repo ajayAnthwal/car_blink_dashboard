@@ -534,8 +534,11 @@ export default function CustomerBookingDetailsPage() {
   const approvedExtensionsCost = approvedExtensions.reduce((sum: number, ext: any) => sum + (Number(ext.cost) || 0), 0);
 
   // Option A: Base package is the agreed customer gross quote (All-Inclusive 18% GST)
-  const baseAmount = booking.pricing?.customerGrossQuote || booking.acceptedQuoteAmount || acceptedQuoteAmount || booking.jobDetails?.finalAmount || booking.finalAmount || (booking.serviceId?.basePrice || 0);
-  const calculatedTotalAmount = baseAmount + approvedExtensionsCost;
+  const basePackageQuote = booking.pricing?.customerGrossQuote || booking.acceptedQuoteAmount || acceptedQuoteAmount || (booking.serviceId?.basePrice || 0);
+  const invoiceGrandTotal = booking.invoice?.grandTotal || booking.jobDetails?.invoice?.grandTotal;
+  const calculatedTotalAmount = invoiceGrandTotal 
+    ? Number(invoiceGrandTotal)
+    : (booking.jobDetails?.finalAmount || (basePackageQuote + approvedExtensionsCost));
   const couponDiscountAmount = booking.couponDiscountAmount || 0;
   const revisedTotalAmount = Math.max(0, calculatedTotalAmount - couponDiscountAmount);
   const remainingAmount = Math.max(0, revisedTotalAmount - totalPaidAmount);

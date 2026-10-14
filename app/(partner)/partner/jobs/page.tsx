@@ -996,27 +996,30 @@ export default function PartnerJobsPage() {
                                 ? job.payments
                                 : (Array.isArray(job.bookingId?.payments) ? job.bookingId.payments : []);
 
+                              const totalPaidSoFar = paymentsList
+                                .filter((p: any) => p?.status === 'SUCCESS')
+                                .reduce((sum: number, p: any) => sum + (Number(p?.amount) || 0), 0);
+
                               const advancePaid = paymentsList
                                 .filter((p: any) => p?.paymentType === 'ADVANCE' && p?.status === 'SUCCESS')
                                 .reduce((sum: number, p: any) => sum + (Number(p?.amount) || 0), 0);
 
                               const finalPayment = paymentsList.find((p: any) => (p?.paymentType === 'FINAL' || p?.paymentType === 'FULL'));
-                              const isFinalPaid = finalPayment?.status === 'SUCCESS';
                               const isFinalPending = finalPayment?.status === 'PENDING' && finalPayment?.provider === 'CASH';
 
                               const totalJobAmount = Number(
                                 job.invoice?.grandTotal ||
+                                (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
                                 bData.pricing?.customerGrossQuote ||
                                 bData.acceptedBidId?.quotedAmount ||
                                 job.bidId?.quotedAmount ||
-                                (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
                                 bData.finalAmount ||
                                 job.finalAmount ||
                                 0
                               );
-                              const remainingDue = Math.max(0, totalJobAmount - advancePaid);
+                              const remainingDue = Math.max(0, totalJobAmount - totalPaidSoFar);
 
-                              if (isFinalPaid || (remainingDue === 0 && advancePaid > 0)) {
+                              if (remainingDue <= 0.01 && totalPaidSoFar > 0) {
                                 return (
                                   <div className="flex items-center justify-between bg-emerald-500/20 p-3 rounded-xl border border-emerald-500/40 text-xs font-bold text-emerald-200">
                                     <span>Payment Status:</span>
