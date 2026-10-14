@@ -767,7 +767,7 @@ export default function CustomerBookingDetailsPage() {
               </span>
             </div>
             <span className="text-xs text-slate-300 font-semibold bg-white/10 px-3 py-1 rounded-full border border-white/10">
-              Stage {currentStageNum} of 5: {milestones[currentStageNum - 1].label}
+              Stage {currentStageNum} of 5: {milestones[currentStageNum - 1]?.label || "Service"}
             </span>
           </div>
 
@@ -1410,19 +1410,19 @@ export default function CustomerBookingDetailsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <span className="text-[10px] text-gray-400 font-bold uppercase block">Brand &amp; Model</span>
-                    <span className="font-black text-gray-900 mt-0.5 block">{booking.vehicleId.brand} {booking.vehicleId.model}</span>
+                    <span className="font-black text-gray-900 mt-0.5 block">{booking.vehicleId?.brand || ''} {booking.vehicleId?.model || ''}</span>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <span className="text-[10px] text-gray-400 font-bold uppercase block">Reg Number</span>
-                    <span className="font-mono font-bold text-primary-navy mt-0.5 block">{booking.vehicleId.registrationNumber || "N/A"}</span>
+                    <span className="font-mono font-bold text-primary-navy mt-0.5 block">{booking.vehicleId?.registrationNumber || "N/A"}</span>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <span className="text-[10px] text-gray-400 font-bold uppercase block">Fuel Type</span>
-                    <span className="font-bold text-gray-800 mt-0.5 block">{booking.vehicleId.fuelType || "Petrol"}</span>
+                    <span className="font-bold text-gray-800 mt-0.5 block">{booking.vehicleId?.fuelType || "Petrol"}</span>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <span className="text-[10px] text-gray-400 font-bold uppercase block">Transmission</span>
-                    <span className="font-bold text-gray-800 mt-0.5 block">{booking.vehicleId.transmission || "Manual"}</span>
+                    <span className="font-bold text-gray-800 mt-0.5 block">{booking.vehicleId?.transmission || "Manual"}</span>
                   </div>
                 </div>
               </CardContent>
@@ -1479,7 +1479,7 @@ export default function CustomerBookingDetailsPage() {
           </Card>
 
           {/* Inspection Photos (Before & After) */}
-          {(booking.jobDetails?.beforePhotos?.length > 0 || booking.jobDetails?.afterPhotos?.length > 0) && (
+          {Boolean((booking.jobDetails?.beforePhotos?.length || 0) > 0 || (booking.jobDetails?.afterPhotos?.length || 0) > 0) && (
             <Card className="border border-gray-200/90 rounded-3xl overflow-hidden bg-white shadow-2xs">
               <CardHeader className="bg-slate-50 border-b border-gray-100 py-3.5 px-6">
                 <CardTitle className="text-sm font-black text-gray-900 uppercase tracking-wide flex items-center gap-2">
