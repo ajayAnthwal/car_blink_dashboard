@@ -9,8 +9,9 @@ import {
 } from "@/features/accounts/hooks/useAccountsQueries";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Bell, Info, CalendarClock, Zap, Clock } from "lucide-react";
+import { ArrowLeft, Bell, Info, CalendarClock, Zap, Clock, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { getNotificationTargetLink } from "@/components/notifications/NotificationDetailsModal";
 
 export default function NotificationDetailsPage() {
   const params = useParams();
@@ -23,6 +24,7 @@ export default function NotificationDetailsPage() {
 
   const notifications = notificationsData || [];
   const notification = notifications.find((n: any) => n._id === notificationId);
+  const targetLink = notification ? getNotificationTargetLink(notification, "ACCOUNTS") : null;
 
   useEffect(() => {
     if (notification && !notification.isRead && !markedRead) {
@@ -111,10 +113,20 @@ export default function NotificationDetailsPage() {
         </CardContent>
       </Card>
       
-      <div className="flex justify-end">
-         <Button variant="outline" asChild className="border-neutral-muted/20 hover:bg-neutral-muted/10 text-neutral-dark">
-            <Link href="/accounts/notifications">View All Notifications</Link>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+         <Button variant="outline" asChild className="border-neutral-muted/20 hover:bg-neutral-muted/10 text-neutral-dark w-full sm:w-auto">
+            <Link href="/accounts/notifications">
+              <ArrowLeft className="w-4 h-4 mr-2" /> View All Notifications
+            </Link>
          </Button>
+
+         {targetLink && (
+           <Button asChild className="bg-primary-navy hover:bg-navy-900 text-white font-bold w-full sm:w-auto shadow-sm">
+             <Link href={targetLink.href} className="flex items-center gap-1.5">
+               {targetLink.label} <ExternalLink className="w-4 h-4 ml-1" />
+             </Link>
+           </Button>
+         )}
       </div>
     </div>
   );

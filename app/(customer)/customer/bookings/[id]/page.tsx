@@ -571,6 +571,7 @@ export default function CustomerBookingDetailsPage() {
   const isStage3 = (hasPaidAdvance || ['CONFIRMED', 'VERIFIED'].includes(booking.status)) && !isStage4 && !isStage5;
   const isStage2 = (hasAcceptedQuote || needsAdvance) && !isStage3 && !isStage4 && !isStage5;
   const isStage1 = !hasAcceptedQuote && !isStage2 && !isStage3 && !isStage4 && !isStage5;
+  const showBillingSummary = !isStage1 && revisedTotalAmount > 0;
 
   const currentStageNum = isStage5 ? 5 : isStage4 ? 4 : isStage3 ? 3 : isStage2 ? 2 : 1;
 
@@ -959,14 +960,14 @@ export default function CustomerBookingDetailsPage() {
 
             {/* Payment Action Buttons */}
             <div className="space-y-3">
-              <div className="max-w-md">
+              <div className="max-w-md space-y-2">
                 <Button 
                   className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-extrabold text-sm shadow-md flex items-center justify-center gap-2" 
                   onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
                   isLoading={isExtensionProcessing}
                 >
                   <IndianRupee className="w-4 h-4 text-primary-orange" />
-                  <span>Pay Online Advance (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})</span>
+                  <span>Pay 15% Advance (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})</span>
                 </Button>
               </div>
 
@@ -1393,11 +1394,11 @@ export default function CustomerBookingDetailsPage() {
       )}
 
       {/* ======================================================== */}
-      {/* 4. REFERENCE SECTION: Clean 2-Column Details Grid        */}
+      {/* 4. REFERENCE SECTION: Clean Details Grid                 */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+      <div className={`grid grid-cols-1 ${showBillingSummary ? 'lg:grid-cols-3' : 'md:grid-cols-2'} gap-6 pt-2`}>
         {/* Left Column: Vehicle Specs, Schedule & Photos */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={showBillingSummary ? 'lg:col-span-2 space-y-6' : 'contents'}>
           {/* Vehicle Specifications */}
           {booking.vehicleId && typeof booking.vehicleId === 'object' && (
             <Card className="border border-gray-200/90 rounded-3xl overflow-hidden bg-white shadow-2xs">
@@ -1480,7 +1481,7 @@ export default function CustomerBookingDetailsPage() {
 
           {/* Inspection Photos (Before & After) */}
           {Boolean((booking.jobDetails?.beforePhotos?.length || 0) > 0 || (booking.jobDetails?.afterPhotos?.length || 0) > 0) && (
-            <Card className="border border-gray-200/90 rounded-3xl overflow-hidden bg-white shadow-2xs">
+            <Card className={`border border-gray-200/90 rounded-3xl overflow-hidden bg-white shadow-2xs ${!showBillingSummary ? 'md:col-span-2' : ''}`}>
               <CardHeader className="bg-slate-50 border-b border-gray-100 py-3.5 px-6">
                 <CardTitle className="text-sm font-black text-gray-900 uppercase tracking-wide flex items-center gap-2">
                   <Camera className="w-4 h-4 text-emerald-600" /> Inspection Photos
@@ -1539,92 +1540,94 @@ export default function CustomerBookingDetailsPage() {
           )}
         </div>
 
-        {/* Right Column: Unified Billing Summary */}
-        <div className="space-y-6">
-          <Card className="border border-gray-200/90 rounded-3xl overflow-hidden bg-white shadow-2xs">
-            <CardHeader className="bg-slate-50 border-b border-gray-100 py-3.5 px-6">
-              <CardTitle className="text-sm font-black text-gray-900 uppercase tracking-wide flex items-center gap-2">
-                <IndianRupee className="w-4 h-4 text-primary-orange" /> Billing Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 sm:p-6 space-y-4 text-xs">
-              <div className="space-y-2.5">
-                <div className="flex justify-between text-gray-600">
-                  <span>Base Service Package (Incl. 18% GST)</span>
-                  <span className="font-mono font-bold text-gray-900">₹{(baseAmount || 0).toLocaleString("en-IN")}</span>
+        {/* Right Column: Unified Billing Summary (Only shown when a quote has been generated/accepted) */}
+        {showBillingSummary && (
+          <div className="space-y-6">
+            <Card className="border border-gray-200/90 rounded-3xl overflow-hidden bg-white shadow-2xs">
+              <CardHeader className="bg-slate-50 border-b border-gray-100 py-3.5 px-6">
+                <CardTitle className="text-sm font-black text-gray-900 uppercase tracking-wide flex items-center gap-2">
+                  <IndianRupee className="w-4 h-4 text-primary-orange" /> Billing Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 sm:p-6 space-y-4 text-xs">
+                <div className="space-y-2.5">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Base Service Package (Incl. 18% GST)</span>
+                    <span className="font-mono font-bold text-gray-900">₹{(baseAmount || 0).toLocaleString("en-IN")}</span>
+                  </div>
+
+                  {approvedExtensions.map((ext: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center text-gray-700 bg-amber-50/70 p-2 rounded-lg border border-amber-200/60">
+                      <span className="font-semibold flex items-center gap-1.5">
+                        <span className="bg-primary-orange text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-2xs">
+                          Extra Part
+                        </span>
+                        <span>{ext.partName}</span>
+                      </span>
+                      <span className="font-mono font-bold text-gray-900">+₹{Number(ext.cost || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                  ))}
+
+                  {couponDiscountAmount > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-bold">
+                      <span>Coupon Discount</span>
+                      <span className="font-mono">-₹{couponDiscountAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2.5 border-t border-gray-100 flex justify-between font-bold text-gray-900 text-sm">
+                    <span>Total Amount</span>
+                    <span className="font-mono font-black text-base">₹{revisedTotalAmount.toLocaleString("en-IN")}</span>
+                  </div>
+
+                  <div className="flex justify-between text-emerald-700 font-bold">
+                    <span>Paid so Far</span>
+                    <span className="font-mono">-₹{totalPaidAmount.toLocaleString("en-IN")}</span>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-gray-200 flex justify-between items-center">
+                    <span className="font-bold text-gray-700">Remaining Balance:</span>
+                    <span className="font-heading font-black text-xl text-primary-orange font-mono">
+                      ₹{remainingAmount.toLocaleString("en-IN")}
+                    </span>
+                  </div>
                 </div>
 
-                {approvedExtensions.map((ext: any, idx: number) => (
-                  <div key={idx} className="flex justify-between items-center text-gray-700 bg-amber-50/70 p-2 rounded-lg border border-amber-200/60">
-                    <span className="font-semibold flex items-center gap-1.5">
-                      <span className="bg-primary-orange text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-2xs">
-                        Extra Part
-                      </span>
-                      <span>{ext.partName}</span>
-                    </span>
-                    <span className="font-mono font-bold text-gray-900">+₹{Number(ext.cost || 0).toLocaleString("en-IN")}</span>
-                  </div>
-                ))}
-
-                {couponDiscountAmount > 0 && (
-                  <div className="flex justify-between text-emerald-700 font-bold">
-                    <span>Coupon Discount</span>
-                    <span className="font-mono">-₹{couponDiscountAmount.toLocaleString("en-IN")}</span>
+                {/* Promo / Coupon Apply (Only if not already applied and balance exists) */}
+                {!booking.appliedCoupon && remainingAmount > 0 && !isStage5 && (
+                  <div className="pt-3 border-t border-gray-100 space-y-2">
+                    <label className="text-[11px] font-bold text-gray-700 block">Have a Coupon Code?</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="Enter code"
+                        className="text-xs h-9 bg-gray-50 uppercase"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleApplyCoupon}
+                        isLoading={isApplyingCoupon}
+                        disabled={!couponCode.trim()}
+                        className="bg-primary-navy text-white text-xs px-3 h-9 font-bold"
+                      >
+                        Apply
+                      </Button>
+                    </div>
                   </div>
                 )}
 
-                <div className="pt-2.5 border-t border-gray-100 flex justify-between font-bold text-gray-900 text-sm">
-                  <span>Total Amount</span>
-                  <span className="font-mono font-black text-base">₹{revisedTotalAmount.toLocaleString("en-IN")}</span>
-                </div>
-
-                <div className="flex justify-between text-emerald-700 font-bold">
-                  <span>Paid so Far</span>
-                  <span className="font-mono">-₹{totalPaidAmount.toLocaleString("en-IN")}</span>
-                </div>
-
-                <div className="pt-2.5 border-t border-gray-200 flex justify-between items-center">
-                  <span className="font-bold text-gray-700">Remaining Balance:</span>
-                  <span className="font-heading font-black text-xl text-primary-orange font-mono">
-                    ₹{remainingAmount.toLocaleString("en-IN")}
+                {/* Payment Mode Preference Display */}
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                  <span>Selected Mode:</span>
+                  <span className="font-bold text-gray-800">
+                    {effectivePaymentMode === 'CASH' ? '💵 Cash to Partner' : '💳 Online Payment'}
                   </span>
                 </div>
-              </div>
-
-              {/* Promo / Coupon Apply (Only if not already applied and balance exists) */}
-              {!booking.appliedCoupon && remainingAmount > 0 && !isStage5 && (
-                <div className="pt-3 border-t border-gray-100 space-y-2">
-                  <label className="text-[11px] font-bold text-gray-700 block">Have a Coupon Code?</label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      placeholder="Enter code"
-                      className="text-xs h-9 bg-gray-50 uppercase"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleApplyCoupon}
-                      isLoading={isApplyingCoupon}
-                      disabled={!couponCode.trim()}
-                      className="bg-primary-navy text-white text-xs px-3 h-9 font-bold"
-                    >
-                      Apply
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Payment Mode Preference Display */}
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                <span>Selected Mode:</span>
-                <span className="font-bold text-gray-800">
-                  {effectivePaymentMode === 'CASH' ? '💵 Cash to Partner' : '💳 Online Payment'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* ======================================================== */}

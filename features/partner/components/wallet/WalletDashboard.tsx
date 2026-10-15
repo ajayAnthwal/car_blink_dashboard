@@ -3,13 +3,18 @@
 
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useWalletStatement, useCreateDuesOrderMutation, useVerifyDuesPaymentMutation, useRequestWithdrawalMutation } from "../../hooks/usePartnerQueries";
-import { Loader2, IndianRupee, ArrowDownRight, ArrowUpRight, Wallet, ArrowUpCircle, CheckCircle2, AlertCircle, Building2, ShieldCheck, X } from "lucide-react";
+import { useWalletStatement, usePartnerProfile, useCreateDuesOrderMutation, useVerifyDuesPaymentMutation, useRequestWithdrawalMutation } from "../../hooks/usePartnerQueries";
+import { Loader2, IndianRupee, ArrowDownRight, ArrowUpRight, Wallet, ArrowUpCircle, CheckCircle2, AlertCircle, Building2, ShieldCheck, X, Clock, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
+import { useSocket } from "@/lib/SocketContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function WalletDashboard() {
+  const { socket } = useSocket();
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -22,7 +27,25 @@ export function WalletDashboard() {
     };
   }, []);
 
+  // Real-time synchronization for wallet updates & payout status changes
+  useEffect(() => {
+    if (!socket) return;
+    const handleWalletRefresh = () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "profile"] });
+    };
+    socket.on("withdrawal_status_updated", handleWalletRefresh);
+    socket.on("wallet_updated", handleWalletRefresh);
+    socket.on("new_withdrawal_request", handleWalletRefresh);
+    return () => {
+      socket.off("withdrawal_status_updated", handleWalletRefresh);
+      socket.off("wallet_updated", handleWalletRefresh);
+      socket.off("new_withdrawal_request", handleWalletRefresh);
+    };
+  }, [socket, queryClient]);
+
   const { data, isLoading, error, refetch } = useWalletStatement();
+  const { data: profile } = usePartnerProfile();
   
   const duesOrderMutation = useCreateDuesOrderMutation();
   const verifyDuesMutation = useVerifyDuesPaymentMutation();
@@ -53,7 +76,33 @@ export function WalletDashboard() {
     );
   }
 
-  const { balance = 0, transactions = [] } = data;
+  const walletData = (data && data.balance !== undefined) ? data : ((data as any)?.data || data || {});
+  const { 
+    balance = 0, 
+    transactions = [], 
+    bankDetails: rawBankDetails = null, 
+    bankVerificationStatus: rawBankVerificationStatus = 'NOT_CONFIGURED', 
+    withdrawals = [] 
+  } = walletData;
+
+  const withdrawalsList = (Array.isArray(withdrawals) && withdrawals.length > 0)
+    ? withdrawals
+    : (Array.isArray(walletData?.withdrawals) && walletData.withdrawals.length > 0
+        ? walletData.withdrawals
+        : (Array.isArray(data) ? data : ((data as any)?.withdrawals || [])));
+
+  const bankDetails = (rawBankDetails && (rawBankDetails.accountNumber || rawBankDetails.acc)) 
+    ? rawBankDetails 
+    : (profile?.bankDetails?.accountNumber ? profile.bankDetails : (profile?.accountNumber ? {
+        accountNumber: profile.accountNumber,
+        ifscCode: profile.ifsc,
+        accountHolderName: profile.accountHolderName || profile.workshopName
+      } : null));
+
+  const bankVerificationStatus = (rawBankVerificationStatus && rawBankVerificationStatus !== 'NOT_CONFIGURED')
+    ? rawBankVerificationStatus
+    : (profile?.bankVerificationStatus || 'NOT_CONFIGURED');
+
   const isNegative = balance < 0;
 
   const handlePayDues = async () => {
@@ -216,6 +265,110 @@ export function WalletDashboard() {
         </CardContent>
       </Card>
 
+      {/* Bank Account Verification & Withdrawal History Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Linked Bank Account Card */}
+        <Card className="shadow-sm border border-gray-100 bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-4">
+            <CardTitle className="font-bold text-gray-900 text-sm flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-primary-navy" /> Registered Bank Account
+              </span>
+              {bankVerificationStatus === 'VERIFIED' ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Verified
+                </span>
+              ) : bankVerificationStatus === 'PENDING' ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  <Clock className="w-3.5 h-3.5" /> Verification Pending
+                </span>
+              ) : bankVerificationStatus === 'FAILED' ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                  <Ban className="w-3.5 h-3.5" /> Verification Failed
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                  Active
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-2">
+            {bankDetails && (bankDetails.accountNumber || bankDetails.acc) ? (
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Account Holder:</span>
+                  <span className="font-bold text-gray-900">{bankDetails.accountHolderName || bankDetails.name || "Partner Account"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Account Number:</span>
+                  <span className="font-mono font-bold text-gray-900">
+                    •••• {String(bankDetails.accountNumber || bankDetails.acc).slice(-4)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">IFSC Code:</span>
+                  <span className="font-mono font-bold text-gray-700">{bankDetails.ifscCode || bankDetails.ifsc || "N/A"}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500 space-y-1">
+                <Building2 className="w-7 h-7 mx-auto text-gray-300" />
+                <p className="text-xs font-bold text-gray-700">No bank account linked</p>
+                <p className="text-[11px] text-gray-400">Please provide bank account details during KYC to enable payouts.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Withdrawal Status Card */}
+        <Card className="shadow-sm border border-gray-100 bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-4">
+            <CardTitle className="font-bold text-gray-900 text-sm flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <ArrowUpCircle className="w-4 h-4 text-emerald-600" /> Recent Payout Requests
+              </span>
+              <span className="text-[11px] text-gray-400 font-medium">{withdrawalsList.length} request(s)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            {withdrawalsList.length === 0 ? (
+              <div className="text-center py-4 text-gray-500 space-y-1">
+                <Wallet className="w-7 h-7 mx-auto text-gray-300" />
+                <p className="text-xs font-bold text-gray-700">No withdrawal requests yet</p>
+                <p className="text-[11px] text-gray-400">Your requested withdrawals will be listed here with status.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                {withdrawalsList.map((w: any) => (
+                  <div key={w._id} className="flex items-center justify-between p-2.5 rounded-lg border border-gray-50 bg-gray-50/40 text-xs">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-gray-900">₹{Number(w.amount).toLocaleString("en-IN")}</span>
+                        {w.status === 'COMPLETED' ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">Paid</span>
+                        ) : w.status === 'FAILED' ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">Rejected & Refunded</span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">{w.status}</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {w.createdAt ? format(new Date(w.createdAt), "dd MMM yyyy, hh:mm a") : "Recent"}
+                        {w.referenceId && ` • Ref: ${w.referenceId}`}
+                      </p>
+                      {w.failureReason && (
+                        <p className="text-[10px] text-rose-600 font-medium mt-0.5">Reason: {w.failureReason}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Ledger History Passbook */}
       <Card className="shadow-sm border border-gray-100 bg-white rounded-2xl overflow-hidden">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-5">
@@ -278,6 +431,43 @@ export function WalletDashboard() {
               </button>
             </div>
 
+            {/* Bank Verification Status Warning */}
+            {(!bankDetails || (!bankDetails.accountNumber && !bankDetails.acc)) ? (
+              <div className="p-3.5 rounded-xl text-xs bg-red-50 text-red-900 border border-red-200 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">No Bank Account Linked</p>
+                  <p className="text-[11px] text-red-700 mt-0.5">
+                    Please complete your bank account details in KYC & Profile before requesting payouts.
+                  </p>
+                </div>
+              </div>
+            ) : (bankVerificationStatus === 'PENDING' || bankVerificationStatus === 'FAILED') ? (
+              <div className="p-3.5 rounded-xl text-xs bg-amber-50 text-amber-900 border border-amber-200 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Bank Verification {bankVerificationStatus === 'PENDING' ? 'in Progress' : 'Failed'}</p>
+                  <p className="text-[11px] text-amber-800 mt-0.5">
+                    CarBlink requires your bank account to be verified before payouts can be initiated. Please verify your bank details in KYC.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Target Account Info */}
+            {bankDetails && (bankDetails.accountNumber || bankDetails.acc) && (
+              <div className="bg-gray-50 border border-gray-200 p-3 rounded-xl text-xs space-y-1">
+                <div className="flex justify-between text-gray-500 font-medium">
+                  <span>Payout to Account:</span>
+                  <span className="font-mono font-bold text-gray-900">•••• {String(bankDetails.accountNumber || bankDetails.acc).slice(-4)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500 font-medium">
+                  <span>IFSC & Bank:</span>
+                  <span className="font-mono font-bold text-gray-700">{bankDetails.ifscCode || bankDetails.ifsc}</span>
+                </div>
+              </div>
+            )}
+
             <div className="bg-emerald-50 border border-emerald-100 p-3.5 rounded-xl text-xs font-medium text-emerald-900 flex justify-between items-center">
               <span>Available Wallet Balance:</span>
               <strong className="text-sm text-emerald-700 font-black">₹{balance.toLocaleString("en-IN")}</strong>
@@ -295,6 +485,7 @@ export function WalletDashboard() {
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="text-sm rounded-xl py-2.5"
                   autoFocus
+                  disabled={bankVerificationStatus === 'PENDING' || bankVerificationStatus === 'FAILED'}
                 />
                 <p className="text-[11px] text-gray-400 mt-1">Minimum withdrawal amount is ₹100.</p>
               </div>
@@ -305,8 +496,9 @@ export function WalletDashboard() {
                   <button
                     type="button"
                     key={idx}
+                    disabled={bankVerificationStatus === 'PENDING' || bankVerificationStatus === 'FAILED'}
                     onClick={() => setWithdrawAmount(String(amt))}
-                    className="flex-1 py-1.5 px-2 bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 border border-gray-200 hover:border-emerald-200 rounded-lg text-xs font-bold transition-all text-center"
+                    className="flex-1 py-1.5 px-2 bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 border border-gray-200 hover:border-emerald-200 rounded-lg text-xs font-bold transition-all text-center disabled:opacity-50"
                   >
                     {amt === balance ? "All" : `₹${amt}`}
                   </button>
@@ -325,7 +517,14 @@ export function WalletDashboard() {
                 <Button
                   type="submit"
                   isLoading={withdrawMutation.isPending}
-                  disabled={!withdrawAmount || Number(withdrawAmount) <= 0}
+                  disabled={
+                    !withdrawAmount || 
+                    Number(withdrawAmount) <= 0 || 
+                    !bankDetails || 
+                    (!bankDetails.accountNumber && !bankDetails.acc) ||
+                    bankVerificationStatus === 'PENDING' || 
+                    bankVerificationStatus === 'FAILED'
+                  }
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl py-2.5 shadow-sm"
                 >
                   Confirm Withdrawal

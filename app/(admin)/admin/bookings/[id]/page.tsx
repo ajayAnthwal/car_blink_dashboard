@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAdminBookingDetails, useCancelAdminBookingMutation, useManualAssignAdminBookingMutation, useAdminUsers, useAdminAuditLogs, useEligiblePartnersForAdminBooking } from "@/features/admin/hooks/useAdminQueries";
+import { useAdminBookingDetails, useCancelAdminBookingMutation, useManualAssignAdminBookingMutation, useAdminUsers, useAdminPartners, useAdminAuditLogs, useEligiblePartnersForAdminBooking } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, Calendar, User, Wrench, ArrowLeft, Ban, MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee, Phone, Mail, Info, Camera, Zap, ShieldAlert, History } from "lucide-react";
 import toast from "react-hot-toast";
@@ -16,7 +16,7 @@ export default function AdminBookingDetailsPage() {
   const manualAssignMutation = useManualAssignAdminBookingMutation();
   
   const { data: eligiblePartnersRes } = useEligiblePartnersForAdminBooking(id as string);
-  const { data: partnersData } = useAdminUsers(1, 100, "PARTNER");
+  const { data: partnersData } = useAdminPartners(1, 100);
   const { data: executivesData } = useAdminUsers(1, 100, "EXECUTIVE");
   const { data: auditLogsRes } = useAdminAuditLogs();
 
@@ -33,7 +33,7 @@ export default function AdminBookingDetailsPage() {
   const booking = bookingRes?.data?._id ? bookingRes.data : (bookingRes?._id ? bookingRes : (bookingRes?.data || bookingRes));
 
   const eligiblePartners = eligiblePartnersRes?.partners || [];
-  const partners = partnersData?.docs || partnersData?.users || partnersData?.data || (Array.isArray(partnersData) ? partnersData : []);
+  const partners = partnersData?.docs || partnersData?.partners || partnersData?.users || partnersData?.data || (Array.isArray(partnersData) ? partnersData : []);
   const executives = executivesData?.docs || executivesData?.users || executivesData?.data || (Array.isArray(executivesData) ? executivesData : []);
   
   const allLogs = auditLogsRes?.data?.docs || auditLogsRes?.data || auditLogsRes?.docs || auditLogsRes || [];
@@ -537,27 +537,32 @@ export default function AdminBookingDetailsPage() {
                       const distText = p.distanceKm !== null ? ` • ${p.distanceKm}km` : '';
                       const quoteText = p.quote ? ` • ₹${p.quote.quotedAmount}` : '';
                       const ratingText = p.performance?.rating ? ` • ★${p.performance.rating.toFixed(1)}` : '';
-                      const reason = p.ineligibilityReasons?.[0] ? ` [DISABLED: ${p.ineligibilityReasons[0]}]` : ' [INELIGIBLE]';
+                      const reason = p.ineligibilityReasons?.[0] ? ` [Override: ${p.ineligibilityReasons[0]}]` : '';
 
                       return (
                         <option
                           key={pId}
                           value={pId}
-                          disabled={!isEligible}
-                          className={!isEligible ? 'text-gray-500 bg-slate-900' : 'text-white'}
+                          className={!isEligible ? 'text-amber-300 bg-slate-900' : 'text-white'}
                         >
                           {isEligible
                             ? `✓ ${uniqueId}${p.businessName}${distText}${quoteText}${ratingText}`
-                            : `⛔ ${uniqueId}${p.businessName}${reason}`}
+                            : `⚠ ${uniqueId}${p.businessName}${reason}${distText}`}
                         </option>
                       );
                     })
                   ) : (
-                    partners.map((p: any) => (
-                      <option key={p._id || p.id} value={p._id || p.id}>
-                        {p.businessName || p.fullName || 'Partner'} ({p.phone || 'No Phone'})
-                      </option>
-                    ))
+                    partners.map((p: any) => {
+                      const pId = p._id || p.id;
+                      const uniqueId = p.uniquePartnerId ? `[${p.uniquePartnerId}] ` : '';
+                      const phone = p.phone || p.userId?.phone || 'No Phone';
+                      const name = p.businessName || p.ownerName || p.userId?.fullName || 'Partner';
+                      return (
+                        <option key={pId} value={pId}>
+                          {uniqueId}{name} ({phone})
+                        </option>
+                      );
+                    })
                   )}
                 </select>
               </div>

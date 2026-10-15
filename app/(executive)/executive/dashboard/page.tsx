@@ -10,7 +10,8 @@ import {
   useExecutiveLeads, 
   useWebsiteLeads,
   usePartnerStatus,
-  usePendingExtraWork
+  usePendingExtraWork,
+  useExecutiveCancellations
 } from "@/features/executive/hooks/useExecutiveQueries";
 import { useSocket } from "@/lib/SocketContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PhoneCall, AlertTriangle, Target, ArrowRight, Clock, User, Activity, CheckCircle2, ChevronRight, Sparkles, X, Building2, Briefcase, Wrench } from "lucide-react";
+import { PhoneCall, AlertTriangle, Target, ArrowRight, Clock, User, Activity, CheckCircle2, ChevronRight, Sparkles, X, Building2, Briefcase, Wrench, XCircle, Ban } from "lucide-react";
 import { 
   BarChart, 
   Bar, 
@@ -47,6 +48,7 @@ export default function ExecutiveDashboardPage() {
   const { data: websiteLeadsData, isLoading: loadingWebsiteLeads } = useWebsiteLeads({ page: 1, limit: 100 });
   const { data: pendingPartnersData, isLoading: loadingPendingPartners } = usePartnerStatus(1, 100, "verificationStatus=PENDING");
   const { data: pendingExtraWorkData } = usePendingExtraWork();
+  const { data: cancellationsData } = useExecutiveCancellations({ page: 1, limit: 100, status: "PENDING" });
 
   // Real-time socket refresh + Live Lead, Partner Registration & Bid Alert Triggers
   useEffect(() => {
@@ -170,6 +172,25 @@ export default function ExecutiveDashboardPage() {
       }
     };
 
+    const handleCancellationAlert = (payload?: any) => {
+      queryClient.invalidateQueries({ queryKey: ["executive", "cancellations"] });
+      queryClient.invalidateQueries({ queryKey: ["executive", "leads"] });
+      if (payload) {
+        setLiveLeadAlert({
+          id: payload?.bookingId || Date.now().toString(),
+          name: `Cancellation Requested: Booking #${(payload?.bookingId || "").slice(-6).toUpperCase()}`,
+          phone: "",
+          source: "CUSTOMER CANCELLATION",
+          city: "",
+          message: `Customer requested booking cancellation. Primary reason: ${payload?.reasons?.[0] || 'Customer feedback'}. Call immediately to assist and retain.`,
+          timestamp: new Date(),
+          isLive: true,
+          isCancellation: true,
+          bookingId: payload?.bookingId
+        });
+      }
+    };
+
     socket.on("new_lead", refreshLeads);
     socket.on("new_bid", handleLiveBid);
     socket.on("quote_received", handleLiveBid);
@@ -178,6 +199,8 @@ export default function ExecutiveDashboardPage() {
     socket.on("notification:new", handleNewNotification);
     socket.on("extra_work_requested", handleExtraWorkAlert);
     socket.on("extra_work_responded", handleExtraWorkAlert);
+    socket.on("cancellation_requested", handleCancellationAlert);
+    socket.on("booking_cancellation_requested", handleCancellationAlert);
     socket.on("booking_status_update", refreshLeads);
     socket.on("booking_confirmed", refreshLeads);
     socket.on("new_escalation", refreshEscalations);
@@ -193,6 +216,8 @@ export default function ExecutiveDashboardPage() {
       socket.off("notification:new", handleNewNotification);
       socket.off("extra_work_requested", handleExtraWorkAlert);
       socket.off("extra_work_responded", handleExtraWorkAlert);
+      socket.off("cancellation_requested", handleCancellationAlert);
+      socket.off("booking_cancellation_requested", handleCancellationAlert);
       socket.off("booking_status_update", refreshLeads);
       socket.off("booking_confirmed", refreshLeads);
       socket.off("new_escalation", refreshEscalations);
@@ -208,6 +233,15 @@ export default function ExecutiveDashboardPage() {
   const lds = Array.isArray(leadsData?.leads) ? leadsData.leads : (Array.isArray(leadsData) ? leadsData : []);
   const wLds = Array.isArray(websiteLeadsData?.leads) ? websiteLeadsData.leads : (Array.isArray(websiteLeadsData) ? websiteLeadsData : []);
   
+  const rawCancellations = cancellationsData?.cancellations || [];
+  const pendingCancellations = React.useMemo(() => {
+    return rawCancellations.filter((c: any) => 
+      c.status === "CANCELLATION_REQUESTED" && 
+      c.cancellationDetails?.executiveStatus !== "FORWARDED_TO_ACCOUNTS" && 
+      c.cancellationDetails?.executiveStatus !== "RETAINED"
+    );
+  }, [rawCancellations]);
+
   const pData = pendingPartnersData as any;
   const pendingPartners = Array.isArray(pData?.partners) 
     ? pData.partners 
@@ -217,7 +251,26 @@ export default function ExecutiveDashboardPage() {
   const latestNewLead = React.useMemo(() => {
     if (liveLeadAlert) return liveLeadAlert;
 
-    // 1. Check for unverified pending partners
+    // 1. Check for pending cancellation requests (Highest Priority)
+    let latestCancellationItem: any = null;
+    if (pendingCancellations.length > 0) {
+      const latestC = [...pendingCancellations].sort((a: any, b: any) => new Date(b.cancellationDetails?.requestedAt || b.updatedAt || b.createdAt).getTime() - new Date(a.cancellationDetails?.requestedAt || a.updatedAt || a.createdAt).getTime())[0];
+      const customerObj = typeof latestC.customerId === "object" ? latestC.customerId : null;
+      latestCancellationItem = {
+        id: latestC._id || latestC.id,
+        name: `Booking #${(latestC._id || "").slice(-6).toUpperCase()} — Cancellation Request`,
+        phone: customerObj?.phone || latestC.customerPhone || "",
+        source: "Cancellation Request",
+        city: "",
+        message: `Customer ${customerObj?.fullName || 'Customer'} requested cancellation. Reason: ${latestC.cancellationDetails?.reasons?.[0] || latestC.cancellationReason || 'Cancellation requested'}. Call immediately to retain.`,
+        timestamp: latestC.cancellationDetails?.requestedAt ? new Date(latestC.cancellationDetails.requestedAt) : new Date(latestC.updatedAt || latestC.createdAt),
+        isLive: false,
+        isCancellation: true,
+        bookingId: latestC._id
+      };
+    }
+
+    // 2. Check for unverified pending partners
     const unverifiedPartners = pendingPartners.filter((p: any) => !p.isVerified || p.verificationStatus === "PENDING");
     let latestPartnerItem: any = null;
     if (unverifiedPartners.length > 0) {
@@ -282,10 +335,10 @@ export default function ExecutiveDashboardPage() {
       };
     }
 
-    const items = [latestPartnerItem, latestWebItem, latestPlatformItem].filter(Boolean);
+    const items = [latestCancellationItem, latestPartnerItem, latestWebItem, latestPlatformItem].filter(Boolean);
     if (items.length === 0) return null;
     return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-  }, [liveLeadAlert, pendingPartners, wLds, lds]);
+  }, [liveLeadAlert, pendingCancellations, pendingPartners, wLds, lds]);
 
   // Compute Stats
   const stats = React.useMemo(() => {
@@ -302,9 +355,10 @@ export default function ExecutiveDashboardPage() {
       openEscalations: openEsc,
       pendingFollowUps: fUps.length,
       leadsAwaitingAssignment: awaitingAssg,
-      pendingPartnersCount
+      pendingPartnersCount,
+      pendingCancellationsCount: pendingCancellations.length
     };
-  }, [lds, wLds, esc, fUps, pendingPartners]);
+  }, [lds, wLds, esc, fUps, pendingPartners, pendingCancellations]);
 
   // Prepare Leads by Status (Bar Chart)
   const leadsBarChartData = React.useMemo(() => {
@@ -405,7 +459,9 @@ export default function ExecutiveDashboardPage() {
       {/* ⚡ Live Incoming Lead / Verification / Partner Registration / Bid Alert Banner */}
       {latestNewLead && (
         <div className={`rounded-2xl p-5 shadow-xl text-white relative overflow-hidden animate-in slide-in-from-top-4 duration-500 border ${
-          latestNewLead.isExtraWork
+          latestNewLead.isCancellation
+            ? 'bg-gradient-to-r from-rose-700 via-red-600 to-slate-900 shadow-rose-700/20 border-rose-400/40'
+            : latestNewLead.isExtraWork
             ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-slate-900 shadow-orange-700/20 border-orange-400/40'
             : latestNewLead.isPartnerRegistration
             ? 'bg-gradient-to-r from-purple-700 via-indigo-700 to-slate-900 shadow-purple-700/20 border-purple-400/40'
@@ -420,15 +476,15 @@ export default function ExecutiveDashboardPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
             <div className="flex items-start space-x-3.5">
               <div className="bg-white/20 backdrop-blur-md p-3 rounded-xl shrink-0 text-white mt-0.5 shadow-inner">
-                {latestNewLead.isExtraWork ? <Wrench className="w-6 h-6 animate-pulse text-amber-200" /> : latestNewLead.isPartnerRegistration ? <Building2 className="w-6 h-6 animate-bounce text-purple-200" /> : latestNewLead.isVerification ? <CheckCircle2 className="w-6 h-6 animate-pulse text-emerald-300" /> : <Sparkles className="w-6 h-6 animate-pulse" />}
+                {latestNewLead.isCancellation ? <XCircle className="w-6 h-6 animate-pulse text-rose-200" /> : latestNewLead.isExtraWork ? <Wrench className="w-6 h-6 animate-pulse text-amber-200" /> : latestNewLead.isPartnerRegistration ? <Building2 className="w-6 h-6 animate-bounce text-purple-200" /> : latestNewLead.isVerification ? <CheckCircle2 className="w-6 h-6 animate-pulse text-emerald-300" /> : <Sparkles className="w-6 h-6 animate-pulse" />}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 bg-white ${
-                    latestNewLead.isExtraWork ? 'text-orange-700 font-black' : (latestNewLead.isPartnerRegistration ? 'text-purple-800 font-black' : (latestNewLead.isVerification ? 'text-blue-700 font-black' : (latestNewLead.isBid ? 'text-teal-700' : 'text-orange-600')))
+                    latestNewLead.isCancellation ? 'text-rose-700 font-black' : (latestNewLead.isExtraWork ? 'text-orange-700 font-black' : (latestNewLead.isPartnerRegistration ? 'text-purple-800 font-black' : (latestNewLead.isVerification ? 'text-blue-700 font-black' : (latestNewLead.isBid ? 'text-teal-700' : 'text-orange-600'))))
                   }`}>
-                    <span className={`w-2 h-2 rounded-full animate-ping ${latestNewLead.isExtraWork ? 'bg-orange-600' : (latestNewLead.isPartnerRegistration ? 'bg-purple-600' : (latestNewLead.isVerification ? 'bg-emerald-500' : (latestNewLead.isBid ? 'bg-teal-600' : 'bg-orange-600')))}`}></span>
-                    {latestNewLead.isExtraWork ? "🔧 EXTRA PART REQUEST PENDING REVIEW" : (latestNewLead.isPartnerRegistration ? "🤝 NEW PARTNER REGISTERED (VERIFICATION PENDING)" : (latestNewLead.isVerification ? "✓ CUSTOMER VERIFICATION COMPLETED" : (latestNewLead.isBid ? "LIVE PARTNER BID PLACED" : (latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING"))))}
+                    <span className={`w-2 h-2 rounded-full animate-ping ${latestNewLead.isCancellation ? 'bg-rose-600' : (latestNewLead.isExtraWork ? 'bg-orange-600' : (latestNewLead.isPartnerRegistration ? 'bg-purple-600' : (latestNewLead.isVerification ? 'bg-emerald-500' : (latestNewLead.isBid ? 'bg-teal-600' : 'bg-orange-600'))))}`}></span>
+                    {latestNewLead.isCancellation ? "🛑 CANCELLATION REQUESTED (CALL TO RETAIN)" : (latestNewLead.isExtraWork ? "🔧 EXTRA PART REQUEST PENDING REVIEW" : (latestNewLead.isPartnerRegistration ? "🤝 NEW PARTNER REGISTERED (VERIFICATION PENDING)" : (latestNewLead.isVerification ? "✓ CUSTOMER VERIFICATION COMPLETED" : (latestNewLead.isBid ? "LIVE PARTNER BID PLACED" : (latestNewLead.isLive ? "LIVE INCOMING LEAD" : "UNASSIGNED LEAD PENDING")))))}
                   </span>
                   <span className="text-xs text-white/80 font-medium">
                     {latestNewLead.timestamp ? new Date(latestNewLead.timestamp).toLocaleTimeString() : "Just now"}
@@ -439,7 +495,12 @@ export default function ExecutiveDashboardPage() {
                   {latestNewLead.name}
                 </h3>
 
-                {latestNewLead.isExtraWork ? (
+                {latestNewLead.isCancellation ? (
+                  <p className="text-xs md:text-sm text-white/95 font-medium mt-0.5">
+                    {latestNewLead.phone && <strong className="text-white font-bold mr-2">Phone: {latestNewLead.phone} •</strong>}
+                    {latestNewLead.message}
+                  </p>
+                ) : latestNewLead.isExtraWork ? (
                   <p className="text-xs md:text-sm text-white/90 font-medium mt-0.5">
                     {latestNewLead.message}
                   </p>
@@ -468,10 +529,10 @@ export default function ExecutiveDashboardPage() {
 
             <div className="flex items-center space-x-3 self-end md:self-center shrink-0 w-full md:w-auto">
               <Button asChild size="default" className={`font-bold shadow-lg transition-all w-full md:w-auto bg-white ${
-                latestNewLead.isExtraWork ? 'text-orange-700 hover:bg-orange-50' : (latestNewLead.isPartnerRegistration ? 'text-purple-800 hover:bg-purple-50' : (latestNewLead.isVerification ? 'text-blue-700 hover:bg-blue-50' : (latestNewLead.isBid ? 'text-teal-700 hover:bg-teal-50' : 'text-orange-600 hover:bg-orange-50')))
+                latestNewLead.isCancellation ? 'text-rose-700 hover:bg-rose-50' : (latestNewLead.isExtraWork ? 'text-orange-700 hover:bg-orange-50' : (latestNewLead.isPartnerRegistration ? 'text-purple-800 hover:bg-purple-50' : (latestNewLead.isVerification ? 'text-blue-700 hover:bg-blue-50' : (latestNewLead.isBid ? 'text-teal-700 hover:bg-teal-50' : 'text-orange-600 hover:bg-orange-50'))))
               }`}>
-                <Link href={latestNewLead.isExtraWork ? `/executive/extra-work` : (latestNewLead.isPartnerRegistration ? `/executive/partner-status` : (latestNewLead.isVerification ? `/executive/leads` : (latestNewLead.isBid ? "/executive/leads" : (latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads"))))}>
-                  {latestNewLead.isExtraWork ? "Review Extra Work" : (latestNewLead.isPartnerRegistration ? "Review & Verify Partner" : (latestNewLead.isVerification ? "View Booking & Monitor Status" : (latestNewLead.isBid ? "Review Bids & Assign Partner" : "View Lead & Convert")))} <ArrowRight className="w-4 h-4 ml-1.5" />
+                <Link href={latestNewLead.isCancellation ? `/executive/cancellations` : (latestNewLead.isExtraWork ? `/executive/extra-work` : (latestNewLead.isPartnerRegistration ? `/executive/partner-status` : (latestNewLead.isVerification ? `/executive/leads` : (latestNewLead.isBid ? "/executive/leads" : (latestNewLead.isWebsiteLead || latestNewLead.source !== "Platform Booking" ? "/executive/website-leads" : "/executive/leads")))))}>
+                  {latestNewLead.isCancellation ? "Review & Retain Customer" : (latestNewLead.isExtraWork ? "Review Extra Work" : (latestNewLead.isPartnerRegistration ? "Review & Verify Partner" : (latestNewLead.isVerification ? "View Booking & Monitor Status" : (latestNewLead.isBid ? "Review Bids & Assign Partner" : "View Lead & Convert"))))} <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Link>
               </Button>
               {latestNewLead.isLive && (
@@ -485,6 +546,35 @@ export default function ExecutiveDashboardPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Cancellation Requests Executive Callout Banner */}
+      {pendingCancellations && pendingCancellations.length > 0 && (
+        <div className="bg-gradient-to-r from-rose-50 to-red-50 border border-rose-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center">
+            <div className="bg-rose-100 p-2.5 rounded-xl mr-3.5 shrink-0 text-rose-700">
+              <XCircle className="w-5 h-5 text-rose-600 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+                  Booking Cancellation Requests ({pendingCancellations.length})
+                </h3>
+                <span className="bg-rose-200 text-rose-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                  Action Required
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium mt-0.5">
+                Customer has requested cancellation. Review cancellation reasons and contact customer immediately to retain or forward to accounts.
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm" className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 rounded-xl shadow-xs">
+            <Link href="/executive/cancellations">
+              Review Cancellations <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+            </Link>
+          </Button>
         </div>
       )}
 
@@ -536,7 +626,7 @@ export default function ExecutiveDashboardPage() {
       )}
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
         <Link href="/executive/leads" className="block group">
           <Card className="shadow-subtle border-gray-100 hover:border-blue-300 group-hover:border-blue-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -608,6 +698,25 @@ export default function ExecutiveDashboardPage() {
             <CardFooter className="pt-1 pb-4">
               <span className="flex items-center text-xs font-semibold text-purple-600 group-hover:text-purple-700 transition-colors">
                 Review & verify <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </span>
+            </CardFooter>
+          </Card>
+        </Link>
+
+        <Link href="/executive/cancellations" className="block group">
+          <Card className="shadow-subtle border-gray-100 hover:border-rose-300 group-hover:border-rose-400 hover:shadow-elevated hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-gray-500 group-hover:text-rose-600 transition-colors">Cancellations</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center group-hover:bg-rose-100 transition-colors">
+                <XCircle className="w-5 h-5 text-rose-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 font-heading">{stats.pendingCancellationsCount}</div>
+            </CardContent>
+            <CardFooter className="pt-1 pb-4">
+              <span className="flex items-center text-xs font-semibold text-rose-600 group-hover:text-rose-700 transition-colors">
+                Review requests <ArrowRight className="w-3 h-3 ml-1 transform group-hover:translate-x-1 transition-transform" />
               </span>
             </CardFooter>
           </Card>

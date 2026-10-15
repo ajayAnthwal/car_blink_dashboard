@@ -3,7 +3,7 @@
 
 import React, { useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Briefcase, CheckCircle2, Clock, IndianRupee, Star, AlertTriangle, ArrowRight } from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, IndianRupee, Star, AlertTriangle, ArrowRight, Wallet } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -27,7 +27,8 @@ import {
   usePartnerBids,
   usePartnerEarnings,
   usePartnerProfile,
-  usePartnerLeads
+  usePartnerLeads,
+  useWalletStatement
 } from "@/features/partner/hooks/usePartnerQueries";
 import { useSocket } from "@/lib/SocketContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,6 +43,7 @@ export default function PartnerDashboardPage() {
   const { data: earnings, isLoading: isLoadingEarnings, refetch: refetchEarnings } = usePartnerEarnings();
   const { data: profile, isLoading: isLoadingProfile } = usePartnerProfile();
   const { data: leadsData, isLoading: isLoadingLeads, refetch: refetchLeads } = usePartnerLeads();
+  const { data: walletData } = useWalletStatement();
 
   // Real-time socket refresh — auto-update dashboard when jobs/leads change
   useEffect(() => {
@@ -138,6 +140,11 @@ export default function PartnerDashboardPage() {
   const recentJobs = useMemo(() => [...jobs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5), [jobs]);
   const todayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
 
+  const walletStatement = (walletData && walletData.balance !== undefined) ? walletData : ((walletData as any)?.data || walletData || {});
+  const walletBalance = Number(walletStatement?.balance || 0);
+  const rawWithdrawals = walletStatement?.withdrawals || (Array.isArray(walletData) ? walletData : []);
+  const latestWithdrawal = Array.isArray(rawWithdrawals) && rawWithdrawals.length > 0 ? rawWithdrawals[0] : null;
+
   if (loading) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto pb-10">
@@ -208,6 +215,76 @@ export default function PartnerDashboardPage() {
           </div>
           <Button asChild size="sm" className={isKycRejected ? "bg-red-600 hover:bg-red-700 text-white shrink-0" : "bg-orange-600 hover:bg-orange-700 text-white shrink-0"}>
             <Link href="/partner/profile">Update Profile</Link>
+          </Button>
+        </div>
+      )}
+
+      {/* 💸 Payout Status Notification Banner */}
+      {latestWithdrawal && (
+        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+          latestWithdrawal.status === 'COMPLETED' 
+            ? 'bg-emerald-50 border-emerald-200' 
+            : latestWithdrawal.status === 'PENDING' 
+              ? 'bg-amber-50 border-amber-200' 
+              : 'bg-rose-50 border-rose-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-full shrink-0 ${
+              latestWithdrawal.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : latestWithdrawal.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+            }`}>
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className={`font-bold text-sm md:text-base ${
+                latestWithdrawal.status === 'COMPLETED' ? 'text-emerald-900' : latestWithdrawal.status === 'PENDING' ? 'text-amber-900' : 'text-rose-900'
+              }`}>
+                {latestWithdrawal.status === 'COMPLETED' 
+                  ? `Payout of ₹${Number(latestWithdrawal.amount).toLocaleString('en-IN')} Successfully Paid!` 
+                  : latestWithdrawal.status === 'PENDING'
+                    ? `Withdrawal Request of ₹${Number(latestWithdrawal.amount).toLocaleString('en-IN')} in Process`
+                    : `Withdrawal Request of ₹${Number(latestWithdrawal.amount).toLocaleString('en-IN')} Refunded`}
+              </h3>
+              <p className={`text-xs font-medium mt-0.5 ${
+                latestWithdrawal.status === 'COMPLETED' ? 'text-emerald-700' : latestWithdrawal.status === 'PENDING' ? 'text-amber-700' : 'text-rose-700'
+              }`}>
+                {latestWithdrawal.status === 'COMPLETED' 
+                  ? `Transferred to your bank account • UTR: ${latestWithdrawal.referenceId || 'Processed'}` 
+                  : latestWithdrawal.status === 'PENDING'
+                    ? 'Your withdrawal request has been received and is being verified by the Accounts team.'
+                    : `Reason: ${latestWithdrawal.failureReason || 'Returned to your wallet'}`}
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm" variant="outline" className="shrink-0 bg-white font-bold text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-100">
+            <Link href="/partner/wallet">View Wallet</Link>
+          </Button>
+        </div>
+      )}
+
+      {/* ⚠️ Negative Wallet Balance / Credit Limit Warning */}
+      {walletBalance < 0 && (
+        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+          walletBalance < -1000 ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-full shrink-0 ${walletBalance < -1000 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className={`font-bold text-sm md:text-base ${walletBalance < -1000 ? 'text-red-900' : 'text-amber-900'}`}>
+                {walletBalance < -1000 
+                  ? `🚨 Credit Limit Exceeded — Outstanding Dues: ₹${Math.abs(walletBalance).toLocaleString('en-IN')}` 
+                  : `Outstanding Platform Commission Dues: ₹${Math.abs(walletBalance).toLocaleString('en-IN')}`}
+              </h3>
+              <p className={`text-xs font-medium mt-0.5 ${walletBalance < -1000 ? 'text-red-700' : 'text-amber-700'}`}>
+                {walletBalance < -1000 
+                  ? 'Your dues exceed the ₹1,000 credit limit. New booking leads are paused until cleared.' 
+                  : 'Platform commission for cash jobs has accumulated. Please clear your dues in My Wallet.'}
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm" className={walletBalance < -1000 ? "bg-red-600 hover:bg-red-700 text-white shrink-0 font-bold" : "bg-amber-600 hover:bg-amber-700 text-white shrink-0 font-bold"}>
+            <Link href="/partner/wallet">Pay Dues Now</Link>
           </Button>
         </div>
       )}

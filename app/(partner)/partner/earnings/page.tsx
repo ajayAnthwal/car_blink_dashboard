@@ -2,12 +2,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { IndianRupee, Loader2, Calendar, Filter, FileText, ArrowRightCircle } from "lucide-react";
+import { IndianRupee, Loader2, Calendar, Filter, FileText, ArrowRightCircle, Wallet } from "lucide-react";
 import { usePartnerEarningsList, usePartnerSettlements } from "@/features/partner/hooks/usePartnerQueries";
 
 export default function EarningsPage() {
+  const router = useRouter();
   const [period, setPeriod] = useState<"today" | "week" | "month">("month");
   const [activeTab, setActiveTab] = useState<"transactions" | "settlements">("transactions");
 
@@ -141,7 +143,24 @@ export default function EarningsPage() {
         )}
 
         {activeTab === "settlements" && (
-          <div>
+          <div className="space-y-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between text-xs text-orange-900">
+              <div className="flex items-center gap-2.5">
+                <Wallet className="w-5 h-5 text-primary-orange shrink-0" />
+                <span>
+                  <strong>Platform Commission Ledger:</strong> Commissions for cash jobs are automatically balanced against your Wallet Ledger. If your balance is positive, fees are auto-adjusted. To clear negative dues via Razorpay, manage your wallet.
+                </span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => router.push("/partner/wallet")}
+                className="shrink-0 ml-3 bg-white border-orange-300 text-primary-orange hover:bg-orange-100 font-bold"
+              >
+                Go to Wallet
+              </Button>
+            </div>
+
             {isLoadingSettlements ? (
               <div className="flex items-center justify-center p-10 bg-neutral-white rounded-2xl shadow-sm border border-neutral-muted/20">
                 <Loader2 className="w-8 h-8 text-primary-orange animate-spin" />
@@ -180,19 +199,14 @@ export default function EarningsPage() {
                         </div>
                       </div>
                       
-                      <div className="bg-neutral-bg p-4 rounded-xl flex flex-col items-end min-w-[200px] w-full md:w-auto">
-                        <p className="text-xs text-neutral-muted mb-1">Net Payable to Platform</p>
-                        <p className="text-2xl font-extrabold text-primary-navy mb-3">₹{Math.abs(settlement.netPayoutAmount || settlement.platformCommission)}</p>
+                      <div className="bg-gray-50/80 p-3.5 rounded-xl flex flex-col items-end min-w-[190px] w-full md:w-auto border border-gray-100">
+                        <p className="text-[11px] text-gray-500 font-medium mb-1">Platform Commission Fee</p>
+                        <p className="text-xl font-black text-primary-navy mb-2">₹{Math.abs(settlement.platformCommission || settlement.netPayoutAmount || 0)}</p>
                         
-                        {settlement.status === 'PENDING' ? (
-                          <Button size="sm" className="w-full bg-primary-orange hover:bg-primary-orange-light text-white" onClick={() => alert("Payment gateway integration pending.")}>
-                            Pay Now <ArrowRightCircle className="w-4 h-4 ml-2" />
-                          </Button>
-                        ) : (
-                          <div className="text-xs text-success font-medium bg-success/10 px-3 py-1.5 rounded-lg w-full text-center">
-                            Paid via Ref: {settlement.transactionReference || 'Online'}
-                          </div>
-                        )}
+                        <div className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Auto-Adjusted in Wallet
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

@@ -130,8 +130,11 @@ export default function LeadDetailsPage() {
   ];
   const bids = lead.bids || [];
   
-  const hasCoordinates = lead.location?.coordinates?.length === 2;
+  const hasCoordinates = Array.isArray(lead.location?.coordinates) && 
+    lead.location.coordinates.length === 2 && 
+    (lead.location.coordinates[0] !== 0 || lead.location.coordinates[1] !== 0);
   const coordinatesStr = hasCoordinates ? `${lead.location.coordinates[1].toFixed(4)}, ${lead.location.coordinates[0].toFixed(4)}` : null;
+  const leadLocationName = lead.address || cityObj?.name || coordinatesStr || "N/A";
 
   const payments = Array.isArray(lead.payments) ? lead.payments : [];
   const acceptedBid = (lead.bids || []).find((b: any) => 
@@ -164,6 +167,14 @@ export default function LeadDetailsPage() {
   const remainingBalance = Math.max(0, totalPayableAmount - totalPaidAmount);
 
   const getProviderInfo = (payment: any, fallbackMode?: string) => {
+    if (payment?.paymentType === 'ADVANCE') {
+      return {
+        label: "Online (Razorpay / UPI / Card)",
+        shortLabel: "Online",
+        icon: "💳",
+        badgeClass: "bg-blue-50 text-blue-800 border-blue-200"
+      };
+    }
     const isCash = payment?.provider === 'CASH' || 
                    payment?.providerOrderId?.startsWith('CASH_') || 
                    (!payment?.provider && fallbackMode === 'CASH');
@@ -399,7 +410,7 @@ export default function LeadDetailsPage() {
                 <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Location</span>
                 <span className="text-gray-900 font-medium flex items-center">
                   <MapPin className="w-4 h-4 mr-1 text-gray-400" /> 
-                  {cityObj?.name || coordinatesStr || "N/A"}
+                  {leadLocationName}
                 </span>
               </div>
               <div className="flex flex-col">
@@ -417,50 +428,54 @@ export default function LeadDetailsPage() {
             </div>
 
             {/* Interactive Live Customer Location Map */}
-            {(hasCoordinates || lead.address || cityObj?.name) && (
-              <div className="pt-4 border-t border-gray-100 space-y-3">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
-                    <MapPin className="w-4 h-4 mr-1.5 text-primary-orange" />
-                    Customer Live Geolocation Map
-                  </h4>
-                  {(hasCoordinates || lead.address || cityObj?.name) && (
+            {(hasCoordinates || lead.address || cityObj?.name) && (() => {
+              const mapQuery = hasCoordinates 
+                ? `${lead.location.coordinates[1]},${lead.location.coordinates[0]}` 
+                : encodeURIComponent(lead.address ? `${lead.address}${lead.landmark ? `, ${lead.landmark}` : ''}` : (cityObj?.name || ''));
+
+              return (
+                <div className="pt-4 border-t border-gray-100 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
+                      <MapPin className="w-4 h-4 mr-1.5 text-primary-orange" />
+                      {hasCoordinates ? "Customer Live Geolocation Map" : "Customer Location Map"}
+                    </h4>
                     <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${hasCoordinates ? `${lead.location.coordinates[1]},${lead.location.coordinates[0]}` : encodeURIComponent(`${lead.address || ''} ${cityObj?.name || ''}`)}`}
+                      href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs font-semibold text-primary-orange hover:text-orange-600 flex items-center bg-orange-50 px-2.5 py-1 rounded-md border border-orange-100 hover:bg-orange-100 transition-colors"
                     >
                       Open Google Maps Navigation <ExternalLink className="w-3 h-3 ml-1" />
                     </a>
-                  )}
-                </div>
+                  </div>
 
-                <div className="rounded-2xl overflow-hidden border border-gray-200 h-64 bg-slate-100 shadow-inner relative group">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    frameBorder="0"
-                    scrolling="no"
-                    marginHeight={0}
-                    marginWidth={0}
-                    src={`https://maps.google.com/maps?q=${hasCoordinates ? `${lead.location.coordinates[1]},${lead.location.coordinates[0]}` : encodeURIComponent(`${lead.address || ''} ${cityObj?.name || ''}`)}&z=15&output=embed`}
-                    className="w-full h-full"
-                  ></iframe>
-                </div>
+                  <div className="rounded-2xl overflow-hidden border border-gray-200 h-64 bg-slate-100 shadow-inner relative group">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      scrolling="no"
+                      marginHeight={0}
+                      marginWidth={0}
+                      src={`https://maps.google.com/maps?q=${mapQuery}&z=15&output=embed`}
+                      className="w-full h-full"
+                    ></iframe>
+                  </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
-                  <span className="font-mono text-gray-700">
-                    <strong>Coordinates:</strong> {coordinatesStr || "Not recorded"}
-                  </span>
-                  {lead.address && (
-                    <span className="truncate max-w-md">
-                      <strong>Address:</strong> {lead.address} {lead.landmark ? `(Landmark: ${lead.landmark})` : ''}
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
+                    <span className="font-mono text-gray-700">
+                      <strong>Coordinates:</strong> {coordinatesStr || "Not recorded (Address based)"}
                     </span>
-                  )}
+                    {lead.address && (
+                      <span className="truncate max-w-md">
+                        <strong>Address:</strong> {lead.address} {lead.landmark ? `(Landmark: ${lead.landmark})` : ''}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Photos Section */}
             {(() => {
@@ -691,7 +706,7 @@ export default function LeadDetailsPage() {
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                       : 'bg-blue-50 text-blue-700 border-blue-200'
                   }`}>
-                    {lead.paymentMode === 'CASH' ? '💵 Customer Preference: Cash at Workshop' : '💳 Customer Preference: Online Payment'}
+                    {lead.paymentMode === 'CASH' ? '💵 Final Settlement Preference: Cash at Workshop' : '💳 Final Settlement Preference: Online Payment'}
                   </Badge>
                 )}
                 <Badge className={`text-xs px-3 py-1 font-bold ${
@@ -856,14 +871,14 @@ export default function LeadDetailsPage() {
                   <div>
                     <span className="text-xs text-gray-500 block">Payment Mode</span>
                     <span className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5 mt-0.5">
-                      {advancePayment ? (
+                      {advancePayment?.status === 'SUCCESS' ? (
                         <>
-                          <span className="text-base">{getProviderInfo(advancePayment, lead.paymentMode).icon}</span>
-                          <span>{getProviderInfo(advancePayment, lead.paymentMode).label}</span>
+                          <span className="text-base">💳</span>
+                          <span>Online (Razorpay / UPI / Card)</span>
                         </>
                       ) : (
-                        <span className="text-gray-500 italic">
-                          {lead.paymentMode === 'CASH' ? '💵 Cash at Workshop selected' : '💳 Online selected'}
+                        <span className="text-amber-700 font-semibold text-xs flex items-center gap-1">
+                          💳 15% Online Advance Required
                         </span>
                       )}
                     </span>

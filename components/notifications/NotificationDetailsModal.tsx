@@ -29,8 +29,99 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
   const settlementId = payload.settlementId || payload.settlement_id || payload.refundId || notification.metadata?.settlementId;
   const warrantyId = payload.warrantyId || payload.warranty_id || notification.metadata?.warrantyId;
   const userId = payload.userId || payload.user_id || notification.metadata?.userId;
+  const withdrawalId = payload.withdrawalId || payload.withdrawal_id || notification.metadata?.withdrawalId;
 
-  // 1. Extra Parts / Additional Parts Approval / Job Extensions
+  // 0. Dedicated Precise Routing for ACCOUNTS Portal
+  if (role === "ACCOUNTS") {
+    // A. Partner Withdrawal Requests & Payouts
+    if (
+      withdrawalId ||
+      titleLower.includes("withdrawal") ||
+      msgLower.includes("withdrawal") ||
+      titleLower.includes("payout") ||
+      msgLower.includes("payout")
+    ) {
+      return { label: "Review & Pay Out", href: "/accounts/settlements" };
+    }
+
+    // B. Refunds
+    if (
+      payload.refundId ||
+      titleLower.includes("refund") ||
+      msgLower.includes("refund")
+    ) {
+      return { label: "Review Refund", href: "/accounts/refunds" };
+    }
+
+    // C. Invoices
+    if (
+      invoiceId ||
+      titleLower.includes("invoice") ||
+      msgLower.includes("invoice")
+    ) {
+      return { label: "View Invoices", href: "/accounts/invoices" };
+    }
+
+    // D. Settlements & Commission
+    if (
+      settlementId ||
+      titleLower.includes("settlement") ||
+      msgLower.includes("settlement") ||
+      titleLower.includes("commission") ||
+      msgLower.includes("commission")
+    ) {
+      return { label: "View Settlements", href: "/accounts/settlements" };
+    }
+
+    // E. Payments & Transactions
+    if (
+      titleLower.includes("payment") ||
+      msgLower.includes("payment") ||
+      titleLower.includes("transaction") ||
+      msgLower.includes("transaction") ||
+      titleLower.includes("received") ||
+      msgLower.includes("received")
+    ) {
+      return { label: "View Transactions", href: "/accounts/transactions" };
+    }
+
+    // F. Executive Commissions & Payouts
+    if (
+      titleLower.includes("executive") ||
+      msgLower.includes("executive")
+    ) {
+      return { label: "Executive Commissions", href: "/accounts/payouts" };
+    }
+
+    // G. Financial Reports & Tax Reconciliation
+    if (
+      titleLower.includes("report") ||
+      msgLower.includes("report") ||
+      titleLower.includes("reconcil") ||
+      titleLower.includes("tax")
+    ) {
+      return { label: "View Financial Reports", href: "/accounts/reports" };
+    }
+
+    return { label: "View Accounts", href: "/accounts/dashboard" };
+  }
+
+  // 1. Cancellation Requests & Customer Cancellations (HIGH PRIORITY)
+  if (
+    titleLower.includes("cancel") ||
+    msgLower.includes("cancel") ||
+    payload.type === "CANCELLATION_REQUESTED" ||
+    notification.type === "CANCELLATION_REQUESTED"
+  ) {
+    if (role === "EXECUTIVE") return { label: "Review Cancellation", href: "/executive/cancellations" };
+    if (role === "ACCOUNTS") return { label: "Review Refund", href: "/accounts/refunds" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Cancellations", href: "/admin/operations" };
+    if (role === "PARTNER") return { label: "View Job Status", href: "/partner/jobs" };
+    if (role === "CUSTOMER") return { label: "View Booking Details", href: bId ? `/customer/bookings/${bId}` : "/customer/bookings" };
+    return { label: "Review Cancellation", href: "/executive/cancellations" };
+  }
+
+  // 2. Extra Parts / Additional Parts Approval / Job Extensions
   if (
     titleLower.includes("part") ||
     msgLower.includes("part") ||
@@ -110,6 +201,29 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Booking Details", href: bId ? `/admin/bookings/${bId}` : "/admin/bookings" };
     if (role === "EXECUTIVE") return { label: "View Leads & Bookings", href: "/executive/leads" };
     return { label: "View Bookings", href: "/admin/bookings" };
+  }
+
+  // 4c. Follow-ups & Reminders
+  if (
+    titleLower.includes("follow") ||
+    msgLower.includes("follow") ||
+    titleLower.includes("reminder") ||
+    msgLower.includes("reminder")
+  ) {
+    if (role === "EXECUTIVE") return { label: "View Follow-ups", href: "/executive/follow-ups" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Operations", href: "/admin/dashboard" };
+    return { label: "View Follow-ups", href: "/executive/follow-ups" };
+  }
+
+  // 4d. Escalations & Complaints
+  if (
+    titleLower.includes("escalat") ||
+    msgLower.includes("escalat") ||
+    titleLower.includes("dispute") ||
+    msgLower.includes("dispute")
+  ) {
+    if (role === "EXECUTIVE") return { label: "View Escalations", href: "/executive/escalations" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Helpdesk", href: "/admin/helpdesk" };
   }
 
   // 5. Partner Registration & Status
@@ -200,7 +314,7 @@ export function NotificationDetailsModal({
 }: NotificationDetailsModalProps) {
   if (!notification) return null;
 
-  const payload = notification.data || notification.payload || {};
+  const payload = notification.metadata || notification.data || notification.payload || {};
   const category = notification.category || notification.type || "SYSTEM";
   const actionLink = getNotificationTargetLink(notification, userRole);
 

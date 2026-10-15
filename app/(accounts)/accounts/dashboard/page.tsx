@@ -4,12 +4,14 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useAccountsDashboardData, useActivityLogs, useAccountsTransactions, useAccountsWithdrawalRequests } from "@/features/accounts/hooks/useAccountsQueries";
+import { useAccountsDashboardData, useActivityLogs, useAccountsTransactions, useAccountsWithdrawalRequests, useAccountsNotifications } from "@/features/accounts/hooks/useAccountsQueries";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight, CreditCard, Wallet, ArrowUpRight } from "lucide-react";
+import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight, CreditCard, Wallet, ArrowUpRight, Bell, ExternalLink } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { getNotificationTargetLink } from "@/components/notifications/NotificationDetailsModal";
 import {
   BarChart,
   Bar,
@@ -24,15 +26,38 @@ import {
   Legend
 } from "recharts";
 
+import { useSocket } from "@/lib/SocketContext";
+import { useQueryClient } from "@tanstack/react-query";
+
 export default function AccountsDashboardPage() {
   const { user } = useAuth();
+  const { socket } = useSocket();
+  const queryClient = useQueryClient();
+
+  // Real-time synchronization for new partner withdrawals & completed payouts
+  React.useEffect(() => {
+    if (!socket) return;
+    const handleAccountsRefresh = () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts", "withdrawals"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts", "dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts", "transactions"] });
+    };
+    socket.on("new_withdrawal_request", handleAccountsRefresh);
+    socket.on("withdrawal_processed", handleAccountsRefresh);
+    return () => {
+      socket.off("new_withdrawal_request", handleAccountsRefresh);
+      socket.off("withdrawal_processed", handleAccountsRefresh);
+    };
+  }, [socket, queryClient]);
 
   const { data, isLoading: loading } = useAccountsDashboardData();
   const { data: activityLogs = [] } = useActivityLogs(5);
   const { data: txData } = useAccountsTransactions({ limit: 10 });
   const { data: withdrawalsData } = useAccountsWithdrawalRequests({ limit: 10 });
+  const { data: notificationsData } = useAccountsNotifications();
   const withdrawalList = withdrawalsData?.withdrawals || [];
   const pendingWithdrawals = useMemo(() => withdrawalList.filter((w: any) => w.status === 'PENDING'), [withdrawalList]);
+  const recentNotifications = useMemo(() => (notificationsData || []).slice(0, 3), [notificationsData]);
 
   const rawTransactions = txData?.transactions || txData?.data?.transactions || (Array.isArray(txData) ? txData : []);
   const recentPayments = useMemo(() => Array.isArray(rawTransactions) ? rawTransactions.slice(0, 5) : [], [rawTransactions]);
@@ -107,6 +132,34 @@ export default function AccountsDashboardPage() {
         </div>
       </div>
 
+      {/* 🔔 Immediate Action Alert for Pending Partner Withdrawals */}
+      {pendingWithdrawals.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 md:p-5 text-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/30 shadow-inner">
+              <Wallet className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-extrabold text-white text-base md:text-lg">
+                  {pendingWithdrawals.length} Partner Withdrawal Request{pendingWithdrawals.length > 1 ? "s" : ""} Pending Payout
+                </h3>
+                <span className="bg-white text-orange-700 text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                  Action Required
+                </span>
+              </div>
+              <p className="text-white/90 text-xs md:text-sm font-medium mt-0.5">
+                Total Payout Pending: ₹{pendingWithdrawals.reduce((sum, w) => sum + (Number(w.amount) || 0), 0).toLocaleString("en-IN")} • Verify partner bank details and enter UTR.
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm" className="bg-white hover:bg-orange-50 text-orange-700 font-extrabold px-5 py-2.5 rounded-xl shadow-md shrink-0 border-0">
+            <Link href="/accounts/settlements" className="flex items-center gap-1.5">
+              Review & Pay Out <ArrowRight className="w-4 h-4" />
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -465,25 +518,56 @@ export default function AccountsDashboardPage() {
         </Card>
 
         {/* Notifications Widget */}
-        <Card className="col-span-1 lg:col-span-5 shadow-subtle border-gray-100">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50">
+        <Card className="col-span-1 lg:col-span-5 shadow-subtle border-gray-100 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-gray-50">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-secondary-blue" />
-                Latest Notifications
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-gray-900">
+                <Bell className="w-4 h-4 text-primary-orange" />
+                Latest Alerts & Notifications
               </CardTitle>
             </div>
-            <Button variant="ghost" size="sm" asChild className="text-secondary-blue hover:text-blue-700">
+            <Button variant="ghost" size="sm" asChild className="text-xs text-primary-orange hover:text-orange-700 h-8 font-semibold">
               <Link href="/accounts/notifications">View All</Link>
             </Button>
           </CardHeader>
-          <CardContent className="p-4 flex flex-col justify-center h-[280px]">
-            <div className="text-center text-gray-500">
-              <p className="mb-2 text-sm">You have unread system notifications!</p>
-              <Button asChild variant="outline" className="mt-2 text-primary-navy border-primary-navy/20 hover:bg-primary-navy/5">
-                <Link href="/accounts/notifications">Read Messages Now</Link>
-              </Button>
-            </div>
+          <CardContent className="p-3 flex-1 flex flex-col justify-start">
+            {recentNotifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[220px] text-center text-gray-400">
+                <Bell className="w-8 h-8 opacity-20 mb-2" />
+                <p className="text-xs font-medium">No recent notifications</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {recentNotifications.map((notif: any) => {
+                  const targetLink = getNotificationTargetLink(notif, "ACCOUNTS");
+                  return (
+                    <div key={notif._id} className="py-2.5 px-2 hover:bg-gray-50/80 rounded-lg transition-colors group">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-xs font-bold text-gray-900 group-hover:text-primary-navy transition-colors line-clamp-1">
+                          {notif.title}
+                        </h4>
+                        <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0">
+                          {notif.createdAt ? formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true }) : ""}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
+                        {notif.message}
+                      </p>
+                      {targetLink && (
+                        <div className="mt-1.5 flex justify-end">
+                          <Link
+                            href={targetLink.href}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary-orange hover:text-orange-700 transition-colors"
+                          >
+                            {targetLink.label} <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
