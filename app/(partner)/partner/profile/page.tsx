@@ -218,10 +218,12 @@ export default function PartnerProfilePage() {
               />
 
               <Input
-                label="GST Number (Optional)"
+                label="GST Number *"
                 name="gstNumber"
+                placeholder="e.g. 05AAAAA0000A1Z5"
                 value={formData.gstNumber}
                 onChange={handleInputChange}
+                required
               />
 
               <div className="md:col-span-2">

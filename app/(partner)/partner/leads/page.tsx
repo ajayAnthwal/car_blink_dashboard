@@ -73,14 +73,22 @@ export default function LeadsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {leads.map((lead: unknown) => {
+          {leads.map((lead: any) => {
             const leadId = lead._id || lead.id;
+            const serviceTitle = lead.customServiceName || 
+              (lead.description && typeof lead.description === 'string' && !lead.description.toLowerCase().startsWith('website quote') && !lead.description.toLowerCase().startsWith('quick callback')
+                ? lead.description.split('| Car:')[0].split('|')[0].trim()
+                : '') ||
+              lead.serviceId?.name || 
+              "Service Request";
+            const formattedTitle = serviceTitle.charAt(0).toUpperCase() + serviceTitle.slice(1);
+
             return (
             <Card key={leadId} className="hover:shadow-md transition-shadow">
               <CardContent className="p-5">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-primary-navy mb-1">{lead.serviceId?.name || "Service Request"}</h3>
+                    <h3 className="text-lg font-bold text-primary-navy mb-1">{formattedTitle}</h3>
                     <div className="flex items-center text-xs text-neutral-muted space-x-3">
                       <span className="flex items-center"><MapPin className="w-3 h-3 mr-1"/> {lead.cityId?.name || "N/A"}</span>
                       <span className="flex items-center"><Calendar className="w-3 h-3 mr-1"/> {lead.preferredDate ? new Date(lead.preferredDate).toLocaleDateString() : "N/A"}</span>
@@ -130,7 +138,14 @@ export default function LeadsPage() {
             </CardHeader>
             <CardContent className="pt-4 overflow-y-auto custom-scrollbar flex-1">
               <div className="mb-4 bg-primary-navy/5 p-3 rounded-lg text-sm">
-                <p className="font-medium text-primary-navy">{selectedLead.serviceId?.name}</p>
+                <p className="font-medium text-primary-navy">
+                  {selectedLead.customServiceName || 
+                    (selectedLead.description && typeof selectedLead.description === 'string' && !selectedLead.description.toLowerCase().startsWith('website quote') && !selectedLead.description.toLowerCase().startsWith('quick callback')
+                      ? selectedLead.description.split('| Car:')[0].split('|')[0].trim()
+                      : '') ||
+                    selectedLead.serviceId?.name || 
+                    "Service Request"}
+                </p>
                 <p className="text-neutral-muted">{selectedLead.vehicleId?.brand} {selectedLead.vehicleId?.model}</p>
               </div>
 

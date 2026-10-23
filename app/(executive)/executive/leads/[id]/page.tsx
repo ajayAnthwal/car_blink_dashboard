@@ -404,7 +404,22 @@ export default function LeadDetailsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Service Type</span>
-                <span className="text-gray-900 font-medium">{serviceObj?.name || "N/A"}</span>
+                <span className="text-gray-900 font-medium flex flex-wrap items-center gap-1.5">
+                  {(() => {
+                    const raw = lead.customServiceName || 
+                      (lead.description && typeof lead.description === 'string' && !lead.description.toLowerCase().startsWith('website quote') && !lead.description.toLowerCase().startsWith('quick callback')
+                        ? lead.description.split('| Car:')[0].split('|')[0].trim()
+                        : '') ||
+                      serviceObj?.name || 
+                      "N/A";
+                    return raw.charAt(0).toUpperCase() + raw.slice(1);
+                  })()}
+                  {lead.customServiceName && serviceObj?.name && lead.customServiceName.toLowerCase() !== serviceObj.name.toLowerCase() && (
+                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                      {serviceObj.name}
+                    </span>
+                  )}
+                </span>
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Location</span>
