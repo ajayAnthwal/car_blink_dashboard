@@ -60,10 +60,12 @@ export default function PartnerKycPage() {
   // Step 1: Business KYC State
   const [pan, setPan] = useState("");
   const [panHolderName, setPanHolderName] = useState("");
+  const [panStatus, setPanStatus] = useState<string>("PENDING");
   const [isGstRegistered, setIsGstRegistered] = useState(false);
   const [gstin, setGstin] = useState("");
   const [gstLegalName, setGstLegalName] = useState("");
   const [gstTradeName, setGstTradeName] = useState("");
+  const [gstStatus, setGstStatus] = useState<string>("PENDING");
   const [nonGstProofType, setNonGstProofType] = useState("SHOP_ESTABLISHMENT_LICENSE");
   const [proofRef, setProofRef] = useState("");
   const [udyamNumber, setUdyamNumber] = useState("");
@@ -74,6 +76,18 @@ export default function PartnerKycPage() {
   const [representativeEmail, setRepresentativeEmail] = useState("");
   const [representativeDesignation, setRepresentativeDesignation] = useState("");
   const [authorizationDocRef, setAuthorizationDocRef] = useState("");
+
+  // Aadhaar Identity State
+  const [aadhaarNumber, setAadhaarNumber] = useState("");
+  const [aadhaarHolderName, setAadhaarHolderName] = useState("");
+  const [aadhaarProofRef, setAadhaarProofRef] = useState("");
+  const [aadhaarStatus, setAadhaarStatus] = useState<string>("PENDING");
+
+  // Inline Edit / Correct states for specific fields (Preserves all other data)
+  const [editingPan, setEditingPan] = useState(false);
+  const [editingGst, setEditingGst] = useState(false);
+  const [editingAadhaar, setEditingAadhaar] = useState(false);
+  const [editingBank, setEditingBank] = useState(false);
 
   // Step 2: Workshop Proof State
   const [exteriorPhotoRef, setExteriorPhotoRef] = useState("");
@@ -91,6 +105,7 @@ export default function PartnerKycPage() {
   const [accountNumber, setAccountNumber] = useState("");
   const [ifsc, setIfsc] = useState("");
   const [bankProofRef, setBankProofRef] = useState("");
+  const [bankStatus, setBankStatus] = useState<string>("PENDING");
 
   // Step 4: Capabilities State
   const [services, setServices] = useState<string[]>(["Mechanical", "General Service", "Car Wash"]);
@@ -103,6 +118,7 @@ export default function PartnerKycPage() {
   const [insuranceWorkCapable, setInsuranceWorkCapable] = useState<boolean>(false);
   const [authorizedServiceClaim, setAuthorizedServiceClaim] = useState<boolean>(false);
   const [authorizedServiceProofRef, setAuthorizedServiceProofRef] = useState<string>("");
+  const [otherServicesDescription, setOtherServicesDescription] = useState<string>("");
 
   const loadData = async () => {
     try {
@@ -122,6 +138,7 @@ export default function PartnerKycPage() {
 
       if (cData) {
         setChecklistData(cData);
+        if (cData.bankVerificationStatus) setBankStatus(cData.bankVerificationStatus);
         const d = (cData.data && typeof cData.data === 'object' && !Array.isArray(cData.data)) ? cData.data : cData;
         if (d) {
           if (d.exteriorPhotoRef) setExteriorPhotoRef(d.exteriorPhotoRef);
@@ -136,6 +153,7 @@ export default function PartnerKycPage() {
           if (d.accountNumber) setAccountNumber(d.accountNumber);
           if (d.ifsc) setIfsc(d.ifsc);
           if (d.bankProofRef) setBankProofRef(d.bankProofRef);
+          if (d.bankVerificationStatus) setBankStatus(d.bankVerificationStatus);
           if (d.services && Array.isArray(d.services) && d.services.length > 0) setServices(d.services);
           if (d.serviceBays) setServiceBays(d.serviceBays);
           if (d.technicianCount) setTechnicianCount(d.technicianCount);
@@ -146,19 +164,33 @@ export default function PartnerKycPage() {
           if (d.insuranceWorkCapable !== undefined) setInsuranceWorkCapable(d.insuranceWorkCapable);
           if (d.authorizedServiceClaim !== undefined) setAuthorizedServiceClaim(d.authorizedServiceClaim);
           if (d.authorizedServiceProofRef) setAuthorizedServiceProofRef(d.authorizedServiceProofRef);
+          if (d.otherServicesDescription) setOtherServicesDescription(d.otherServicesDescription);
         }
       }
 
       if (bData) {
-        if (bData.pan) setPan(bData.pan);
+        if (bData.pan) {
+          setPan(bData.pan);
+          setPanStatus(bData.panStatus || "PENDING");
+        }
+        if (bData.panHolderName) setPanHolderName(bData.panHolderName);
         if (bData.isGstRegistered !== undefined) setIsGstRegistered(bData.isGstRegistered);
-        if (bData.gstin) setGstin(bData.gstin);
+        if (bData.gstin) {
+          setGstin(bData.gstin);
+          setGstStatus(bData.gstStatus || "PENDING");
+        }
         if (bData.gstLegalName) setGstLegalName(bData.gstLegalName);
         if (bData.gstTradeName) setGstTradeName(bData.gstTradeName);
         if (bData.nonGstProofType) setNonGstProofType(bData.nonGstProofType);
         if (bData.proofRef) setProofRef(bData.proofRef);
         if (bData.udyamNumber) setUdyamNumber(bData.udyamNumber);
         if (bData.businessRegistrationProofRef) setBusinessRegistrationProofRef(bData.businessRegistrationProofRef);
+        if (bData.aadhaarNumber) {
+          setAadhaarNumber(bData.aadhaarNumber);
+          setAadhaarStatus(bData.aadhaarStatus || "PENDING");
+        }
+        if (bData.aadhaarHolderName) setAadhaarHolderName(bData.aadhaarHolderName);
+        if (bData.aadhaarProofRef) setAadhaarProofRef(bData.aadhaarProofRef);
         if (bData.isRepresentative !== undefined) setIsRepresentative(bData.isRepresentative);
         if (bData.representativeDetails) {
           setRepresentativeName(bData.representativeDetails.fullName || "");
@@ -200,15 +232,30 @@ export default function PartnerKycPage() {
     );
   };
 
-  // 1. Submit Step 1: Business KYC
+  // 1. Submit Step 1: Business KYC (PAN, GST & Aadhaar)
   const handleSubmitBusinessKyc = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
     setSubmittingStep("business");
 
+    const cleanPan = pan.trim().toUpperCase();
+    const cleanAadhaar = aadhaarNumber.trim().replace(/[\s-]/g, "");
+
+    if (cleanPan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+      setMessage({ type: "error", text: "Invalid PAN format. Please enter a valid 10-character PAN (e.g. ABCDE1234F)." });
+      setSubmittingStep(null);
+      return;
+    }
+
+    if (cleanAadhaar && !/^\d{12}$/.test(cleanAadhaar)) {
+      setMessage({ type: "error", text: "Invalid Aadhaar format. Please enter a 12-digit numeric Aadhaar number." });
+      setSubmittingStep(null);
+      return;
+    }
+
     try {
       const payload: any = {
-        pan: pan.trim().toUpperCase(),
+        pan: cleanPan,
         panHolderName: panHolderName.trim() || undefined,
         isGstRegistered,
         gstin: isGstRegistered ? gstin.trim().toUpperCase() : undefined,
@@ -218,6 +265,9 @@ export default function PartnerKycPage() {
         proofRef: !isGstRegistered ? proofRef : undefined,
         udyamNumber: udyamNumber.trim() ? udyamNumber.trim().toUpperCase() : undefined,
         businessRegistrationProofRef: businessRegistrationProofRef.trim() || undefined,
+        aadhaarNumber: cleanAadhaar || undefined,
+        aadhaarHolderName: aadhaarHolderName.trim() || undefined,
+        aadhaarProofRef: aadhaarProofRef.trim() || undefined,
         isRepresentative,
         representativeDetails: isRepresentative
           ? {
@@ -231,8 +281,18 @@ export default function PartnerKycPage() {
         ownerName: checklistData?.ownerName || undefined,
       };
 
-      await apiClient.post("/partner/kyc/business", payload);
-      setMessage({ type: "success", text: "Step 1 (Business KYC) saved successfully!" });
+      const res = await apiClient.post("/partner/kyc/business", payload);
+      const resData = res?.data?.data || res?.data;
+
+      if (resData?.panStatus) setPanStatus(resData.panStatus);
+      if (resData?.gstStatus) setGstStatus(resData.gstStatus);
+      if (resData?.aadhaarStatus) setAadhaarStatus(resData.aadhaarStatus);
+
+      setEditingPan(false);
+      setEditingGst(false);
+      setEditingAadhaar(false);
+
+      setMessage({ type: "success", text: "Step 1 (PAN, GST & Aadhaar) verified & saved successfully!" });
       await loadData();
       setActiveTab("workshop");
     } catch (err: any) {
@@ -315,7 +375,9 @@ export default function PartnerKycPage() {
           text: `Bank details saved, but account holder name mismatched! Marked for manual verification: ${data.mismatchReason || ""}`,
         });
       } else {
-        setMessage({ type: "success", text: "Step 3 (Bank Details) saved successfully!" });
+        setEditingBank(false);
+        setBankStatus("VERIFIED");
+        setMessage({ type: "success", text: "Step 3 (Bank Details) verified & saved successfully!" });
       }
 
       await loadData();
@@ -336,6 +398,10 @@ export default function PartnerKycPage() {
       setMessage({ type: "error", text: "Please select at least one service offered." });
       return;
     }
+    if (services.includes("Other") && (!otherServicesDescription || !otherServicesDescription.trim())) {
+      setMessage({ type: "error", text: "Please specify details for 'Other' services offered." });
+      return;
+    }
     if (authorizedServiceClaim && !authorizedServiceProofRef) {
       setMessage({ type: "error", text: "Supporting proof is required when claiming authorized service status." });
       return;
@@ -345,6 +411,7 @@ export default function PartnerKycPage() {
     try {
       const payload = {
         services,
+        otherServicesDescription: services.includes("Other") ? otherServicesDescription.trim() : undefined,
         serviceBays: Number(serviceBays),
         technicianCount: Number(technicianCount),
         workingDays,
@@ -375,23 +442,35 @@ export default function PartnerKycPage() {
   };
 
   const getStatusBadge = (status?: string) => {
-    switch (status) {
-      case "APPROVED":
-      case "APPROVED_VERIFIED":
-        return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200">Verified & Approved</Badge>;
-      case "UNDER_REVIEW":
-        return <Badge className="bg-purple-500/10 text-purple-600 border-purple-200">Under Review</Badge>;
-      case "MANUAL_VERIFICATION_REQUIRED":
-        return <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">Manual Verification Required</Badge>;
-      case "DOCUMENTS_PENDING":
-        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-200">Documents Pending</Badge>;
-      case "REJECTED":
-        return <Badge className="bg-rose-500/10 text-rose-600 border-rose-200 font-semibold">Application Rejected</Badge>;
-      case "SUSPENDED":
-        return <Badge className="bg-red-500/20 text-red-700 border-red-300 font-bold">Account Suspended</Badge>;
-      default:
-        return <Badge className="bg-slate-100 text-slate-700 border-slate-200">{status || "Registration Submitted"}</Badge>;
+    let clear: "Pending" | "Approved" | "Rejected" = "Pending";
+    if (status === "APPROVED" || status === "APPROVED_VERIFIED") {
+      clear = "Approved";
+    } else if (status === "REJECTED" || status === "SUSPENDED") {
+      clear = "Rejected";
     }
+
+    if (clear === "Approved") {
+      return (
+        <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-xs px-3 py-1 font-bold uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />
+          Status: Approved
+        </Badge>
+      );
+    }
+    if (clear === "Rejected") {
+      return (
+        <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/40 text-xs px-3 py-1 font-bold uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-rose-400 mr-1.5" />
+          Status: Rejected
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-xs px-3 py-1 font-bold uppercase tracking-wider">
+        <span className="w-2 h-2 rounded-full bg-amber-400 mr-1.5 animate-pulse" />
+        Status: Pending
+      </Badge>
+    );
   };
 
   if (loading) {
@@ -411,12 +490,12 @@ export default function PartnerKycPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200 dark:border-slate-800 pb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white font-heading">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white font-heading">
             Partner KYC & Workshop Verification
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300 mt-0.5">
             {checklistData?.workshopName || "Workshop"} • {checklistData?.ownerName || "Partner"}
           </p>
         </div>
@@ -448,7 +527,7 @@ export default function PartnerKycPage() {
               <strong>Reason:</strong> &quot;{checklistData?.rejectionReason || checklistData?.adminNotes || "Requirements or business verification criteria were not met."}&quot;
             </p>
             <p className="text-slate-600 text-xs">
-              Partner dashboard access is restricted. Please contact your assigned Field Executive or CarBlink Support at support@carblink.com to resolve discrepancies.
+              Partner dashboard access is restricted. Please contact the CarBlink Team at support@carblink.com to resolve discrepancies.
             </p>
           </div>
         </div>
@@ -463,7 +542,7 @@ export default function PartnerKycPage() {
               <strong>Reason:</strong> &quot;{checklistData?.rejectionReason || checklistData?.adminNotes || "Owner name mismatch or authorized representative documents queued for manual review."}&quot;
             </p>
             <p className="text-amber-800/80 text-xs">
-              A member of the CarBlink verification team is manually checking your uploaded documents. Full dashboard features unlock once cleared.
+              A member of the CarBlink Team is manually checking your uploaded documents. Full dashboard features unlock once cleared.
             </p>
           </div>
         </div>
@@ -475,8 +554,7 @@ export default function PartnerKycPage() {
           <div className="text-xs sm:text-sm space-y-1">
             <p className="font-bold">Application Automatically Under Review!</p>
             <p className="text-purple-800">
-              All mandatory items from Task 3 & Task 4 have been submitted. Our field executive and operations team
-              are verifying your workshop details for final approval.
+              All mandatory items from Task 3 & Task 4 have been submitted. Our CarBlink Team is verifying your workshop details for final approval.
             </p>
           </div>
         </div>
@@ -640,14 +718,14 @@ export default function PartnerKycPage() {
 
                 <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-3.5 text-xs shadow-inner">
                   <div className="flex items-center gap-1.5 font-bold text-amber-300 mb-1">
-                    <Clock className="w-4 h-4 text-amber-400 animate-spin" /> Stage 2: Executive On-Site
+                    <Clock className="w-4 h-4 text-amber-400 animate-spin" /> Stage 2: CarBlink On-Site Verification
                   </div>
-                  <p className="text-[11px] text-amber-100 font-medium">In Progress ⏳ Field executive will visit your workshop within 24–48 hrs.</p>
+                  <p className="text-[11px] text-amber-100 font-medium">In Progress ⏳ CarBlink Team will visit your workshop within 24–48 hrs.</p>
                 </div>
 
                 <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3.5 text-xs opacity-80">
                   <div className="flex items-center gap-1.5 font-bold text-slate-400 mb-1">
-                    <ShieldCheck className="w-4 h-4 text-slate-400" /> Stage 3: Super Admin Final
+                    <ShieldCheck className="w-4 h-4 text-slate-400" /> Stage 3: CarBlink Team Final Approval
                   </div>
                   <p className="text-[11px] text-slate-400 font-medium">Pending Stage 2 clearance. Unique Partner ID will be issued.</p>
                 </div>
@@ -751,48 +829,120 @@ export default function PartnerKycPage() {
         </div>
       )}
 
-      {/* ================= TAB 1: BUSINESS KYC ================= */}
+      {/* ================= TAB 1: BUSINESS KYC (PAN, GST & AADHAAR) ================= */}
       {activeTab === "business" && (
         <form onSubmit={handleSubmitBusinessKyc} className="space-y-4">
+          {/* Section 1A: PAN Card with Auto-Verification & Inline Edit/Correct */}
           <Card className="border-gray-200 shadow-sm">
             <CardHeader className="pb-3 border-b border-gray-100">
-              <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary-orange" />
-                Step 1: Permanent Account Number (PAN) & Tax Identity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">10-Digit PAN Card Number *</label>
-                  <Input
-                    value={pan}
-                    onChange={(e) => setPan(e.target.value.toUpperCase())}
-                    placeholder="e.g. ABCDE1234F"
-                    maxLength={10}
-                    required
-                    className="font-mono uppercase text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Name on PAN (Confirmation)</label>
-                  <Input
-                    value={panHolderName}
-                    onChange={(e) => setPanHolderName(e.target.value)}
-                    placeholder="e.g. Ramesh Chandra"
-                    className="text-xs"
-                  />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary-orange" />
+                  1. Permanent Account Number (PAN)
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {panStatus === "VERIFIED" && (
+                    <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-300 font-bold text-[10px]">
+                      <Check className="w-3 h-3 mr-1 inline" /> Auto-Verified
+                    </Badge>
+                  )}
+                  {panStatus === "FAILED" && (
+                    <Badge className="bg-rose-500/10 text-rose-700 border-rose-300 font-bold text-[10px]">
+                      <AlertCircle className="w-3 h-3 mr-1 inline" /> Verification Failed
+                    </Badge>
+                  )}
+                  {pan && !editingPan && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingPan(true)}
+                      className="text-primary-orange hover:underline text-xs font-bold px-2 py-0.5 border border-primary-orange/30 rounded-md bg-orange-50/50"
+                    >
+                      Edit / Correct PAN
+                    </button>
+                  )}
                 </div>
               </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3 text-xs">
+              {pan && !editingPan && panStatus === "VERIFIED" ? (
+                <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold font-mono text-emerald-900 text-sm tracking-wider">{pan}</p>
+                    <p className="text-[11px] text-emerald-700">Holder: {panHolderName || checklistData?.ownerName || "Taxpayer Record Verified"}</p>
+                  </div>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">10-Digit PAN Card Number *</label>
+                      <Input
+                        value={pan}
+                        onChange={(e) => setPan(e.target.value.toUpperCase())}
+                        placeholder="e.g. ABCDE1234F"
+                        maxLength={10}
+                        required
+                        className="font-mono uppercase text-xs"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1">Must be 10 characters (5 letters, 4 digits, 1 letter).</p>
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Name on PAN Card (Confirmation)</label>
+                      <Input
+                        value={panHolderName}
+                        onChange={(e) => setPanHolderName(e.target.value)}
+                        placeholder="e.g. Ramesh Chandra"
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+                  {editingPan && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setEditingPan(false)}
+                        className="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                      >
+                        Keep Existing PAN
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Section 1B: GST Details with Auto-Verification & Inline Edit/Correct */}
           <Card className="border-gray-200 shadow-sm">
             <CardHeader className="pb-3 border-b border-gray-100">
-              <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary-orange" />
-                GST Registration & Business Proof
-              </CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-primary-orange" />
+                  2. GST Registration &amp; Business Proof
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {isGstRegistered && gstStatus === "VERIFIED" && (
+                    <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-300 font-bold text-[10px]">
+                      <Check className="w-3 h-3 mr-1 inline" /> Auto-Verified
+                    </Badge>
+                  )}
+                  {isGstRegistered && gstStatus === "FAILED" && (
+                    <Badge className="bg-rose-500/10 text-rose-700 border-rose-300 font-bold text-[10px]">
+                      <AlertCircle className="w-3 h-3 mr-1 inline" /> Verification Failed
+                    </Badge>
+                  )}
+                  {isGstRegistered && gstin && !editingGst && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingGst(true)}
+                      className="text-primary-orange hover:underline text-xs font-bold px-2 py-0.5 border border-primary-orange/30 rounded-md bg-orange-50/50"
+                    >
+                      Edit / Correct GSTIN
+                    </button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-4 space-y-4 text-xs">
               <div className="flex items-center space-x-6 p-3 bg-gray-50 rounded-xl border border-gray-100">
@@ -818,28 +968,52 @@ export default function PartnerKycPage() {
               </div>
 
               {isGstRegistered ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-orange-50/40 rounded-xl border border-orange-100">
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">15-Digit GSTIN Number *</label>
-                    <Input
-                      value={gstin}
-                      onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                      placeholder="e.g. 05AAAAA0000A1Z5"
-                      maxLength={15}
-                      required={isGstRegistered}
-                      className="font-mono uppercase text-xs bg-white"
-                    />
+                gstin && !editingGst && gstStatus === "VERIFIED" ? (
+                  <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold font-mono text-emerald-900 text-sm tracking-wider">{gstin}</p>
+                      <p className="text-[11px] text-emerald-700">Trade: {gstTradeName || gstLegalName || checklistData?.workshopName || "Active GSTIN Verified"}</p>
+                    </div>
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Trade / Garage Name on GST</label>
-                    <Input
-                      value={gstTradeName}
-                      onChange={(e) => setGstTradeName(e.target.value)}
-                      placeholder="e.g. Apex Auto Works"
-                      className="text-xs bg-white"
-                    />
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-orange-50/40 rounded-xl border border-orange-100">
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">15-Digit GSTIN Number *</label>
+                        <Input
+                          value={gstin}
+                          onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                          placeholder="e.g. 05AAAAA0000A1Z5"
+                          maxLength={15}
+                          required={isGstRegistered}
+                          className="font-mono uppercase text-xs bg-white"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">15-character alphanumeric GSTIN.</p>
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Trade / Garage Name on GST</label>
+                        <Input
+                          value={gstTradeName}
+                          onChange={(e) => setGstTradeName(e.target.value)}
+                          placeholder="e.g. Apex Auto Works"
+                          className="text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                    {editingGst && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setEditingGst(false)}
+                          className="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                        >
+                          Keep Existing GSTIN
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
+                )
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <div>
@@ -871,12 +1045,112 @@ export default function PartnerKycPage() {
             </CardContent>
           </Card>
 
+          {/* Section 1C: Aadhaar Identity Verification with Auto-Verification & Inline Edit/Correct */}
+          <Card className="border-gray-200 shadow-sm">
+            <CardHeader className="pb-3 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary-orange" />
+                  3. Aadhaar Card Verification (Owner Identity)
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {aadhaarStatus === "VERIFIED" && (
+                    <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-300 font-bold text-[10px]">
+                      <Check className="w-3 h-3 mr-1 inline" /> Auto-Verified
+                    </Badge>
+                  )}
+                  {aadhaarStatus === "FAILED" && (
+                    <Badge className="bg-rose-500/10 text-rose-700 border-rose-300 font-bold text-[10px]">
+                      <AlertCircle className="w-3 h-3 mr-1 inline" /> Verification Failed
+                    </Badge>
+                  )}
+                  {aadhaarNumber && !editingAadhaar && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingAadhaar(true)}
+                      className="text-primary-orange hover:underline text-xs font-bold px-2 py-0.5 border border-primary-orange/30 rounded-md bg-orange-50/50"
+                    >
+                      Edit / Correct Aadhaar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4 text-xs">
+              {aadhaarNumber && !editingAadhaar && aadhaarStatus === "VERIFIED" ? (
+                <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold font-mono text-emerald-900 text-sm tracking-wider">
+                      XXXX-XXXX-{aadhaarNumber.slice(-4)}
+                    </p>
+                    <p className="text-[11px] text-emerald-700">Holder: {aadhaarHolderName || checklistData?.ownerName || "UIDAI Record Verified"}</p>
+                    {aadhaarProofRef && (
+                      <p className="text-[10px] text-emerald-600 mt-0.5">Proof document uploaded ✓</p>
+                    )}
+                  </div>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">12-Digit Aadhaar Number *</label>
+                      <Input
+                        value={aadhaarNumber}
+                        onChange={(e) => {
+                          const digitsOnly = e.target.value.replace(/[^0-9]/g, "").slice(0, 12);
+                          setAadhaarNumber(digitsOnly);
+                        }}
+                        placeholder="e.g. 123456789012"
+                        maxLength={12}
+                        className="font-mono text-xs"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1">Enter exactly 12 numeric digits without spaces or dashes.</p>
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Full Name on Aadhaar Card</label>
+                      <Input
+                        value={aadhaarHolderName}
+                        onChange={(e) => setAadhaarHolderName(e.target.value)}
+                        placeholder="e.g. Ramesh Chandra"
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Upload Aadhaar Card Photo / Document (Optional/Recommended)
+                    </label>
+                    <FileUpload
+                      folder="aadhaar-proof"
+                      currentValue={aadhaarProofRef}
+                      onUploadSuccess={(url) => setAadhaarProofRef(url)}
+                    />
+                  </div>
+
+                  {editingAadhaar && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setEditingAadhaar(false)}
+                        className="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                      >
+                        Keep Existing Aadhaar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Button
             type="submit"
             disabled={submittingStep === "business"}
-            className="w-full h-11 bg-primary-orange hover:bg-primary-orange-dark text-white font-bold text-xs"
+            className="w-full h-11 bg-primary-orange hover:bg-primary-orange-dark text-white font-bold text-xs shadow-md"
           >
-            {submittingStep === "business" ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Step 1 & Proceed to Step 2"}
+            {submittingStep === "business" ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save & Auto-Verify Step 1 Details"}
           </Button>
         </form>
       )}
@@ -1006,13 +1280,30 @@ export default function PartnerKycPage() {
         <form onSubmit={handleSubmitBankDetails} className="space-y-4">
           <Card className="border-gray-200 shadow-sm">
             <CardHeader className="pb-3 border-b border-gray-100">
-              <CardTitle className="text-sm font-bold text-gray-800 flex items-center justify-between">
-                <span className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <Landmark className="w-4 h-4 text-primary-orange" />
-                  Step 3: Bank Account & Settlement Details
-                </span>
-                <Badge className="bg-amber-100 text-amber-800 text-[10px]">Settlements Locked Until Verified</Badge>
-              </CardTitle>
+                  Step 3: Bank Account &amp; Settlement Details
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {bankStatus === "VERIFIED" || (checklistData?.checklist?.bankAccountSubmitted && !editingBank) ? (
+                    <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-300 font-bold text-[10px]">
+                      <Check className="w-3 h-3 mr-1 inline" /> Verified Details
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-amber-100 text-amber-800 text-[10px]">Settlements Locked Until Verified</Badge>
+                  )}
+                  {accountNumber && !editingBank && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingBank(true)}
+                      className="text-primary-orange hover:underline text-xs font-bold px-2 py-0.5 border border-primary-orange/30 rounded-md bg-orange-50/50"
+                    >
+                      Edit / Correct Bank Details
+                    </button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-4 space-y-4 text-xs">
               <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-blue-900 flex items-start space-x-2">
@@ -1024,69 +1315,96 @@ export default function PartnerKycPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Account Holder Name *</label>
-                  <Input
-                    value={accountHolderName}
-                    onChange={(e) => setAccountHolderName(e.target.value)}
-                    placeholder="e.g. Ramesh Chandra / Apex Auto Works"
-                    required
-                    className="text-xs"
-                  />
+              {accountNumber && bankProofRef && !editingBank ? (
+                <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-emerald-900 text-sm">
+                      {bankName} • <span className="font-mono">•••• •••• {accountNumber.slice(-4)}</span>
+                    </p>
+                    <p className="text-[11px] text-emerald-700">IFSC: <span className="font-mono uppercase font-bold">{ifsc}</span> | Holder: {accountHolderName}</p>
+                    <p className="text-[10px] text-emerald-600">Cancelled Cheque Proof Uploaded ✓</p>
+                  </div>
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
                 </div>
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Bank Name *</label>
-                  <Input
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="e.g. HDFC Bank"
-                    required
-                    className="text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Bank Account Number *</label>
-                  <Input
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ""))}
-                    placeholder="e.g. 50100234567890"
-                    required
-                    className="font-mono text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">11-Digit IFSC Code *</label>
-                  <Input
-                    value={ifsc}
-                    onChange={(e) => setIfsc(e.target.value.toUpperCase())}
-                    placeholder="e.g. HDFC0001234"
-                    maxLength={11}
-                    required
-                    className="font-mono uppercase text-xs"
-                  />
-                </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Account Holder Name *</label>
+                      <Input
+                        value={accountHolderName}
+                        onChange={(e) => setAccountHolderName(e.target.value)}
+                        placeholder="e.g. Ramesh Chandra / Apex Auto Works"
+                        required
+                        className="text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Bank Name *</label>
+                      <Input
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        placeholder="e.g. HDFC Bank"
+                        required
+                        className="text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Bank Account Number *</label>
+                      <Input
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ""))}
+                        placeholder="e.g. 50100234567890"
+                        required
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">11-Digit IFSC Code *</label>
+                      <Input
+                        value={ifsc}
+                        onChange={(e) => setIfsc(e.target.value.toUpperCase())}
+                        placeholder="e.g. HDFC0001234"
+                        maxLength={11}
+                        required
+                        className="font-mono uppercase text-xs"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">
-                  Upload Cancelled Cheque / Passbook Copy *
-                </label>
-                <FileUpload
-                  folder="bank-proof"
-                  currentValue={bankProofRef}
-                  onUploadSuccess={(url) => setBankProofRef(url)}
-                />
-              </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Upload Cancelled Cheque / Passbook Copy *
+                    </label>
+                    <FileUpload
+                      folder="bank-proof"
+                      currentValue={bankProofRef}
+                      onUploadSuccess={(url) => setBankProofRef(url)}
+                    />
+                  </div>
+
+                  {editingBank && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setEditingBank(false)}
+                        className="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                      >
+                        Keep Existing Bank Details
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Button
             type="submit"
             disabled={submittingStep === "bank"}
-            className="w-full h-11 bg-primary-orange hover:bg-primary-orange-dark text-white font-bold text-xs"
+            className="w-full h-11 bg-primary-orange hover:bg-primary-orange-dark text-white font-bold text-xs shadow-md"
           >
-            {submittingStep === "bank" ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Step 3 & Proceed to Step 4"}
+            {submittingStep === "bank" ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save & Verify Step 3 Bank Details"}
           </Button>
         </form>
       )}
@@ -1128,6 +1446,28 @@ export default function PartnerKycPage() {
                   })}
                 </div>
               </div>
+
+              {/* Other Services Detail Text Input */}
+              {services.includes("Other") && (
+                <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-1.5 animate-in fade-in duration-200">
+                  <label htmlFor="other-services-input" className="block font-bold text-amber-950 text-xs flex items-center justify-between">
+                    <span>Specify &apos;Other&apos; Service Details *</span>
+                    <span className="text-[10px] text-amber-700 font-normal">Required when Other is selected</span>
+                  </label>
+                  <Input
+                    id="other-services-input"
+                    type="text"
+                    value={otherServicesDescription}
+                    onChange={(e) => setOtherServicesDescription(e.target.value)}
+                    placeholder="e.g. CNG Kit Repair & Tuning, Windshield Replacement, Key Duplication"
+                    required
+                    className="text-xs bg-white border-amber-300 focus:border-amber-500 shadow-sm"
+                  />
+                  <p className="text-[11px] text-amber-800">
+                    Enter the specific automotive services or specializations your workshop provides.
+                  </p>
+                </div>
+              )}
 
               {/* Bays & Techs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-100 pt-3">

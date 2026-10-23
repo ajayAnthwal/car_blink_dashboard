@@ -22,14 +22,16 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
   const msgLower = (notification.message || "").toLowerCase();
   const role = (userRole || "").toUpperCase();
 
-  const bId = payload.bookingId || payload.leadId || payload.id || notification.metadata?.bookingId || notification.metadata?.leadId;
-  const ticketId = payload.ticketId || payload.ticket_id || payload.queryId || notification.metadata?.ticketId;
   const partnerId = payload.partnerId || payload.partner_id || payload.workshopId || notification.metadata?.partnerId;
+  const ticketId = payload.ticketId || payload.ticket_id || payload.queryId || notification.metadata?.ticketId;
   const invoiceId = payload.invoiceId || payload.invoice_id || notification.metadata?.invoiceId;
   const settlementId = payload.settlementId || payload.settlement_id || payload.refundId || notification.metadata?.settlementId;
   const warrantyId = payload.warrantyId || payload.warranty_id || notification.metadata?.warrantyId;
   const userId = payload.userId || payload.user_id || notification.metadata?.userId;
   const withdrawalId = payload.withdrawalId || payload.withdrawal_id || notification.metadata?.withdrawalId;
+
+  // Only consider bId if it's explicitly a booking/lead ID, or payload.id when partnerId/ticketId are not present
+  const bId = payload.bookingId || payload.leadId || notification.metadata?.bookingId || notification.metadata?.leadId || (!partnerId && !ticketId && !invoiceId ? payload.id : undefined);
 
   // 0. Dedicated Precise Routing for ACCOUNTS Portal
   if (role === "ACCOUNTS") {
@@ -106,7 +108,35 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     return { label: "View Accounts", href: "/accounts/dashboard" };
   }
 
-  // 1. Cancellation Requests & Customer Cancellations (HIGH PRIORITY)
+  // 1. Partner Onboarding, Verification, Approval, & KYC (HIGH PRIORITY OVER GENERIC IDS)
+  if (
+    partnerId ||
+    titleLower.includes("partner") ||
+    msgLower.includes("partner") ||
+    titleLower.includes("kyc") ||
+    msgLower.includes("kyc") ||
+    titleLower.includes("workshop") ||
+    msgLower.includes("workshop")
+  ) {
+    if (role === "SUPER_ADMIN" || role === "ADMIN") {
+      const isAwaitingClearance = titleLower.includes("approved") || titleLower.includes("clearance") || titleLower.includes("activation") || titleLower.includes("verification");
+      return { 
+        label: isAwaitingClearance ? "Review & Activate Partner" : "View Partner Details", 
+        href: partnerId ? `/admin/partners/${partnerId}` : "/admin/partners" 
+      };
+    }
+    if (role === "EXECUTIVE") {
+      return { label: "Review & Verify Partner", href: "/executive/partner-status" };
+    }
+    if (role === "PARTNER") {
+      if (titleLower.includes("kyc") || msgLower.includes("kyc")) {
+        return { label: "View KYC Documents", href: "/partner/kyc" };
+      }
+      return { label: "View Workshop Profile", href: "/partner/profile" };
+    }
+  }
+
+  // 2. Cancellation Requests & Customer Cancellations (HIGH PRIORITY)
   if (
     titleLower.includes("cancel") ||
     msgLower.includes("cancel") ||
@@ -115,13 +145,13 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
   ) {
     if (role === "EXECUTIVE") return { label: "Review Cancellation", href: "/executive/cancellations" };
     if (role === "ACCOUNTS") return { label: "Review Refund", href: "/accounts/refunds" };
-    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Cancellations", href: "/admin/operations" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Cancellations", href: bId ? `/admin/bookings/${bId}` : "/admin/bookings" };
     if (role === "PARTNER") return { label: "View Job Status", href: "/partner/jobs" };
     if (role === "CUSTOMER") return { label: "View Booking Details", href: bId ? `/customer/bookings/${bId}` : "/customer/bookings" };
     return { label: "Review Cancellation", href: "/executive/cancellations" };
   }
 
-  // 2. Extra Parts / Additional Parts Approval / Job Extensions
+  // 3. Extra Parts / Additional Parts Approval / Job Extensions
   if (
     titleLower.includes("part") ||
     msgLower.includes("part") ||
@@ -137,7 +167,7 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     return { label: "View Bookings", href: "/admin/bookings" };
   }
 
-  // 2. Invoice Notifications
+  // 4. Invoice Notifications
   if (payload.invoiceId || titleLower.includes("invoice") || msgLower.includes("invoice")) {
     if (role === "PARTNER") return { label: "View Active Jobs & Invoices", href: "/partner/jobs" };
     if (role === "CUSTOMER") return { label: "View Booking & Invoice", href: bId ? `/customer/bookings/${bId}` : "/customer/dashboard" };
@@ -147,7 +177,7 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     return { label: "View Invoices", href: "/admin/finance" };
   }
 
-  // 3. Customer Query / Support Ticket / Helpdesk
+  // 5. Customer Query / Support Ticket / Helpdesk
   if (
     ticketId ||
     titleLower.includes("query") ||
@@ -158,12 +188,12 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     msgLower.includes("help")
   ) {
     if (role === "CUSTOMER") return { label: "View My Queries", href: "/customer/support" };
-    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Helpdesk Tickets", href: ticketId ? `/admin/helpdesk/${ticketId}` : "/admin/helpdesk" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Support Ticket", href: ticketId ? `/admin/helpdesk/${ticketId}` : "/admin/helpdesk" };
     if (role === "EXECUTIVE") return { label: "View Helpdesk Tickets", href: ticketId ? `/executive/helpdesk/${ticketId}` : "/executive/helpdesk" };
     return { label: "View Helpdesk", href: "/admin/helpdesk" };
   }
 
-  // 4a. Job Confirmed / Bid Accepted / Job Assigned (Action: Start Work)
+  // 6. Job Confirmed / Bid Accepted / Job Assigned (Action: Start Work)
   if (
     payload.jobId ||
     payload.job_id ||
@@ -184,7 +214,7 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     return { label: "View Bookings", href: "/admin/bookings" };
   }
 
-  // 4b. Lead / Quote / Bidding Updates
+  // 7. Lead / Quote / Bidding Updates & Service Bookings
   if (
     bId ||
     titleLower.includes("lead") ||
@@ -194,7 +224,9 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     titleLower.includes("bid") ||
     msgLower.includes("bid") ||
     titleLower.includes("service request") ||
-    msgLower.includes("service request")
+    msgLower.includes("service request") ||
+    titleLower.includes("booking") ||
+    msgLower.includes("booking")
   ) {
     if (role === "PARTNER") return { label: "View Leads & Bid", href: "/partner/leads" };
     if (role === "CUSTOMER") return { label: "View Quotes", href: "/customer/quotes" };
@@ -203,7 +235,7 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     return { label: "View Bookings", href: "/admin/bookings" };
   }
 
-  // 4c. Follow-ups & Reminders
+  // 8. Follow-ups & Reminders
   if (
     titleLower.includes("follow") ||
     msgLower.includes("follow") ||
@@ -215,7 +247,7 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     return { label: "View Follow-ups", href: "/executive/follow-ups" };
   }
 
-  // 4d. Escalations & Complaints
+  // 9. Escalations & Complaints
   if (
     titleLower.includes("escalat") ||
     msgLower.includes("escalat") ||
@@ -226,23 +258,7 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Helpdesk", href: "/admin/helpdesk" };
   }
 
-  // 5. Partner Registration & Status
-  if (partnerId || titleLower.includes("partner") || msgLower.includes("partner") || titleLower.includes("kyc") || msgLower.includes("kyc")) {
-    if (role === "SUPER_ADMIN" || role === "ADMIN") {
-      return { label: "Review & Manage Partner", href: partnerId ? `/admin/partners/${partnerId}` : "/admin/partners" };
-    }
-    if (role === "EXECUTIVE") {
-      return { label: "Review & Verify Partner", href: "/executive/partner-status" };
-    }
-    if (role === "PARTNER") {
-      if (titleLower.includes("kyc") || msgLower.includes("kyc")) {
-        return { label: "View KYC Documents", href: "/partner/kyc" };
-      }
-      return { label: "View Workshop Profile", href: "/partner/profile" };
-    }
-  }
-
-  // 6. Website Leads & Callbacks
+  // 10. Website Leads & Callbacks
   if (titleLower.includes("website lead") || titleLower.includes("callback")) {
     if (role === "SUPER_ADMIN" || role === "ADMIN") {
       return { label: "View Marketing Leads", href: "/admin/marketing/leads" };

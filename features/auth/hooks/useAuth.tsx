@@ -112,7 +112,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const cookieToken = Cookies.get("accessToken") || Cookies.get("car_blink_access_token") || Cookies.get("carBlink_token");
+        let cookieToken = Cookies.get("accessToken") || Cookies.get("car_blink_access_token") || Cookies.get("carBlink_token");
+        if (!cookieToken && typeof document !== "undefined" && document.cookie) {
+          const match = document.cookie.match(/(?:^|;\s*)(?:accessToken|car_blink_access_token)=([^;]+)/);
+          if (match && match[1]) {
+            cookieToken = decodeURIComponent(match[1]);
+          }
+        }
         const localToken = localStorage.getItem("car_blink_access_token");
         const storedAccessToken = cookieToken || localToken || "";
         if (cookieToken && cookieToken !== localToken) {

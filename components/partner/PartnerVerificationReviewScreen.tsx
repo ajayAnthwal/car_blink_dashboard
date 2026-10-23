@@ -33,9 +33,13 @@ import {
   Ban,
   RotateCcw,
   Compass,
-  Car
+  Car,
+  Download,
+  Printer
 } from "lucide-react";
 import toast from "react-hot-toast";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface Props {
   partnerId: string;
@@ -165,6 +169,271 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
     }
   };
 
+  const generatePartnerPDF = () => {
+    const p = data?.partner;
+    if (!p) return null;
+    const doc = new jsPDF();
+
+    // 1. Header Banner
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, 210, 32, "F");
+
+    doc.setTextColor(249, 115, 22); // orange-500
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("CARBLINK", 14, 15);
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "normal");
+    doc.text("PARTNER ONBOARDING & VERIFICATION DOSSIER", 14, 23);
+
+    doc.setFontSize(8.5);
+    doc.setTextColor(203, 213, 225);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 135, 15);
+    doc.text(`Partner ID: ${p.uniquePartnerId || "PENDING"}`, 135, 23);
+
+    // 2. Partner Basic Information Table
+    const basicInfo = [
+      ["Workshop Name", p.workshopName || p.businessName || "N/A", "Verification Status", p.verificationStatus || "PENDING"],
+      ["Owner Full Name", p.ownerName || p.userId?.fullName || "N/A", "Account Status", p.isActive ? "ACTIVE" : "INACTIVE"],
+      ["Registered Mobile", `+91 ${p.userId?.phone || p.mobile || "N/A"}`, "Email Address", p.userId?.email || p.email || "N/A"],
+      ["Physical Address", p.addressLine || p.businessAddress || "N/A", "City / State", `${p.city || p.cityId?.name || "N/A"}, ${p.state || "N/A"}`],
+      ["GPS Coordinates", p.location?.coordinates ? `Lat: ${p.location.coordinates[1]}, Lng: ${p.location.coordinates[0]}` : "Not Pinned", "PIN Code", p.pincode || "N/A"]
+    ];
+
+    autoTable(doc, {
+      startY: 37,
+      head: [["Workshop Profile & Contact Details", "", "", ""]],
+      body: basicInfo,
+      theme: "grid",
+      headStyles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: "bold", fontSize: 9.5 },
+      styles: { fontSize: 8, cellPadding: 2.2 },
+      columnStyles: {
+        0: { fontStyle: "bold", fillColor: [248, 250, 252], width: 45 },
+        1: { width: 55 },
+        2: { fontStyle: "bold", fillColor: [248, 250, 252], width: 45 },
+        3: { width: 55 }
+      }
+    });
+
+    let currentY = (doc as any).lastAutoTable.finalY + 6;
+
+    // 3. Business KYC & Tax Registrations Table
+    const aadhaarDisplay = p.aadhaarNumber ? `XXXX-XXXX-${p.aadhaarNumber.slice(-4)}` : "Not Provided";
+    const kycInfo = [
+      ["PAN Number", p.pan || "N/A", "PAN Verification Status", p.panStatus || "PENDING"],
+      ["GSTIN", p.isGstRegistered ? (p.gstin || "N/A") : "Not GST Registered", "GST Status", p.gstStatus || (p.isGstRegistered ? "PENDING" : "NON-GST")],
+      ["Aadhaar Card", aadhaarDisplay, "Aadhaar Status", p.aadhaarStatus || "PENDING"],
+      ["Aadhaar Holder Name", p.aadhaarHolderName || p.ownerName || "N/A", "MSME / Udyam No.", p.udyamNumber || "N/A"],
+      ["Representative", p.isRepresentative ? `${p.representativeDetails?.fullName || "Representative"} (${p.representativeDetails?.designation || "Staff"})` : "Self (Owner)", "Non-GST Proof Type", p.nonGstProofType || "N/A"]
+    ];
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [["Government Identification & Tax Compliance", "", "", ""]],
+      body: kycInfo,
+      theme: "grid",
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: "bold", fontSize: 9.5 },
+      styles: { fontSize: 8, cellPadding: 2.2 },
+      columnStyles: {
+        0: { fontStyle: "bold", fillColor: [248, 250, 252], width: 45 },
+        1: { width: 55 },
+        2: { fontStyle: "bold", fillColor: [248, 250, 252], width: 45 },
+        3: { width: 55 }
+      }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+
+    // 4. Bank Account & Settlement Table
+    const bankInfo = [
+      ["Account Holder Name", p.accountHolderName || p.bankDetails?.accountHolderName || "N/A", "Bank Name", p.bankName || "N/A"],
+      ["Bank Account Number", data?.maskedAccountNumber || p.accountNumber || "N/A", "IFSC Code", p.ifsc || p.bankDetails?.ifscCode || "N/A"],
+      ["Bank Verification Status", p.bankVerificationStatus || "PENDING", "Bank Proof Document", p.bankProofRef ? "Uploaded & Available" : "Missing"]
+    ];
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [["Bank Account & Payout Settlement Details", "", "", ""]],
+      body: bankInfo,
+      theme: "grid",
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: "bold", fontSize: 9.5 },
+      styles: { fontSize: 8, cellPadding: 2.2 },
+      columnStyles: {
+        0: { fontStyle: "bold", fillColor: [248, 250, 252], width: 45 },
+        1: { width: 55 },
+        2: { fontStyle: "bold", fillColor: [248, 250, 252], width: 45 },
+        3: { width: 55 }
+      }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+
+    // 5. Capabilities & Service Parameters Table
+    const workingDaysStr = Array.isArray(p.workingDays) && p.workingDays.length > 0 ? p.workingDays.join(", ") : "Mon - Sat";
+    const workingHoursStr = p.workingHours?.open && p.workingHours?.close ? `${p.workingHours.open} - ${p.workingHours.close}` : "09:00 AM - 08:00 PM";
+    const servicesStr = Array.isArray(p.services) && p.services.length > 0 
+      ? p.services.map((s: string) => s === "Other" && p.otherServicesDescription ? `Other (${p.otherServicesDescription})` : s).join(", ")
+      : "None Specified";
+
+    const capInfo = [
+      ["Service Bays", `${p.serviceBays || 1} Bays`, "Technicians", `${p.technicianCount || 1} Technicians`],
+      ["Working Hours", workingHoursStr, "Working Days", workingDaysStr],
+      ["Pickup & Drop", p.pickupDropAvailable ? "Yes (Available)" : "No", "Insurance Repair", p.insuranceWorkCapable ? "Yes (Authorized)" : "No"],
+      ["Authorized Service", p.authorizedServiceClaim ? "Claimed (Certificate Attached)" : "No", "Daily Capacity", `${p.dailyCapacity || 5} cars/day`],
+      ["Services Offered", { content: servicesStr, colSpan: 3 }]
+    ];
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [["Workshop Capabilities & Operational Parameters", "", "", ""]],
+      body: capInfo as any,
+      theme: "grid",
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: "bold", fontSize: 9.5 },
+      styles: { fontSize: 8, cellPadding: 2.2 },
+      columnStyles: {
+        0: { fontStyle: "bold", fillColor: [248, 250, 252], width: 45 },
+        1: { width: 55 },
+        2: { fontStyle: "bold", fillColor: [248, 250, 252], width: 45 },
+        3: { width: 55 }
+      }
+    });
+
+    // 6. Submitted Proofs & Documents List Table
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+    if (currentY > 230) {
+      doc.addPage();
+      currentY = 20;
+    }
+
+    const docItems = [
+      ["Workshop Exterior Photo", p.exteriorPhotoRef ? "Available (Uploaded)" : "Missing", p.exteriorPhotoRef || "N/A"],
+      ["Workshop Interior / Bay Photo", p.interiorPhotoRef ? "Available (Uploaded)" : "Missing", p.interiorPhotoRef || "N/A"],
+      ["Signboard / Nameplate Photo", p.signboardPhotoRef ? "Available (Uploaded)" : "Missing", p.signboardPhotoRef || "N/A"],
+      [`Address Proof (${p.addressProofType || "ELECTRICITY_BILL"})`, p.addressProofRef ? "Available (Uploaded)" : "Missing", p.addressProofRef || "N/A"],
+      ["Bank Cheque / Passbook Proof", p.bankProofRef ? "Available (Uploaded)" : "Missing", p.bankProofRef || "N/A"],
+      ["Aadhaar Identity Proof", p.aadhaarProofRef ? "Available (Uploaded)" : (p.aadhaarNumber ? "Aadhaar Number Verified" : "N/A"), p.aadhaarProofRef || "N/A"],
+      ["Non-GST Business Proof", p.proofRef ? "Available (Uploaded)" : "N/A", p.proofRef || "N/A"],
+      ["Representative Authorization Letter", p.authorizationDocRef ? "Available (Uploaded)" : "N/A", p.authorizationDocRef || "N/A"],
+      ["Authorized Service Certificate", p.authorizedServiceProofRef ? "Available (Uploaded)" : "N/A", p.authorizedServiceProofRef || "N/A"]
+    ];
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [["Submitted Verification Documents & Upload Proofs", "Status", "Reference / URL"]],
+      body: docItems,
+      theme: "grid",
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: "bold", fontSize: 9 },
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      columnStyles: {
+        0: { fontStyle: "bold", fillColor: [248, 250, 252], width: 55 },
+        1: { width: 40 },
+        2: { width: 105 }
+      }
+    });
+
+    // 7. Audit History Trail
+    if (auditLogs && auditLogs.length > 0) {
+      currentY = (doc as any).lastAutoTable.finalY + 6;
+      if (currentY > 230) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      const auditRows = auditLogs.map((log: any) => [
+        new Date(log.timestamp).toLocaleString(),
+        log.action,
+        `${log.fromStatus || "START"} -> ${log.toStatus || "N/A"}`,
+        log.verifierId?.fullName || "System",
+        log.notes || "-"
+      ]);
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [["Verification Audit History", "", "", "", ""]],
+        body: [
+          ["Timestamp", "Action", "Status Transition", "Verifier", "Notes"],
+          ...auditRows
+        ],
+        theme: "striped",
+        headStyles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: "bold", fontSize: 8.5 },
+        styles: { fontSize: 7.5, cellPadding: 2 }
+      });
+    }
+
+    // Page numbers footer
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `CarBlink Partner Onboarding & Verification System — Page ${i} of ${pageCount}`,
+        14,
+        290
+      );
+    }
+
+    return doc;
+  };
+
+  const handleSavePDF = () => {
+    try {
+      const doc = generatePartnerPDF();
+      if (!doc) {
+        toast.error("Partner details are not loaded yet");
+        return;
+      }
+      const safeName = (data?.partner?.workshopName || data?.partner?.businessName || "partner")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "_");
+      const filename = `${safeName}_verification_dossier.pdf`;
+      doc.save(filename);
+      toast.success("Partner dossier PDF saved (downloaded) successfully!");
+    } catch (err: any) {
+      console.error("Failed to generate and save PDF:", err);
+      toast.error("Failed to save partner PDF dossier");
+    }
+  };
+
+  const handlePrintPDF = () => {
+    try {
+      const doc = generatePartnerPDF();
+      if (!doc) {
+        toast.error("Partner details are not loaded yet");
+        return;
+      }
+      const blob = doc.output("blob");
+      const blobUrl = URL.createObjectURL(blob);
+
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      iframe.src = blobUrl;
+      document.body.appendChild(iframe);
+
+      iframe.onload = () => {
+        setTimeout(() => {
+          try {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            toast.success("Print dialog opened for Partner Dossier PDF");
+          } catch (e) {
+            window.open(blobUrl, "_blank");
+          }
+        }, 250);
+      };
+    } catch (err: any) {
+      console.error("Failed to print partner PDF:", err);
+      toast.error("Failed to print partner PDF dossier");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-4">
@@ -190,6 +459,76 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
   const googleMapsUrl = hasCoordinates 
     ? `https://www.google.com/maps?q=${coordinates[1]},${coordinates[0]}` 
     : partner.businessAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(partner.businessAddress)}` : null;
+
+  const isPdfUrl = (url?: string): boolean => {
+    const clean = url.split("?")[0].toLowerCase();
+    return clean.endsWith(".pdf") || url.includes("/raw/upload/") || url.includes("application/pdf");
+  };
+
+  const renderProofThumbnail = (url: string, label: string) => {
+    const isPdf = isPdfUrl(url);
+    const isCloudinary = isPdf && url.includes("cloudinary.com");
+    const thumbUrl = isCloudinary ? url.replace(/\.pdf($|\?)/i, ".jpg$1") : null;
+
+    if (isPdf) {
+      return (
+        <a 
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="relative group cursor-pointer aspect-video sm:aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center block"
+        >
+          {thumbUrl ? (
+            <>
+              <img 
+                src={thumbUrl} 
+                alt={label} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = "none";
+                }}
+              />
+              <div className="absolute top-2 left-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-xs flex items-center gap-1 shadow-sm">
+                <FileText className="w-3 h-3 text-primary-orange" /> PDF Document
+              </div>
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1.5">
+                <ExternalLink className="w-4 h-4" /> Open PDF Document ↗
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-orange-50/50 p-2 text-slate-800">
+              <div className="w-10 h-10 rounded-full bg-primary-orange/10 flex items-center justify-center text-primary-orange mb-1.5 shadow-xs">
+                <FileText className="w-5 h-5" />
+              </div>
+              <span className="text-[11px] font-bold text-gray-900 line-clamp-1">{label}</span>
+              <span className="text-[10px] font-semibold text-primary-orange bg-primary-orange/10 px-2 py-0.5 rounded-full mt-0.5">
+                PDF Document
+              </span>
+              <div className="mt-2 text-[11px] font-bold text-blue-600 group-hover:underline flex items-center gap-1">
+                <ExternalLink className="w-3.5 h-3.5" /> View PDF ↗
+              </div>
+            </div>
+          )}
+        </a>
+      );
+    }
+
+    return (
+      <div 
+        onClick={() => setSelectedPhoto(url)}
+        className="relative group cursor-pointer aspect-video sm:aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm"
+      >
+        <img 
+          src={url} 
+          alt={label} 
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+        />
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1">
+          <Eye className="w-4 h-4" /> Click to Zoom
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -328,6 +667,27 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
               </Button>
             </>
           )}
+
+          {/* PDF Generation: Save (Download) & Print */}
+          <div className="flex items-center gap-1.5 border-l border-gray-200 pl-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSavePDF}
+              className="bg-white border-slate-300 text-slate-800 hover:bg-slate-50 hover:text-primary-orange font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5 text-primary-orange" /> Save PDF
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrintPDF}
+              className="bg-white border-slate-300 text-slate-800 hover:bg-slate-50 hover:text-blue-600 font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5 text-blue-600" /> Print PDF
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -642,19 +1002,7 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
                   )}
                 </div>
                 {partner.exteriorPhotoRef ? (
-                  <div 
-                    onClick={() => setSelectedPhoto(partner.exteriorPhotoRef)}
-                    className="relative group cursor-pointer aspect-video sm:aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm"
-                  >
-                    <img 
-                      src={partner.exteriorPhotoRef} 
-                      alt="Workshop Exterior" 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1">
-                      <Eye className="w-4 h-4" /> Click to Zoom
-                    </div>
-                  </div>
+                  renderProofThumbnail(partner.exteriorPhotoRef, "Workshop Exterior")
                 ) : (
                   <div className="aspect-video sm:aspect-square bg-gray-50 border border-dashed border-gray-200 rounded-xl flex items-center justify-center text-xs text-gray-400">
                     Missing Exterior
@@ -673,19 +1021,7 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
                   )}
                 </div>
                 {partner.interiorPhotoRef ? (
-                  <div 
-                    onClick={() => setSelectedPhoto(partner.interiorPhotoRef)}
-                    className="relative group cursor-pointer aspect-video sm:aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm"
-                  >
-                    <img 
-                      src={partner.interiorPhotoRef} 
-                      alt="Workshop Interior" 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1">
-                      <Eye className="w-4 h-4" /> Click to Zoom
-                    </div>
-                  </div>
+                  renderProofThumbnail(partner.interiorPhotoRef, "Workshop Interior")
                 ) : (
                   <div className="aspect-video sm:aspect-square bg-gray-50 border border-dashed border-gray-200 rounded-xl flex items-center justify-center text-xs text-gray-400">
                     Missing Interior
@@ -704,19 +1040,7 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
                   )}
                 </div>
                 {partner.signboardPhotoRef ? (
-                  <div 
-                    onClick={() => setSelectedPhoto(partner.signboardPhotoRef)}
-                    className="relative group cursor-pointer aspect-video sm:aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm"
-                  >
-                    <img 
-                      src={partner.signboardPhotoRef} 
-                      alt="Workshop Signboard" 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1">
-                      <Eye className="w-4 h-4" /> Click to Zoom
-                    </div>
-                  </div>
+                  renderProofThumbnail(partner.signboardPhotoRef, "Workshop Signboard")
                 ) : (
                   <div className="aspect-video sm:aspect-square bg-gray-50 border border-dashed border-gray-200 rounded-xl flex items-center justify-center text-xs text-gray-400">
                     Missing Signboard
@@ -773,6 +1097,32 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
             <div>
               <span className="text-gray-400 block uppercase tracking-wider text-[10px] font-bold">MSME / Udyam Number</span>
               <span className="font-mono text-gray-800 font-semibold">{partner.udyamNumber || "Not Provided"}</span>
+            </div>
+
+            <div>
+              <span className="text-gray-400 block uppercase tracking-wider text-[10px] font-bold">Aadhaar Card (Owner)</span>
+              <div className="flex items-center justify-between mt-0.5">
+                <span className="font-mono font-bold text-gray-900">
+                  {partner.aadhaarNumber ? `XXXX-XXXX-${partner.aadhaarNumber.slice(-4)}` : "Not Provided"}
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                  partner.aadhaarStatus === "VERIFIED"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-gray-100 text-gray-700 border-gray-200"
+                }`}>
+                  {partner.aadhaarStatus || "PENDING"}
+                </span>
+              </div>
+              {partner.aadhaarHolderName && (
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  Holder: <strong className="text-gray-800">{partner.aadhaarHolderName}</strong>
+                </p>
+              )}
+              {partner.aadhaarProofRef && (
+                <a href={partner.aadhaarProofRef} target="_blank" rel="noreferrer" className="text-primary-orange text-[11px] font-bold hover:underline block mt-1">
+                  View Aadhaar Document ↗
+                </a>
+              )}
             </div>
 
             {partner.isRepresentative && (
@@ -863,11 +1213,23 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
               <span className="text-gray-400 block uppercase tracking-wider text-[10px] font-bold mb-1.5">Offered Services</span>
               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
                 {partner.services && partner.services.length > 0 ? (
-                  partner.services.map((s: string, idx: number) => (
-                    <span key={idx} className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-slate-200">
-                      {s}
-                    </span>
-                  ))
+                  partner.services.map((s: string, idx: number) => {
+                    const isOther = s === "Other";
+                    return (
+                      <span
+                        key={idx}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                          isOther && partner.otherServicesDescription
+                            ? "bg-amber-50 text-amber-900 border-amber-300 font-bold"
+                            : "bg-slate-100 text-slate-800 border-slate-200"
+                        }`}
+                      >
+                        {isOther && partner.otherServicesDescription
+                          ? `Other: ${partner.otherServicesDescription}`
+                          : s}
+                      </span>
+                    );
+                  })
                 ) : (
                   <span className="text-gray-400 italic">No services specified</span>
                 )}
@@ -888,9 +1250,227 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
                 </strong>
               </div>
             </div>
+
+            {/* Working Schedule & Authorized Service Claim */}
+            <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100 space-y-1 text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Working Days:</span>
+                <span className="font-bold text-gray-800">
+                  {partner.workingDays && partner.workingDays.length > 0 ? partner.workingDays.join(", ") : "Mon - Sat"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Working Hours:</span>
+                <span className="font-bold text-gray-800">
+                  {partner.workingHours?.open && partner.workingHours?.close
+                    ? `${partner.workingHours.open} - ${partner.workingHours.close}`
+                    : "09:00 AM - 08:00 PM"}
+                </span>
+              </div>
+            </div>
+
+            {partner.authorizedServiceClaim && (
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg text-[11px]">
+                <span className="font-bold text-blue-900 block">Authorized Brand Workshop Claim</span>
+                {partner.authorizedServiceProofRef && (
+                  <a href={partner.authorizedServiceProofRef} target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold mt-0.5 block">
+                    View Authorization Certificate ↗
+                  </a>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* COMPLETE SUBMITTED DOCUMENTS & AUTO-GENERATED DOSSIER */}
+      <Card className="border-gray-200 shadow-sm overflow-hidden">
+        <CardHeader className="bg-slate-50 border-b border-gray-100 py-3.5 px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary-orange" /> Submitted Verification Documents &amp; Auto-Generated Dossier
+              </CardTitle>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Complete archive of legal, business, and workshop proofs submitted by this partner
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                onClick={handleSavePDF}
+                className="bg-primary-orange hover:bg-primary-orange-dark text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" /> Save PDF Dossier
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrintPDF}
+                className="bg-white border-slate-300 text-slate-800 hover:bg-slate-100 font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5"
+              >
+                <Printer className="w-3.5 h-3.5 text-blue-600" /> Print Dossier
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {/* 1. Exterior Photo */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Workshop Exterior Photo</span>
+                <span className="text-xs font-semibold text-gray-800 truncate block">
+                  {partner.exteriorPhotoRef ? "Exterior Image Uploaded" : "Not Provided"}
+                </span>
+              </div>
+              {partner.exteriorPhotoRef ? (
+                <a href={partner.exteriorPhotoRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-primary-orange hover:underline shrink-0">
+                  View ↗
+                </a>
+              ) : (
+                <span className="text-[11px] text-gray-400 font-medium shrink-0">Missing</span>
+              )}
+            </div>
+
+            {/* 2. Interior Photo */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Interior / Bay Photo</span>
+                <span className="text-xs font-semibold text-gray-800 truncate block">
+                  {partner.interiorPhotoRef ? "Service Bay Image Uploaded" : "Not Provided"}
+                </span>
+              </div>
+              {partner.interiorPhotoRef ? (
+                <a href={partner.interiorPhotoRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-primary-orange hover:underline shrink-0">
+                  View ↗
+                </a>
+              ) : (
+                <span className="text-[11px] text-gray-400 font-medium shrink-0">Missing</span>
+              )}
+            </div>
+
+            {/* 3. Signboard Photo */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Signage / Nameplate Photo</span>
+                <span className="text-xs font-semibold text-gray-800 truncate block">
+                  {partner.signboardPhotoRef 
+                    ? (isPdfUrl(partner.signboardPhotoRef) ? "Signboard PDF Document" : "Signboard Image Uploaded") 
+                    : "Not Provided"}
+                </span>
+              </div>
+              {partner.signboardPhotoRef ? (
+                <a href={partner.signboardPhotoRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-primary-orange hover:underline shrink-0">
+                  View ↗
+                </a>
+              ) : (
+                <span className="text-[11px] text-gray-400 font-medium shrink-0">Missing</span>
+              )}
+            </div>
+
+            {/* 4. Address Proof */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">
+                  Address Proof ({partner.addressProofType || "ELECTRICITY_BILL"})
+                </span>
+                <span className="text-xs font-semibold text-gray-800 truncate block">
+                  {partner.addressProofRef ? "Document Uploaded" : "Not Provided"}
+                </span>
+              </div>
+              {partner.addressProofRef ? (
+                <a href={partner.addressProofRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-primary-orange hover:underline shrink-0">
+                  View ↗
+                </a>
+              ) : (
+                <span className="text-[11px] text-gray-400 font-medium shrink-0">Missing</span>
+              )}
+            </div>
+
+            {/* 5. Bank Cheque / Passbook Proof */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Bank Account Proof</span>
+                <span className="text-xs font-semibold text-gray-800 truncate block">
+                  {partner.bankProofRef ? "Cancelled Cheque / Passbook" : "Not Provided"}
+                </span>
+              </div>
+              {partner.bankProofRef ? (
+                <a href={partner.bankProofRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-primary-orange hover:underline shrink-0">
+                  View ↗
+                </a>
+              ) : (
+                <span className="text-[11px] text-gray-400 font-medium shrink-0">Missing</span>
+              )}
+            </div>
+
+            {/* 6. Aadhaar Document Proof */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Aadhaar Identification</span>
+                <span className="text-xs font-semibold text-gray-800 truncate block">
+                  {partner.aadhaarNumber ? `Aadhaar XXXX-${partner.aadhaarNumber.slice(-4)}` : "Not Provided"}
+                </span>
+              </div>
+              {partner.aadhaarProofRef ? (
+                <a href={partner.aadhaarProofRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-primary-orange hover:underline shrink-0">
+                  View Doc ↗
+                </a>
+              ) : (
+                <span className="text-[11px] text-emerald-600 font-medium shrink-0">
+                  {partner.aadhaarNumber ? "Verified ✓" : "Missing"}
+                </span>
+              )}
+            </div>
+
+            {/* 7. Non-GST Proof (if applicable) */}
+            {partner.proofRef && !partner.isGstRegistered && (
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Non-GST Business Proof</span>
+                  <span className="text-xs font-semibold text-gray-800 truncate block">
+                    {partner.nonGstProofType || "Business License"}
+                  </span>
+                </div>
+                <a href={partner.proofRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-primary-orange hover:underline shrink-0">
+                  View ↗
+                </a>
+              </div>
+            )}
+
+            {/* 8. Representative Authorization (if applicable) */}
+            {partner.authorizationDocRef && (
+              <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-amber-900 block">Representative Authorization</span>
+                  <span className="text-xs font-semibold text-amber-950 truncate block">
+                    Owner Authorization Letter
+                  </span>
+                </div>
+                <a href={partner.authorizationDocRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-amber-900 underline shrink-0">
+                  View ↗
+                </a>
+              </div>
+            )}
+
+            {/* 9. Authorized Service Certificate (if applicable) */}
+            {partner.authorizedServiceProofRef && (
+              <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-blue-900 block">Authorized Brand Certificate</span>
+                  <span className="text-xs font-semibold text-blue-950 truncate block">
+                    OEM / Brand Authorization
+                  </span>
+                </div>
+                <a href={partner.authorizedServiceProofRef} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-800 underline shrink-0">
+                  View ↗
+                </a>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* VERIFICATION & REJECTION AUDIT TRAIL HISTORY */}
       <Card className="border-gray-200 shadow-sm">
@@ -962,20 +1542,74 @@ export default function PartnerVerificationReviewScreen({ partnerId, userRole = 
         </CardContent>
       </Card>
 
-      {/* Photo Lightbox Modal */}
+      {/* Photo / Document Lightbox Modal */}
       {selectedPhoto && (
         <div 
           onClick={() => setSelectedPhoto(null)}
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm cursor-pointer animate-in fade-in"
         >
-          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-black">
-            <img src={selectedPhoto} alt="Enlarged Proof" className="max-w-full max-h-[85vh] object-contain mx-auto" />
-            <button 
-              onClick={() => setSelectedPhoto(null)}
-              className="absolute top-3 right-3 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 text-xs font-bold"
-            >
-              ✕ Close
-            </button>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl w-full max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col"
+          >
+            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 text-white border-b border-slate-800">
+              <span className="text-xs font-bold flex items-center gap-2">
+                {isPdfUrl(selectedPhoto) ? (
+                  <>
+                    <FileText className="w-4 h-4 text-primary-orange" /> PDF Document Preview
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 text-primary-orange" /> Workshop Photo Preview
+                  </>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedPhoto}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-md transition-colors"
+                >
+                  Open in New Tab <ExternalLink className="w-3 h-3" />
+                </a>
+                <button 
+                  onClick={() => setSelectedPhoto(null)}
+                  className="bg-slate-800 hover:bg-slate-700 text-white rounded-md px-2.5 py-1 text-xs font-bold transition-colors"
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </div>
+
+            <div className="p-2 bg-slate-950 flex items-center justify-center min-h-[400px] max-h-[82vh] overflow-auto">
+              {isPdfUrl(selectedPhoto) ? (
+                <div className="w-full h-[75vh] flex flex-col bg-slate-900 rounded-lg overflow-hidden border border-slate-800">
+                  <iframe
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(selectedPhoto)}&embedded=true`}
+                    title="PDF Preview"
+                    className="w-full flex-1 border-0 bg-white"
+                  />
+                  <div className="p-2.5 bg-slate-800/90 text-center flex items-center justify-center gap-3">
+                    <span className="text-xs text-slate-300">Viewing PDF Document</span>
+                    <a
+                      href={selectedPhoto}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary-orange hover:bg-primary-orange-dark text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
+                    >
+                      Open Original PDF in New Tab <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <img 
+                  src={selectedPhoto} 
+                  alt="Enlarged Proof" 
+                  className="max-w-full max-h-[80vh] object-contain mx-auto rounded-lg" 
+                />
+              )}
+            </div>
           </div>
         </div>
       )}

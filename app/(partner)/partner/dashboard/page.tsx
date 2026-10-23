@@ -185,9 +185,30 @@ export default function PartnerDashboardPage() {
                 Partner ID: {profile?.uniquePartnerId || user?.partnerInfo?.uniquePartnerId}
               </span>
             )}
-            {profile?.verificationStatus && (
-              <StatusBadge status={profile.verificationStatus} />
-            )}
+            {(() => {
+              const raw = profile?.verificationStatus || user?.partnerInfo?.verificationStatus;
+              let s: "Pending" | "Approved" | "Rejected" = "Pending";
+              if (raw === "APPROVED" || raw === "APPROVED_VERIFIED") s = "Approved";
+              else if (raw === "REJECTED" || raw === "SUSPENDED") s = "Rejected";
+
+              return (
+                <span
+                  id="partner-dashboard-status-badge"
+                  className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-2xs ${
+                    s === "Approved"
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      : s === "Rejected"
+                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${
+                    s === "Approved" ? "bg-emerald-500" : s === "Rejected" ? "bg-rose-500" : "bg-amber-500 animate-pulse"
+                  }`} />
+                  Status: {s}
+                </span>
+              );
+            })()}
           </div>
           <p className="text-gray-500 mt-1 font-body">Welcome back, {user?.fullName || "Partner"}! • {todayStr}</p>
         </div>
@@ -214,7 +235,7 @@ export default function PartnerDashboardPage() {
             </div>
           </div>
           <Button asChild size="sm" className={isKycRejected ? "bg-red-600 hover:bg-red-700 text-white shrink-0" : "bg-orange-600 hover:bg-orange-700 text-white shrink-0"}>
-            <Link href="/partner/profile">Update Profile</Link>
+            <Link href="/partner/kyc">Complete KYC Verification</Link>
           </Button>
         </div>
       )}
@@ -307,7 +328,7 @@ export default function PartnerDashboardPage() {
                   </span>
                 </div>
                 <p className="text-xs md:text-sm text-gray-600 font-medium mt-0.5">
-                  Customer &amp; Executive have confirmed your quote! Please review the vehicle details and start work.
+                  Customer &amp; CarBlink Team have confirmed your quote! Please review the vehicle details and start work.
                 </p>
               </div>
             </div>

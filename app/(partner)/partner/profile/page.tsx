@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { usePartnerProfile, useCreatePartnerProfileMutation, useUpdatePartnerProfileMutation } from "@/features/partner/hooks/usePartnerQueries";
 import { useUploadKycDocumentMutation } from "@/features/partner/hooks/usePartnerSecondaryQueries";
 import { useCities, useServices } from "@/features/customer/hooks/useCustomerQueries";
@@ -322,19 +323,22 @@ export default function PartnerProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-6 p-4 rounded-lg bg-neutral-bg border border-neutral-muted/20 flex items-start">
+            <div className="mb-6 p-4 rounded-xl bg-neutral-bg border border-neutral-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-neutral-dark mb-1">Current Status:
-                  <span className={`ml-2 px-2 py-1 rounded text-xs ${verificationStatus === 'APPROVED' ? 'bg-success/10 text-success' :
-                    verificationStatus === 'REJECTED' ? 'bg-danger/10 text-danger' :
-                      verificationStatus === 'UNDER_REVIEW' ? 'bg-primary-orange/10 text-primary-orange' :
-                        'bg-neutral-muted/10 text-neutral-dark'
+                  <span className={`ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold ${verificationStatus === 'APPROVED' || verificationStatus === 'APPROVED_VERIFIED' ? 'bg-success/10 text-success border border-success/30' :
+                    verificationStatus === 'REJECTED' ? 'bg-danger/10 text-danger border border-danger/30' :
+                      verificationStatus === 'UNDER_REVIEW' ? 'bg-primary-orange/10 text-primary-orange border border-primary-orange/30' :
+                        'bg-neutral-muted/10 text-neutral-dark border border-neutral-muted/30'
                     }`}>
-                    {verificationStatus.replace('_', ' ')}
+                    {verificationStatus.replace(/_/g, ' ')}
                   </span>
                 </h4>
-                <p className="text-xs text-neutral-muted">Upload your ID Proof (Aadhar/PAN) and Shop License to get verified.</p>
+                <p className="text-xs text-neutral-muted">Submit complete 4-step KYC details: PAN, GST, Aadhaar, Workshop photos, Address Proof, and Bank details.</p>
               </div>
+              <Button asChild size="sm" className="bg-primary-orange hover:bg-orange-600 text-white font-bold shrink-0">
+                <Link href="/partner/kyc">Open Partner KYC Flow &rarr;</Link>
+              </Button>
             </div>
 
             <form onSubmit={handleKycUpload} className="space-y-4">

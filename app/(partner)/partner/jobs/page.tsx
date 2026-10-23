@@ -143,7 +143,7 @@ export default function PartnerJobsPage() {
       try {
         await startJobMutation.mutateAsync({ jobId, verificationCode: verificationCode.trim() });
       } catch (startErr) {}
-      setMessage({ type: "success", text: res?.message || "✓ Customer Verified & Work Started! Real-time notifications sent to Customer and Executive." });
+      setMessage({ type: "success", text: res?.message || "✓ Customer Verified & Work Started! Real-time notifications sent to Customer and CarBlink Team." });
       setStartJobModal({ open: false, jobId: "", pin: "", error: "" });
       refetchJobs();
     } catch (err: any) {
@@ -157,7 +157,7 @@ export default function PartnerJobsPage() {
     setMessage({ type: "", text: "" });
     try {
       await startJobMutation.mutateAsync({ jobId });
-      setMessage({ type: "success", text: "🚀 Work Started! Customer and Executive notified in real-time." });
+      setMessage({ type: "success", text: "🚀 Work Started! Customer and CarBlink Team notified in real-time." });
       refetchJobs();
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to start work. Verification PIN required first." });
@@ -1384,7 +1384,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
         grandTotal,
         notes
       });
-      toast.success("Itemized invoice submitted successfully to Executive!");
+      toast.success("Itemized invoice submitted successfully to CarBlink Team!");
       onInvoiceSubmitted?.();
     } catch (err: any) {
       toast.error(err?.message || "Failed to submit invoice");

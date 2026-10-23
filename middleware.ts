@@ -75,7 +75,8 @@ export function middleware(request: NextRequest) {
           
           let targetPath = pathname;
           if (targetPath === "/login" || targetPath === "/") {
-            targetPath = getDashboardForRole(payload.role);
+            const redirectParam = searchParams.get("redirect");
+            targetPath = redirectParam || getDashboardForRole(payload.role);
           }
           
           const cleanUrl = new URL(targetPath, request.url);

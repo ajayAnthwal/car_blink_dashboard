@@ -88,8 +88,17 @@ export default function NewBookingPage() {
       preferredDate: isoDate,
     };
 
-    // Include coordinates if silently available, otherwise booking proceeds cleanly without them
-    if (deviceCoords?.latitude && deviceCoords?.longitude) {
+    if (!payload.address || !payload.address.trim()) {
+      setIsSubmitting(false);
+      toast.error("Location is mandatory. Please provide an address/area or detect your location.");
+      return;
+    }
+
+    // Include coordinates from explicit form detection or fallback device coords
+    if (data.latitude !== undefined && data.longitude !== undefined) {
+      payload.latitude = data.latitude;
+      payload.longitude = data.longitude;
+    } else if (deviceCoords?.latitude && deviceCoords?.longitude) {
       payload.latitude = deviceCoords.latitude;
       payload.longitude = deviceCoords.longitude;
     }

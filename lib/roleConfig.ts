@@ -128,12 +128,13 @@ export const roleConfig: Record<Role, RoleConfigData> = {
       {
         label: "Management",
         items: [
+          { name: "Partner KYC", href: "/partner/kyc", icon: ShieldCheck },
+          { name: "My Profile", href: "/partner/profile", icon: User },
           { name: "Service Warranties", href: "/partner/warranty", icon: ShieldCheck },
           { name: "My Wallet", href: "/partner/wallet", icon: Wallet },
           { name: "Staff / Mechanics", href: "/partner/staff", icon: Users },
           { name: "Inventory & POS", href: "/partner/inventory", icon: Package },
           { name: "Earnings & Settlements", href: "/partner/earnings", icon: IndianRupee },
-          { name: "KYC & Profile", href: "/partner/profile", icon: ShieldCheck },
         ],
       },
     ],

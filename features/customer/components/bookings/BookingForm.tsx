@@ -5,7 +5,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
-import { Store, Truck, CreditCard, Banknote, MapPin, PenLine, Navigation, Calendar, Clock } from "lucide-react";
+import { Store, Truck, CreditCard, Banknote, MapPin, PenLine, Navigation, Calendar, Clock, LocateFixed, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import toast from "react-hot-toast";
@@ -23,16 +23,12 @@ const bookingSchema = z.object({
   description: z.string().min(10, "Please provide a description (min 10 chars)"),
   serviceMode: z.enum(["DOORSTEP", "GARAGE_VISIT"]),
   paymentMode: z.enum(["CASH", "ONLINE"]),
-  address: z.string().optional(),
+  address: z.string()
+    .trim()
+    .min(3, "Location is mandatory. Please detect your location or type an address/area to proceed."),
   landmark: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.serviceMode === "DOORSTEP" && (!data.address || data.address.trim().length === 0)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Address is required for doorstep service",
-      path: ["address"],
-    });
-  }
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export type BookingFormValues = z.infer<typeof bookingSchema>;
@@ -103,6 +99,74 @@ export function BookingForm({
 
   const { user } = useAuth();
   const [hasAutoFilled, setHasAutoFilled] = React.useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = React.useState(false);
+  const [locationSource, setLocationSource] = React.useState<"auto" | "manual" | null>(null);
+
+  const handleDetectLocation = () => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      toast.error("Geolocation is not supported by your browser. Please type your address/area manually.");
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setValue("latitude", latitude);
+        setValue("longitude", longitude);
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            let locationName = "";
+            if (data?.display_name) {
+              const addr = data.address || {};
+              const parts = [
+                addr.suburb || addr.neighbourhood || addr.residential || addr.road,
+                addr.city || addr.town || addr.village || addr.county,
+                addr.state,
+                addr.postcode
+              ].filter(Boolean);
+              locationName = parts.length > 0 ? parts.join(", ") : data.display_name;
+            } else {
+              locationName = `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+            }
+
+            setValue("address", locationName, { shouldValidate: true });
+            setLocationSource("auto");
+            toast.success("Location auto-detected successfully!");
+          } else {
+            const fallbackLoc = `Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+            setValue("address", fallbackLoc, { shouldValidate: true });
+            setLocationSource("auto");
+            toast.success("GPS Location coordinates detected!");
+          }
+        } catch (err) {
+          const fallbackLoc = `Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+          setValue("address", fallbackLoc, { shouldValidate: true });
+          setLocationSource("auto");
+          toast.success("GPS Location coordinates detected!");
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (error) => {
+        setIsDetectingLocation(false);
+        let msg = "Could not detect location. Please type your address/area manually.";
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = "Location permission denied. Please type your address/area manually.";
+        } else if (error.code === error.TIMEOUT) {
+          msg = "Location detection timed out. Please type your address/area manually.";
+        }
+        toast.error(msg);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
 
   const selectedState = watch("state");
   const selectedServiceMode = watch("serviceMode");
@@ -259,29 +323,103 @@ export function BookingForm({
           </div>
         </div>
 
-        {selectedServiceMode === "DOORSTEP" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-neutral-bg p-4 rounded-xl border border-neutral-muted/20">
-            <div className="md:col-span-2 flex items-center mb-2">
-              <MapPin className="w-4 h-4 text-primary-orange mr-2" />
-              <h4 className="font-semibold text-sm text-primary-navy">Doorstep Address Details</h4>
+        {/* MANDATORY LOCATION SECTION (Both Doorstep and Garage Visit) */}
+        <div className={cn(
+          "p-4 md:p-5 rounded-2xl border transition-all space-y-4",
+          errors.address ? "bg-red-50/40 border-red-300" : "bg-neutral-bg/60 border-neutral-muted/20"
+        )}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-muted/15 pb-3">
+            <div className="flex items-center">
+              <div className={cn(
+                "p-2.5 rounded-xl mr-3 shadow-sm transition-colors",
+                errors.address ? "bg-red-100 text-red-600" : "bg-primary-orange/10 text-primary-orange"
+              )}>
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm text-primary-navy flex items-center gap-1.5">
+                  <span>Service Location & Area</span>
+                  <span className="text-red-500 font-bold">*</span>
+                </h4>
+                <p className="text-xs text-neutral-muted mt-0.5">
+                  {selectedServiceMode === "DOORSTEP" 
+                    ? "Specify your exact doorstep address for the dispatch mechanic."
+                    : "Enter your area/location so we can connect you with the nearest partner garages."}
+                </p>
+              </div>
             </div>
-            <div className="md:col-span-2">
-              <Input
-                label="Full Address *"
-                placeholder="House No, Building, Street..."
-                {...register("address")}
-              />
-              {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
-            </div>
-            <div className="md:col-span-2">
-              <Input
-                label="Landmark (Optional)"
-                placeholder="Near Apollo Hospital..."
-                {...register("landmark")}
-              />
-            </div>
+
+            {/* Auto-detect GPS Button */}
+            <button
+              type="button"
+              onClick={handleDetectLocation}
+              disabled={isDetectingLocation}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-navy text-white hover:bg-primary-navy/90 text-xs font-semibold shadow-sm transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap self-start sm:self-auto cursor-pointer"
+            >
+              {isDetectingLocation ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-primary-orange" />
+                  <span>Detecting GPS Location...</span>
+                </>
+              ) : (
+                <>
+                  <LocateFixed className="w-4 h-4 text-primary-orange" />
+                  <span>Auto-Detect Location</span>
+                </>
+              )}
+            </button>
           </div>
-        )}
+
+          {/* Manual Option: Type Address / Area */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-neutral-dark flex items-center gap-1">
+                <span>Manual Option: Type Address or Area</span>
+                <span className="text-red-500 font-bold">*</span>
+              </label>
+              {locationSource === "auto" && (
+                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> GPS Auto-Detected
+                </span>
+              )}
+            </div>
+
+            <div className="relative">
+              <Input
+                placeholder="Type your area, locality or full street address (e.g. Indiranagar 100ft Road, Bengaluru)..."
+                {...register("address")}
+                className={cn(
+                  "pr-10 text-sm",
+                  errors.address ? "border-red-500 focus:ring-red-400 focus:border-red-500 bg-red-50/20" : ""
+                )}
+              />
+              <MapPin className={cn(
+                "w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none",
+                errors.address ? "text-red-400" : "text-neutral-muted"
+              )} />
+            </div>
+
+            {errors.address && (
+              <p className="text-red-600 text-xs mt-1.5 font-semibold flex items-center gap-1.5 animate-in fade-in duration-200">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{errors.address.message}</span>
+              </p>
+            )}
+
+            <p className="text-[11px] text-neutral-muted pt-0.5">
+              Tip: You can type an address or area manually above, or click <strong>&quot;Auto-Detect Location&quot;</strong> to automatically capture your GPS coordinates.
+            </p>
+          </div>
+
+          {/* Optional Landmark */}
+          <div className="pt-2">
+            <Input
+              label="Landmark (Optional)"
+              placeholder="e.g. Near Metro Station, Opposite City Mall..."
+              {...register("landmark")}
+            />
+          </div>
+        </div>
 
         <div className="pt-4 border-t border-neutral-muted/10 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

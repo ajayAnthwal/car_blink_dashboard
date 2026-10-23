@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useSocket } from "@/lib/SocketContext";
 import { registerDeviceToken } from "@/lib/services";
@@ -19,7 +19,10 @@ import {
   Building2, 
   RefreshCw, 
   Sparkles, 
-  Radio 
+  Radio,
+  XCircle,
+  X,
+  ArrowRight
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -29,6 +32,14 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCheckingLive, setIsCheckingLive] = useState(false);
+  const [statusModal, setStatusModal] = useState<{
+    isOpen: boolean;
+    status: "Pending" | "Approved" | "Rejected";
+    rawStatus: string;
+    reason?: string;
+  } | null>(null);
+
+  const prevStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isLoading) {
@@ -60,13 +71,60 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   const isExecutiveVerified = executiveStatus === "APPROVED";
   const isActive = partnerInfo.isActive !== false && (user as any)?.isActive !== false;
   const isVerified = Boolean(partnerInfo.isVerified || (user as any)?.isVerified);
-  const isFullyApproved =
-    (status === "APPROVED_VERIFIED" || status === "APPROVED") &&
-    isVerified &&
-    isActive;
+  const rejectionReason = partnerInfo.rejectionReason || (user as any)?.rejectionReason;
+
+  // Normalized Clear Status: Pending, Approved, or Rejected
+  const clearStatus: "Pending" | "Approved" | "Rejected" = useMemo(() => {
+    if (status === "APPROVED_VERIFIED" || status === "APPROVED") {
+      return "Approved";
+    }
+    if (status === "REJECTED" || executiveStatus === "REJECTED") {
+      return "Rejected";
+    }
+    return "Pending";
+  }, [status, executiveStatus]);
+
+  const isFullyApproved = clearStatus === "Approved" && isVerified && isActive;
   const isSuspended = status === "SUSPENDED" || !isActive;
-  const isRejected = status === "REJECTED" || executiveStatus === "REJECTED";
+  const isRejected = clearStatus === "Rejected";
   const isManualReview = status === "MANUAL_VERIFICATION_REQUIRED";
+
+  // Watch for status changes or unacknowledged status to trigger popup
+  useEffect(() => {
+    if (!isLoading && user && user.role === "PARTNER" && clearStatus) {
+      try {
+        const uid = user.id || (user as any)._id;
+        const ackKey = `acknowledged_partner_status_${uid}`;
+        const ackStatus = typeof window !== "undefined" ? localStorage.getItem(ackKey) : null;
+
+        if (ackStatus && ackStatus !== clearStatus) {
+          setStatusModal({
+            isOpen: true,
+            status: clearStatus,
+            rawStatus: status,
+            reason: rejectionReason,
+          });
+        } else if (!ackStatus && (clearStatus === "Approved" || clearStatus === "Rejected")) {
+          setStatusModal({
+            isOpen: true,
+            status: clearStatus,
+            rawStatus: status,
+            reason: rejectionReason,
+          });
+        }
+      } catch (e) {}
+
+      if (prevStatusRef.current && prevStatusRef.current !== clearStatus) {
+        setStatusModal({
+          isOpen: true,
+          status: clearStatus,
+          rawStatus: status,
+          reason: rejectionReason,
+        });
+      }
+      prevStatusRef.current = clearStatus;
+    }
+  }, [clearStatus, isLoading, user, status, rejectionReason]);
 
   // Redirect unapproved partner away from operational dashboard pages to /partner/kyc
   useEffect(() => {
@@ -92,16 +150,34 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
 
   // Real-Time Socket Listeners for Live Status Transition without reload
   useEffect(() => {
-    if (!socket || isFullyApproved) return;
+    if (!socket) return;
 
     const handleLiveEvent = async (payload: any) => {
       console.log("[PartnerLayout] Live verification event received:", payload);
       try {
         await refreshUser();
-        if (payload?.status === "APPROVED" || payload?.status === "APPROVED_VERIFIED" || payload?.isVerified) {
+        const raw = payload?.status || payload?.verificationStatus || status;
+        let norm: "Pending" | "Approved" | "Rejected" = "Pending";
+        if (raw === "APPROVED" || raw === "APPROVED_VERIFIED" || payload?.isVerified) {
+          norm = "Approved";
+        } else if (raw === "REJECTED") {
+          norm = "Rejected";
+        }
+        const reason = payload?.rejectionReason || payload?.notes || rejectionReason;
+
+        setStatusModal({
+          isOpen: true,
+          status: norm,
+          rawStatus: raw,
+          reason,
+        });
+
+        if (norm === "Approved") {
           toast.success("🎉 Congratulations! Your CarBlink Partner Account is Approved!", { duration: 6000 });
-        } else if (payload?.executiveVerificationStatus === "APPROVED" || payload?.status === "UNDER_REVIEW") {
-          toast.success("✅ Stage 1 Passed: Executive verified your workshop details. Forwarded to Super Admin!", { duration: 5000 });
+        } else if (norm === "Rejected") {
+          toast.error(`Application Rejected: ${reason || "Requirements not met"}`, { duration: 8000 });
+        } else {
+          toast("Application status updated: Pending Review", { icon: "ℹ️" });
         }
       } catch (err) {
         console.error("[PartnerLayout] Error handling live socket event:", err);
@@ -119,7 +195,132 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
       socket.off("kyc_status_changed", handleLiveEvent);
       socket.off("notification:new", handleLiveEvent);
     };
-  }, [socket, isFullyApproved, refreshUser]);
+  }, [socket, status, rejectionReason, refreshUser]);
+
+  const renderStatusModal = () => {
+    if (!statusModal?.isOpen) return null;
+
+    const isApp = statusModal.status === "Approved";
+    const isRej = statusModal.status === "Rejected";
+    const isPen = statusModal.status === "Pending";
+
+    const handleClose = () => {
+      try {
+        const uid = user?.id || (user as any)?._id;
+        if (uid && statusModal?.status) {
+          localStorage.setItem(`acknowledged_partner_status_${uid}`, statusModal.status);
+        }
+      } catch (e) {}
+      setStatusModal(null);
+    };
+
+    return (
+      <div 
+        id="partner-status-modal-backdrop"
+        className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      >
+        <div 
+          id="partner-status-modal"
+          className="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative text-white animate-in zoom-in-95 duration-200 space-y-5"
+        >
+          <button
+            onClick={handleClose}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="flex items-center space-x-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${
+              isApp 
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : isRej
+                ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+            }`}>
+              {isApp && <CheckCircle2 className="w-8 h-8" />}
+              {isRej && <XCircle className="w-8 h-8" />}
+              {isPen && <Clock className="w-8 h-8" />}
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider ${
+                  isApp
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    : isRej
+                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                    : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                }`}>
+                  Status: {statusModal.status}
+                </span>
+              </div>
+              <h3 className="text-xl font-bold text-white mt-1">
+                {isApp && "Application Approved! 🎉"}
+                {isRej && "Application Rejected"}
+                {isPen && "Application Pending Review"}
+              </h3>
+            </div>
+          </div>
+
+          <div className="text-sm text-slate-300 space-y-3">
+            {isApp && (
+              <p>
+                Congratulations! Your CarBlink Partner workshop application has been approved by the CarBlink Team. You now have full operational access to incoming customer leads, live quotation requests, and job tracking.
+              </p>
+            )}
+
+            {isRej && (
+              <>
+                <p>
+                  Your workshop application was reviewed by the CarBlink Team and has been rejected.
+                </p>
+                <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 space-y-1">
+                  <p className="font-semibold text-rose-300 text-xs uppercase tracking-wider">Rejection Reason</p>
+                  <p className="text-sm font-medium">
+                    &quot;{statusModal.reason || "Requirements or business verification criteria were not met."}&quot;
+                  </p>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Please update your verification documents or contact CarBlink Operations at <span className="text-slate-200 font-mono">support@carblink.com</span> to request a re-review.
+                </p>
+              </>
+            )}
+
+            {isPen && (
+              <p>
+                Your workshop registration and KYC documents are under review. Our operations team is verifying your physical address and credentials. We will update you as soon as review is completed.
+              </p>
+            )}
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+            {isApp ? (
+              <Button
+                onClick={() => {
+                  handleClose();
+                  router.push("/partner/dashboard");
+                }}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-emerald-900/30"
+              >
+                Go to Dashboard <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleClose}
+                className={`w-full font-bold py-2.5 rounded-xl text-white ${
+                  isRej ? "bg-rose-600 hover:bg-rose-500" : "bg-amber-600 hover:bg-amber-500"
+                }`}
+              >
+                {isRej ? "Understood / Acknowledge" : "Close"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Heartbeat Polling: Ensures screen updates automatically within 6 seconds even if socket is disconnected
   useEffect(() => {
@@ -176,17 +377,19 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                     {partnerInfo.businessName || user.fullName || "Partner Workshop"}
                   </h2>
                   <span
-                    className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                      isSuspended
+                    id="partner-top-status-badge"
+                    className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                      clearStatus === "Approved"
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : clearStatus === "Rejected"
                         ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                        : isRejected
-                        ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                        : isManualReview
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                        : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                     }`}
                   >
-                    {status}
+                    <span className={`w-2 h-2 rounded-full ${
+                      clearStatus === "Approved" ? "bg-emerald-400" : clearStatus === "Rejected" ? "bg-rose-400" : "bg-amber-400 animate-pulse"
+                    }`} />
+                    Status: {clearStatus}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-0.5">
@@ -224,48 +427,55 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
           </div>
         </header>
 
-        {/* Status Callout Banners with Reasons */}
+        {/* Clear Status Callout Banners with Reasons */}
         <div className="max-w-7xl mx-auto w-full px-4 pt-4">
-          {isSuspended && (
-            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-300 shadow-sm flex items-start gap-3.5 mb-2">
+          {clearStatus === "Rejected" && (
+            <div id="partner-status-banner-rejected" className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-300 shadow-sm flex items-start gap-3.5 mb-2">
               <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
               <div className="text-xs sm:text-sm">
-                <p className="font-bold text-rose-300 text-base">Account Suspended</p>
-                <p className="text-rose-200 mt-0.5">
-                  Reason: &quot;{partnerInfo.rejectionReason || (user as any)?.rejectionReason || "Account suspended by Administrator"}&quot;
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-rose-300 text-base">Application Status: Rejected</p>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded-md border border-rose-500/30">
+                    Action Required
+                  </span>
+                </div>
+                <p className="text-rose-200 mt-1 font-medium">
+                  <strong>Rejection Reason:</strong> &quot;{rejectionReason || "Requirements or business verification criteria were not met."}&quot;
                 </p>
                 <p className="text-slate-400 text-xs mt-1">
-                  Access to the Partner Dashboard, receiving leads, and active jobs has been blocked immediately. Please contact CarBlink Support at support@carblink.com.
+                  Your application has been rejected by the CarBlink Team. Please review the reason above and contact CarBlink Support at support@carblink.com to update your details or re-apply.
                 </p>
               </div>
             </div>
           )}
 
-          {isRejected && !isSuspended && (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-300 shadow-sm flex items-start gap-3.5 mb-2">
-              <ShieldAlert className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-              <div className="text-xs sm:text-sm">
-                <p className="font-bold text-red-300 text-base">Application Status: Rejected</p>
-                <p className="text-red-200 mt-0.5">
-                  Reason: &quot;{partnerInfo.rejectionReason || (user as any)?.rejectionReason || "Requirements or business verification criteria were not met."}&quot;
-                </p>
-                <p className="text-slate-400 text-xs mt-1">
-                  Please contact your assigned Field Executive or Super Admin to re-evaluate your application.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {isManualReview && (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-200 shadow-sm flex items-start gap-3.5 mb-2">
+          {clearStatus === "Pending" && (
+            <div id="partner-status-banner-pending" className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-200 shadow-sm flex items-start gap-3.5 mb-2">
               <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="text-xs sm:text-sm">
-                <p className="font-bold text-amber-300 text-base">Manual Verification Required</p>
-                <p className="text-amber-200 mt-0.5">
-                  Reason: &quot;{partnerInfo.rejectionReason || (user as any)?.rejectionReason || "Owner name mismatch or authorized representative documents queued for manual review."}&quot;
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-amber-300 text-base">Application Status: Pending</p>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-md border border-amber-500/30">
+                    Awaiting Review
+                  </span>
+                </div>
+                <p className="text-amber-200/90 mt-1">
+                  Your workshop application and documents have been submitted and are under review by our operations team.
                 </p>
                 <p className="text-slate-400 text-xs mt-1">
-                  Our operations team is manually reviewing your documents. Dashboard access will be unlocked once approved.
+                  You will be notified immediately when the CarBlink Team approves or rejects your application.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {clearStatus === "Approved" && (
+            <div id="partner-status-banner-approved" className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-200 shadow-sm flex items-start gap-3.5 mb-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="text-xs sm:text-sm">
+                <p className="font-bold text-emerald-300 text-base">Application Status: Approved</p>
+                <p className="text-emerald-200/90 mt-1">
+                  Congratulations! Your application has been approved by the CarBlink Team.
                 </p>
               </div>
             </div>
@@ -276,6 +486,9 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
         <main className="flex-1 max-w-7xl mx-auto w-full min-w-0 px-4 py-4 overflow-x-hidden">
           {children}
         </main>
+
+        {/* Status Change Modal Popup */}
+        {renderStatusModal()}
       </div>
     );
   }
@@ -292,10 +505,29 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
       <div className={`flex-1 flex flex-col min-h-screen min-w-0 w-full max-w-full overflow-x-hidden transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         <Header />
         
+        {/* Approved Status Banner */}
+        <div className="max-w-7xl mx-auto w-full px-4 pt-4">
+          <div id="partner-status-banner-approved" className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-800 flex items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-emerald-900">Application Status: Approved</p>
+                <p className="text-[11px] text-emerald-700">Your CarBlink Partner account is active and verified. You have full operational access.</p>
+              </div>
+            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 bg-emerald-600 text-white rounded-full">
+              Status: Approved
+            </span>
+          </div>
+        </div>
+
         <main className="flex-1 min-w-0 w-full max-w-full p-3 sm:p-4 md:p-6 overflow-x-hidden">
           {children}
         </main>
       </div>
+
+      {/* Status Change Modal Popup */}
+      {renderStatusModal()}
     </div>
   );
 }
