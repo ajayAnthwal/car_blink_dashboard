@@ -75,7 +75,7 @@ export default function CustomerPaymentHistoryModal({
   const getTypeLabel = (type: string) => {
     switch (String(type || "").toUpperCase()) {
       case "ADVANCE":
-        return "15% Booking Advance";
+        return "Booking Advance Deposit";
       case "FINAL":
         return "Final Bill Settlement";
       case "FULL":

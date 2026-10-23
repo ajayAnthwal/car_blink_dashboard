@@ -840,7 +840,7 @@ export default function CustomerBookingDetailsPage() {
             ) : (
               <div className="space-y-4">
                 <p className="text-xs sm:text-sm text-gray-600 font-medium">
-                  Compare verified workshops and select your preferred package. You will only pay <strong>15% advance</strong> to confirm your slot.
+                  Compare verified workshops and select your preferred package. You will only pay <strong>advance deposit</strong> to confirm your slot.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -874,7 +874,7 @@ export default function CustomerBookingDetailsPage() {
                         </div>
 
                         <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between text-xs">
-                          <span className="text-gray-600 font-medium">15% Advance Payable Now:</span>
+                          <span className="text-gray-600 font-medium">Advance Payable Now:</span>
                           <span className="font-black text-slate-900 font-mono">₹{quoteAdvance.toLocaleString("en-IN")}</span>
                         </div>
 
@@ -917,7 +917,7 @@ export default function CustomerBookingDetailsPage() {
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5" />
               <span className="font-heading font-black text-sm uppercase tracking-wide">
-                Step 2: Pay 15% Advance to Lock Service Slot
+                Step 2: Pay Advance Deposit to Lock Service Slot
               </span>
             </div>
             <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
@@ -929,10 +929,10 @@ export default function CustomerBookingDetailsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-orange-200/60">
               <div className="space-y-1.5 max-w-xl">
                 <h3 className="font-heading font-black text-xl sm:text-2xl text-slate-900 tracking-tight">
-                  Quote Accepted! Complete 15% Advance Payment
+                  Quote Accepted! Complete Advance Deposit
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-                  To guarantee your workshop booking slot and activate CarBlink warranty, complete the 15% token advance. Direct workshop contact, phone, and Google Maps location will unlock immediately.
+                  To guarantee your workshop booking slot and activate CarBlink warranty, complete the advance deposit. Direct workshop contact, phone, and Google Maps location will unlock immediately.
                 </p>
                 <div className="flex items-center gap-2 pt-1 text-xs text-emerald-700 font-bold">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -943,7 +943,7 @@ export default function CustomerBookingDetailsPage() {
               {/* Price Callout */}
               <div className="bg-white p-5 rounded-2xl border-2 border-primary-orange/40 shadow-sm text-center md:text-right shrink-0 min-w-[220px]">
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
-                  15% ADVANCE PAYABLE
+                  ADVANCE DEPOSIT PAYABLE
                 </span>
                 <p className="text-3xl font-black text-primary-orange font-heading mt-0.5">
                   ₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')}
@@ -967,7 +967,7 @@ export default function CustomerBookingDetailsPage() {
                   isLoading={isExtensionProcessing}
                 >
                   <IndianRupee className="w-4 h-4 text-primary-orange" />
-                  <span>Pay 15% Advance (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})</span>
+                  <span>Pay Advance Deposit (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})</span>
                 </Button>
               </div>
 

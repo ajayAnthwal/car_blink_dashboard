@@ -259,7 +259,7 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
 
     return {
       name,
-      address: hasPaidAdvanceStrict ? address : "Address unlocked after 15% advance confirmation",
+      address: hasPaidAdvanceStrict ? address : "Address unlocked after advance confirmation",
       phone: hasPaidAdvanceStrict ? phone : "",
       email: hasPaidAdvanceStrict ? email : "",
       rating,
@@ -547,7 +547,7 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
                   ) : (
                     <div className="bg-black/20 rounded-xl p-2 text-xs text-slate-400 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span>PIN unlocks once 15% advance payment is completed.</span>
+                      <span>PIN unlocks once advance payment is completed.</span>
                     </div>
                   )}
 
@@ -627,7 +627,7 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
                       ) : (
                         <div className="pt-1.5">
                           <span className="inline-flex items-center text-[11px] font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
-                            🔒 Workshop phone & GPS navigation unlock after 15% advance payment
+                            🔒 Workshop phone & GPS navigation unlock after advance payment
                           </span>
                         </div>
                       )}
