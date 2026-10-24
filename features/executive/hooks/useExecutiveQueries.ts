@@ -64,7 +64,7 @@ export const useExecutiveLeads = (params?: { page?: number; limit?: number; sear
   });
 };
 
-export const useWebsiteLeads = (params?: { page?: number; limit?: number; search?: string; status?: string; source?: string }) => {
+export const useWebsiteLeads = (params?: { page?: number; limit?: number; search?: string; status?: string; source?: string; startDate?: string; endDate?: string }) => {
   return useQuery({
     queryKey: ["executive", "website-leads", params],
     staleTime: 0,
@@ -75,7 +75,9 @@ export const useWebsiteLeads = (params?: { page?: number; limit?: number; search
         params?.limit, 
         params?.status || "", 
         params?.search || "", 
-        params?.source || ""
+        params?.source || "",
+        params?.startDate || "",
+        params?.endDate || ""
       );
       let leads: any[] = [];
       let total = 0;

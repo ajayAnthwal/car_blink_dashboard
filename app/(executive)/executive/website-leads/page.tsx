@@ -48,6 +48,9 @@ export default function MarketingLeadsPage() {
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [datePreset, setDatePreset] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [limit, setLimit] = useState(10);
 
   const { data: leadsData, isLoading: isLoadingLeads, refetch: refetchLeads } = useWebsiteLeads({ 
@@ -55,7 +58,9 @@ export default function MarketingLeadsPage() {
     limit, 
     search, 
     source: sourceFilter, 
-    status: statusFilter 
+    status: statusFilter,
+    startDate,
+    endDate,
   });
   const leads = (leadsData?.leads || []) as any[];
   const total = leadsData?.total || 0;
@@ -96,6 +101,51 @@ export default function MarketingLeadsPage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setPage(1);
+  };
+
+  const handleDatePresetChange = (preset: string) => {
+    setDatePreset(preset);
+    setPage(1);
+
+    const now = new Date();
+    const toISODate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    if (preset === "all") {
+      setStartDate("");
+      setEndDate("");
+    } else if (preset === "today") {
+      const todayStr = toISODate(now);
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else if (preset === "yesterday") {
+      const yest = new Date(now);
+      yest.setDate(yest.getDate() - 1);
+      const yestStr = toISODate(yest);
+      setStartDate(yestStr);
+      setEndDate(yestStr);
+    } else if (preset === "7days") {
+      const past7 = new Date(now);
+      past7.setDate(past7.getDate() - 6);
+      setStartDate(toISODate(past7));
+      setEndDate(toISODate(now));
+    } else if (preset === "30days") {
+      const past30 = new Date(now);
+      past30.setDate(past30.getDate() - 29);
+      setStartDate(toISODate(past30));
+      setEndDate(toISODate(now));
+    }
+  };
+
+  const handleClearDateFilter = () => {
+    setDatePreset("all");
+    setStartDate("");
+    setEndDate("");
     setPage(1);
   };
 
@@ -429,13 +479,18 @@ export default function MarketingLeadsPage() {
 
       <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <CardTitle className="text-lg text-primary-navy flex items-center gap-2">
+          <CardTitle className="text-lg text-primary-navy flex flex-wrap items-center gap-2">
             <ExternalLink className="w-5 h-5 text-primary-orange" /> Lead Submissions
-            {total > 0 && (
+            {startDate || endDate ? (
+              <span className="text-xs font-semibold text-orange-800 bg-orange-100 border border-orange-300 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-xs">
+                <Calendar className="w-3.5 h-3.5 text-primary-orange" />
+                {startDate === endDate ? `Date: ${startDate}` : `${startDate || 'Start'} to ${endDate || 'Now'}`} ({total} leads)
+              </span>
+            ) : total > 0 ? (
               <span className="text-xs font-semibold text-gray-700 bg-orange-100/70 border border-orange-200/50 px-2.5 py-0.5 rounded-full">
                 {total} total leads
               </span>
-            )}
+            ) : null}
             <button
               type="button"
               onClick={() => refetchLeads()}
@@ -446,8 +501,9 @@ export default function MarketingLeadsPage() {
             </button>
           </CardTitle>
           
-          <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full sm:w-auto">
-            <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-64">
+          <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto">
+            {/* Search Input */}
+            <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-56 md:w-60">
               <input 
                 type="text" 
                 placeholder="Search name, phone, email..." 
@@ -458,7 +514,8 @@ export default function MarketingLeadsPage() {
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </form>
             
-            <div className="relative w-full sm:w-40">
+            {/* Source Dropdown */}
+            <div className="relative w-full sm:w-36">
               <select 
                 value={sourceFilter}
                 onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
@@ -472,7 +529,8 @@ export default function MarketingLeadsPage() {
               <Filter className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
 
-            <div className="relative w-full sm:w-36">
+            {/* Status Dropdown */}
+            <div className="relative w-full sm:w-32">
               <select 
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
@@ -484,6 +542,60 @@ export default function MarketingLeadsPage() {
                 <option value="CLOSED">CLOSED</option>
               </select>
             </div>
+
+            {/* Date Preset Filter */}
+            <div className="relative w-full sm:w-36">
+              <select 
+                value={datePreset}
+                onChange={(e) => handleDatePresetChange(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange appearance-none bg-white text-gray-700 font-medium cursor-pointer"
+              >
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="7days">Last 7 Days</option>
+                <option value="30days">Last 30 Days</option>
+                <option value="custom">Custom Range...</option>
+              </select>
+              <Calendar className="w-4 h-4 text-primary-orange absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Custom / Active Date Range Picker Inputs */}
+            {(datePreset === "custom" || startDate || endDate) && (
+              <div className="flex items-center gap-1.5 w-full sm:w-auto bg-orange-50/80 px-2 py-1 rounded-lg border border-orange-200 animate-in fade-in">
+                <input
+                  type="date"
+                  value={startDate}
+                  title="From Date"
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setDatePreset("custom");
+                    setPage(1);
+                  }}
+                  className="px-2 py-1 text-xs border border-gray-200 rounded bg-white text-gray-800 focus:outline-none focus:border-primary-orange"
+                />
+                <span className="text-xs text-gray-500 font-bold">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  title="To Date"
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setDatePreset("custom");
+                    setPage(1);
+                  }}
+                  className="px-2 py-1 text-xs border border-gray-200 rounded bg-white text-gray-800 focus:outline-none focus:border-primary-orange"
+                />
+                <button
+                  type="button"
+                  onClick={handleClearDateFilter}
+                  title="Clear Date Filter"
+                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-white rounded transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
