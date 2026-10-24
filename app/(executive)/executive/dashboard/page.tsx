@@ -39,6 +39,7 @@ import {
 export default function ExecutiveDashboardPage() {
   const { user } = useAuth();
   const { socket } = useSocket();
+  const queryClient = useQueryClient();
   const [liveLeadAlert, setLiveLeadAlert] = React.useState<any>(null);
   const [dismissedLeadIds, setDismissedLeadIds] = React.useState<string[]>([]);
   const [dismissCancellationsBanner, setDismissCancellationsBanner] = React.useState(false);
