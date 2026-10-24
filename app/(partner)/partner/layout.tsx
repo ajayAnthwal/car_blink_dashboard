@@ -89,37 +89,10 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   const isRejected = clearStatus === "Rejected";
   const isManualReview = status === "MANUAL_VERIFICATION_REQUIRED";
 
-  // Watch for status changes or unacknowledged status to trigger popup
+  // Watch for status changes to trigger popup ONLY on dynamic status transitions during an active session
+  // Never show on initial page load or login for already approved partners
   useEffect(() => {
     if (!isLoading && user && user.role === "PARTNER" && clearStatus) {
-      try {
-        const uid = user.id || (user as any)._id;
-        const ackKey = `acknowledged_partner_status_${uid}`;
-        const ackStatus = typeof window !== "undefined" ? localStorage.getItem(ackKey) : null;
-
-        // Auto-acknowledge if already approved so stale/missing cache never triggers
-        if (clearStatus === "Approved" && ackStatus !== "Approved") {
-          localStorage.setItem(ackKey, "Approved");
-        }
-
-        // Only show status change modal for Approved or Rejected transitions, NEVER "Pending" on approved accounts
-        if (ackStatus && ackStatus !== clearStatus && clearStatus !== "Pending") {
-          setStatusModal({
-            isOpen: true,
-            status: clearStatus,
-            rawStatus: status,
-            reason: rejectionReason,
-          });
-        } else if (!ackStatus && (clearStatus === "Approved" || clearStatus === "Rejected")) {
-          setStatusModal({
-            isOpen: true,
-            status: clearStatus,
-            rawStatus: status,
-            reason: rejectionReason,
-          });
-        }
-      } catch (e) {}
-
       if (prevStatusRef.current && prevStatusRef.current !== clearStatus && clearStatus !== "Pending") {
         setStatusModal({
           isOpen: true,
@@ -178,6 +151,8 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
 
         // Never trigger Pending popup for an already approved partner
         if (clearStatus === "Approved" && norm === "Pending") return;
+        // Never trigger Approved popup if partner is already approved
+        if (clearStatus === "Approved" && norm === "Approved") return;
 
         const reason = payload?.rejectionReason || payload?.notes || rejectionReason;
 
@@ -219,12 +194,6 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
     const isPen = statusModal.status === "Pending";
 
     const handleClose = () => {
-      try {
-        const uid = user?.id || (user as any)?._id;
-        if (uid && statusModal?.status) {
-          localStorage.setItem(`acknowledged_partner_status_${uid}`, statusModal.status);
-        }
-      } catch (e) {}
       setStatusModal(null);
     };
 
