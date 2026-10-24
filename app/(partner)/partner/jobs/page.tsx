@@ -1213,8 +1213,11 @@ export default function PartnerJobsPage() {
  */
 function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSubmitted?: () => void }) {
   const jobId = job._id || job.id || "";
-  const bData = typeof job.bookingId === 'object' && job.bookingId ? job.bookingId : {};
-  const sData = typeof bData.serviceId === 'object' && bData.serviceId ? bData.serviceId : {};
+  const existingInvoice = job?.invoice;
+  const bData = typeof job?.bookingId === 'object' && job?.bookingId ? job.bookingId : {};
+  const sData = typeof bData?.serviceId === 'object' && bData?.serviceId ? bData.serviceId : {};
+  const defaultServiceName = sData?.name || "Car Service & Maintenance";
+  const uploadInvoiceMutation = useUploadInvoiceMutation();
 
   // 1. Calculate actual customer agreed / quoted amount (Base service package only, excluding extra parts)
   const actualQuotedAmount = useMemo(() => {
@@ -1228,11 +1231,11 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
 
     // Next check customer gross quote or accepted bid amount
     const quotedVal = Number(
-      bData.pricing?.customerGrossQuote ||
-      bData.acceptedBidId?.quotedAmount ||
-      job.bidId?.quotedAmount ||
-      bData.pricing?.partnerBaseQuote ||
-      sData.basePrice ||
+      bData?.pricing?.customerGrossQuote ||
+      bData?.acceptedBidId?.quotedAmount ||
+      job?.bidId?.quotedAmount ||
+      bData?.pricing?.partnerBaseQuote ||
+      sData?.basePrice ||
       0
     );
     if (!isNaN(quotedVal) && quotedVal > 0) {
@@ -1240,20 +1243,16 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
     }
 
     // Fallback: if deriving from job.finalAmount, subtract any approved job extensions so extras aren't double-counted!
-    if (job.finalAmount) {
-      const approvedExtras = (job.jobExtensions || [])
-        .filter((ext: any) => ext.status === "APPROVED")
-        .reduce((sum: number, ext: any) => sum + (Number(ext.cost) || 0), 0) || (bData.pricing?.approvedExtrasAmount || 0);
+    if (job?.finalAmount) {
+      const approvedExtras = (job?.jobExtensions || [])
+        .filter((ext: any) => ext?.status === "APPROVED")
+        .reduce((sum: number, ext: any) => sum + (Number(ext?.cost) || 0), 0) || (bData?.pricing?.approvedExtrasAmount || 0);
       const baseAmt = Math.max(0, Number(job.finalAmount) - approvedExtras);
       if (baseAmt > 0) return baseAmt;
     }
 
-    return Number(job.finalAmount || 0);
+    return Number(job?.finalAmount || 0);
   }, [job, bData, sData, existingInvoice]);
-
-  const defaultServiceName = sData.name || "Car Service & Maintenance";
-  const existingInvoice = job.invoice;
-  const uploadInvoiceMutation = useUploadInvoiceMutation();
 
   const [invoiceType, setInvoiceType] = useState<"PDF" | "ITEMIZED">(
     existingInvoice?.invoiceType || (job.invoiceUrl && !existingInvoice?.items?.length ? "PDF" : "ITEMIZED")
