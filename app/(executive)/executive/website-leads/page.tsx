@@ -157,7 +157,16 @@ export default function MarketingLeadsPage() {
     try {
       const [servicesRes, citiesRes, brandsRes] = await Promise.all([getServices(), getCities(), getVehicleBrands()]);
       const fetchedServices = Array.isArray(servicesRes?.docs) ? servicesRes.docs : (Array.isArray(servicesRes?.data) ? servicesRes.data : []);
-      const fetchedCities = Array.isArray(citiesRes?.docs) ? citiesRes.docs : (Array.isArray(citiesRes?.data) ? citiesRes.data : []);
+      const rawCities = Array.isArray(citiesRes?.data?.data)
+        ? citiesRes.data.data
+        : Array.isArray(citiesRes?.data)
+        ? citiesRes.data
+        : Array.isArray(citiesRes?.docs)
+        ? citiesRes.docs
+        : Array.isArray(citiesRes)
+        ? citiesRes
+        : [];
+      const fetchedCities = rawCities;
       const fetchedBrands = Array.isArray(brandsRes?.data) ? brandsRes.data : (Array.isArray(brandsRes) ? brandsRes : []);
       
       setServices(fetchedServices);
@@ -171,13 +180,13 @@ export default function MarketingLeadsPage() {
         const rawId = typeof selectedLead.serviceIds[0] === 'object' 
           ? selectedLead.serviceIds[0]._id 
           : selectedLead.serviceIds[0];
-        matchedService = fetchedServices.find(s => String(s._id) === String(rawId));
+        matchedService = fetchedServices.find((s: any) => String(s._id) === String(rawId));
       }
 
       // 2. If extractedServices string is available, match by name or substring
       if (!matchedService && extractedServices) {
         const cleanExtracted = extractedServices.toLowerCase().trim();
-        matchedService = fetchedServices.find(s => 
+        matchedService = fetchedServices.find((s: any) => 
           s.name.toLowerCase() === cleanExtracted ||
           cleanExtracted.includes(s.name.toLowerCase()) || 
           s.name.toLowerCase().includes(cleanExtracted)
@@ -187,54 +196,99 @@ export default function MarketingLeadsPage() {
       // 3. Substring match across the entire message text
       if (!matchedService && msg) {
         const lowerMsg = msg.toLowerCase();
-        matchedService = fetchedServices.find(s => lowerMsg.includes(s.name.toLowerCase()));
+        matchedService = fetchedServices.find((s: any) => lowerMsg.includes(s.name.toLowerCase()));
       }
 
       // 4. Fallback: Check if message has common service keywords
       if (!matchedService && msg) {
         const lowerMsg = msg.toLowerCase();
         if (/tyre|tire|puncture|wheel/i.test(lowerMsg)) {
-          matchedService = fetchedServices.find(s => /tyres/i.test(s.name));
+          matchedService = fetchedServices.find((s: any) => /tyres/i.test(s.name));
         } else if (/dent|paint|scratch|mirror|bumper|body/i.test(lowerMsg)) {
-          matchedService = fetchedServices.find(s => /dent & paint/i.test(s.name));
+          matchedService = fetchedServices.find((s: any) => /dent & paint/i.test(s.name));
         } else if (/wash|foam|cleaning/i.test(lowerMsg)) {
-          matchedService = fetchedServices.find(s => /car wash/i.test(s.name));
+          matchedService = fetchedServices.find((s: any) => /car wash/i.test(s.name));
         } else if (/battery|jumpstart/i.test(lowerMsg)) {
-          matchedService = fetchedServices.find(s => /battery/i.test(s.name));
+          matchedService = fetchedServices.find((s: any) => /battery/i.test(s.name));
         } else if (/brake|pad/i.test(lowerMsg)) {
-          matchedService = fetchedServices.find(s => /brake/i.test(s.name));
+          matchedService = fetchedServices.find((s: any) => /brake/i.test(s.name));
         } else if (/clutch/i.test(lowerMsg)) {
-          matchedService = fetchedServices.find(s => /clutch/i.test(s.name));
+          matchedService = fetchedServices.find((s: any) => /clutch/i.test(s.name));
         } else if (/engine|oil/i.test(lowerMsg)) {
-          matchedService = fetchedServices.find(s => /engine/i.test(s.name));
+          matchedService = fetchedServices.find((s: any) => /engine/i.test(s.name));
         } else if (/service|periodic|maintenance/i.test(lowerMsg)) {
-          matchedService = fetchedServices.find(s => /periodic/i.test(s.name));
+          matchedService = fetchedServices.find((s: any) => /periodic/i.test(s.name));
         }
       }
 
       if (matchedService) {
         setSelectedServiceId(matchedService._id);
       } else {
-        const defaultService = fetchedServices.find(s => /periodic service/i.test(s.name));
+        const defaultService = fetchedServices.find((s: any) => /periodic service/i.test(s.name));
         setSelectedServiceId(defaultService ? defaultService._id : (fetchedServices.length > 0 ? fetchedServices[0]._id : ""));
       }
 
-      const fullAddress = (selectedLead?.city || "").toLowerCase();
-      if (fetchedCities.length > 0) {
-        let matchedCity = fetchedCities.find(c => fullAddress.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(fullAddress));
+      // --- Precise City Matching ---
+      let matchedCity: any = null;
+
+      // 1. Direct city / booking reference if available
+      const rawCityId = selectedLead?.cityId?._id || selectedLead?.cityId;
+      if (rawCityId) {
+        matchedCity = fetchedCities.find((c: any) => String(c._id) === String(rawCityId));
+      }
+
+      if (!matchedCity && selectedLead?.bookingId && typeof selectedLead.bookingId === 'object' && selectedLead.bookingId.cityId) {
+        const bCityId = selectedLead.bookingId.cityId?._id || selectedLead.bookingId.cityId;
+        matchedCity = fetchedCities.find((c: any) => String(c._id) === String(bCityId));
+      }
+
+      // 2. Intelligent Address & Landmark Matching from Customer Input
+      const rawCityText = (selectedLead?.city || "").trim();
+      const rawMsgText = (selectedLead?.message || "").trim();
+      const combinedAddress = `${rawCityText} ${rawMsgText}`.trim();
+
+      if (!matchedCity && combinedAddress && fetchedCities.length > 0) {
+        // Sort cities descending by name length so more specific/longer names (e.g. "Dehradun") match before short ones (e.g. "Un")
+        const sortedCities = [...fetchedCities].filter((c: any) => c && c.name).sort((a: any, b: any) => (b.name?.trim().length || 0) - (a.name?.trim().length || 0));
+
+        // A. Exact segment match (splitting by comma, semicolon, slash, dash, pipe)
+        const segments = rawCityText.split(/[,;\/|\-\n]+/).map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+        for (const seg of segments) {
+          matchedCity = sortedCities.find((c: any) => c.name && c.name.trim().toLowerCase() === seg);
+          if (matchedCity) break;
+        }
+
+        // B. Whole-word boundary regex match (e.g. \bDehradun\b matches "ISBT Bus Stand Dehradun", but \bUn\b will NOT match inside "Dehradun")
         if (!matchedCity) {
-          const segments = fullAddress.split(',').map((s: string) => s.trim()).filter(Boolean);
-          for (const seg of segments) {
-            matchedCity = fetchedCities.find(c => c.name.toLowerCase() === seg || c.name.toLowerCase().includes(seg));
-            if (matchedCity) break;
+          for (const city of sortedCities) {
+            const name = (city.name || "").trim();
+            if (name.length < 2) continue;
+            const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const wordRegex = new RegExp(`(^|[^a-zA-Z0-9])${escaped}([^a-zA-Z0-9]|$)`, 'i');
+            if (wordRegex.test(combinedAddress)) {
+              matchedCity = city;
+              break;
+            }
           }
         }
-        if (matchedCity) {
-          setSelectedCityId(matchedCity._id);
-        } else {
-          const fallbackCity = fetchedCities.find(c => /dehradun|delhi|gurgaon|noida/i.test(c.name));
-          setSelectedCityId(fallbackCity ? fallbackCity._id : fetchedCities[0]._id);
+
+        // C. Known regional landmarks / hubs
+        if (!matchedCity) {
+          if (/dehradun|isbt|mājra|majra|pitthūwāla|pitthuwala|clement town|rajpur|garhi cantt|patel nagar/i.test(combinedAddress)) {
+            matchedCity = fetchedCities.find((c: any) => /dehradun/i.test(c.name));
+          } else if (/bijnor|chashirin|chahshirin/i.test(combinedAddress)) {
+            matchedCity = fetchedCities.find((c: any) => /bijnor/i.test(c.name));
+          } else if (/haridwar|roorkee|rishikesh/i.test(combinedAddress)) {
+            matchedCity = fetchedCities.find((c: any) => new RegExp(c.name, 'i').test(combinedAddress));
+          }
         }
+      }
+
+      if (matchedCity) {
+        setSelectedCityId(matchedCity._id);
+      } else {
+        const fallbackCity = fetchedCities.find((c: any) => /dehradun/i.test(c.name));
+        setSelectedCityId(fallbackCity ? fallbackCity._id : "");
       }
 
       // Smart Brand & Model Autofill
@@ -277,6 +331,11 @@ export default function MarketingLeadsPage() {
 
         if (matchedModelObj) {
           setSelectedModel(matchedModelObj.name);
+        } else if (rawModel) {
+          // If customer provided a model not currently in predefined list, preserve customer's model!
+          const customModelObj = { _id: `M_CUSTOM_${Date.now()}`, brandId: matchedBrandObj._id, name: rawModel };
+          setModels(prev => [customModelObj, ...prev]);
+          setSelectedModel(rawModel);
         } else if (fetchedModels.length > 0) {
           setSelectedModel(fetchedModels[0].name);
         } else {

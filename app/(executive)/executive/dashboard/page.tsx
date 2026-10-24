@@ -41,9 +41,25 @@ export default function ExecutiveDashboardPage() {
   const { socket } = useSocket();
   const queryClient = useQueryClient();
   const [liveLeadAlert, setLiveLeadAlert] = React.useState<any>(null);
-  const [dismissedLeadIds, setDismissedLeadIds] = React.useState<string[]>([]);
+  const [dismissTopLeadBanner, setDismissTopLeadBanner] = React.useState(false);
   const [dismissCancellationsBanner, setDismissCancellationsBanner] = React.useState(false);
   const [dismissExtraWorkBanner, setDismissExtraWorkBanner] = React.useState(false);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        if (sessionStorage.getItem("cb_exec_dismiss_top_banner") === "true") {
+          setDismissTopLeadBanner(true);
+        }
+        if (sessionStorage.getItem("cb_exec_dismiss_cancellations") === "true") {
+          setDismissCancellationsBanner(true);
+        }
+        if (sessionStorage.getItem("cb_exec_dismiss_extra_work") === "true") {
+          setDismissExtraWorkBanner(true);
+        }
+      }
+    } catch (e) {}
+  }, []);
   
   const { data: followUpsData, isLoading: loadingFollowUps } = usePendingFollowUps({ page: 1, limit: 100 });
   const { data: escalationsData, isLoading: loadingEscalations } = useEscalations({ page: 1, limit: 100 });
@@ -252,7 +268,8 @@ export default function ExecutiveDashboardPage() {
 
   // Derived Latest Incoming Lead / Partner Registration Banner
   const latestNewLead = React.useMemo(() => {
-    if (liveLeadAlert && !dismissedLeadIds.includes(String(liveLeadAlert.id))) return liveLeadAlert;
+    if (liveLeadAlert) return liveLeadAlert;
+    if (dismissTopLeadBanner) return null;
 
     // 1. Check for pending cancellation requests (Highest Priority)
     let latestCancellationItem: any = null;
@@ -338,12 +355,10 @@ export default function ExecutiveDashboardPage() {
       };
     }
 
-    const items = [latestCancellationItem, latestPartnerItem, latestWebItem, latestPlatformItem]
-      .filter(Boolean)
-      .filter((item: any) => !dismissedLeadIds.includes(String(item.id)));
+    const items = [latestCancellationItem, latestPartnerItem, latestWebItem, latestPlatformItem].filter(Boolean);
     if (items.length === 0) return null;
     return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-  }, [liveLeadAlert, pendingCancellations, pendingPartners, wLds, lds, dismissedLeadIds]);
+  }, [liveLeadAlert, pendingCancellations, pendingPartners, wLds, lds, dismissTopLeadBanner]);
 
   // Compute Stats
   const stats = React.useMemo(() => {
@@ -543,10 +558,11 @@ export default function ExecutiveDashboardPage() {
               <button 
                 type="button"
                 onClick={() => {
-                  if (latestNewLead?.id) {
-                    setDismissedLeadIds(prev => [...prev, String(latestNewLead.id)]);
-                  }
+                  setDismissTopLeadBanner(true);
                   setLiveLeadAlert(null);
+                  try {
+                    sessionStorage.setItem("cb_exec_dismiss_top_banner", "true");
+                  } catch (e) {}
                 }}
                 className="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-xl transition-all border border-white/20 shadow-sm shrink-0"
                 title="Dismiss alert"
@@ -587,7 +603,12 @@ export default function ExecutiveDashboardPage() {
             </Button>
             <button 
               type="button"
-              onClick={() => setDismissCancellationsBanner(true)}
+              onClick={() => {
+                setDismissCancellationsBanner(true);
+                try {
+                  sessionStorage.setItem("cb_exec_dismiss_cancellations", "true");
+                } catch (e) {}
+              }}
               className="text-gray-400 hover:text-gray-700 hover:bg-rose-100 p-2 rounded-xl transition-colors shrink-0"
               title="Dismiss banner"
             >
@@ -626,7 +647,12 @@ export default function ExecutiveDashboardPage() {
             </Button>
             <button 
               type="button"
-              onClick={() => setDismissExtraWorkBanner(true)}
+              onClick={() => {
+                setDismissExtraWorkBanner(true);
+                try {
+                  sessionStorage.setItem("cb_exec_dismiss_extra_work", "true");
+                } catch (e) {}
+              }}
               className="text-gray-400 hover:text-gray-700 hover:bg-amber-100 p-2 rounded-xl transition-colors shrink-0"
               title="Dismiss banner"
             >

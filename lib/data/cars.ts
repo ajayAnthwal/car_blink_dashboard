@@ -105,6 +105,7 @@ export const indianCarModels: CarModel[] = [
   { _id: "M_BOLERO", brandId: "B_MAHINDRA", name: "Bolero" },
   { _id: "M_BOLERO_NEO", brandId: "B_MAHINDRA", name: "Bolero Neo" },
   { _id: "M_MARAZZO", brandId: "B_MAHINDRA", name: "Marazzo" },
+  { _id: "M_XYLO", brandId: "B_MAHINDRA", name: "Xylo" },
 
   // Kia
   { _id: "M_SELTOS", brandId: "B_KIA", name: "Seltos" },
@@ -147,6 +148,7 @@ export const indianCarModels: CarModel[] = [
   { _id: "M_KODIAQ", brandId: "B_SKODA", name: "Kodiaq" },
   { _id: "M_SUPERB", brandId: "B_SKODA", name: "Superb" },
   { _id: "M_OCTAVIA", brandId: "B_SKODA", name: "Octavia" },
+  { _id: "M_YETI", brandId: "B_SKODA", name: "Yeti" },
 
   // Volkswagen
   { _id: "M_VIRTUS", brandId: "B_VW", name: "Virtus" },
@@ -182,6 +184,7 @@ export const indianCarModels: CarModel[] = [
   { _id: "M_ASPIRE", brandId: "B_FORD", name: "Aspire" },
   { _id: "M_FREESTYLE", brandId: "B_FORD", name: "Freestyle" },
   { _id: "M_MUSTANG", brandId: "B_FORD", name: "Mustang" },
+  { _id: "M_ESCORT", brandId: "B_FORD", name: "Escort" },
 
   // BMW
   { _id: "M_X1", brandId: "B_BMW", name: "X1" },
@@ -196,6 +199,9 @@ export const indianCarModels: CarModel[] = [
   { _id: "M_I4", brandId: "B_BMW", name: "i4" },
 
   // Mercedes-Benz
+  { _id: "M_A_CLASS", brandId: "B_MERCEDES", name: "A-Class" },
+  { _id: "M_B_CLASS", brandId: "B_MERCEDES", name: "B-Class" },
+  { _id: "M_CLA", brandId: "B_MERCEDES", name: "CLA" },
   { _id: "M_GLA", brandId: "B_MERCEDES", name: "GLA" },
   { _id: "M_GLC", brandId: "B_MERCEDES", name: "GLC" },
   { _id: "M_GLE", brandId: "B_MERCEDES", name: "GLE" },
