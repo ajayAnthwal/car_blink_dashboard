@@ -1216,20 +1216,40 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
   const bData = typeof job.bookingId === 'object' && job.bookingId ? job.bookingId : {};
   const sData = typeof bData.serviceId === 'object' && bData.serviceId ? bData.serviceId : {};
 
-  // 1. Calculate actual customer agreed / quoted amount
+  // 1. Calculate actual customer agreed / quoted amount (Base service package only, excluding extra parts)
   const actualQuotedAmount = useMemo(() => {
-    const val = Number(
-      job.invoice?.grandTotal ||
+    // If an existing invoice already has line items, row 0's unit price is the base package price
+    if (Array.isArray(existingInvoice?.items) && existingInvoice.items.length > 0) {
+      const firstItemPrice = Number(existingInvoice.items[0]?.unitPrice);
+      if (!isNaN(firstItemPrice) && firstItemPrice > 0) {
+        return firstItemPrice;
+      }
+    }
+
+    // Next check customer gross quote or accepted bid amount
+    const quotedVal = Number(
       bData.pricing?.customerGrossQuote ||
       bData.acceptedBidId?.quotedAmount ||
       job.bidId?.quotedAmount ||
-      (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
-      job.finalAmount ||
+      bData.pricing?.partnerBaseQuote ||
       sData.basePrice ||
       0
     );
-    return isNaN(val) ? 0 : val;
-  }, [job, bData, sData]);
+    if (!isNaN(quotedVal) && quotedVal > 0) {
+      return quotedVal;
+    }
+
+    // Fallback: if deriving from job.finalAmount, subtract any approved job extensions so extras aren't double-counted!
+    if (job.finalAmount) {
+      const approvedExtras = (job.jobExtensions || [])
+        .filter((ext: any) => ext.status === "APPROVED")
+        .reduce((sum: number, ext: any) => sum + (Number(ext.cost) || 0), 0) || (bData.pricing?.approvedExtrasAmount || 0);
+      const baseAmt = Math.max(0, Number(job.finalAmount) - approvedExtras);
+      if (baseAmt > 0) return baseAmt;
+    }
+
+    return Number(job.finalAmount || 0);
+  }, [job, bData, sData, existingInvoice]);
 
   const defaultServiceName = sData.name || "Car Service & Maintenance";
   const existingInvoice = job.invoice;
@@ -1243,13 +1263,13 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
     typeof existingInvoice?.pdfUrl === 'string' ? existingInvoice.pdfUrl : (typeof job.invoiceUrl === 'string' ? job.invoiceUrl : "")
   );
 
-  // Initialize line items: Row 0 is ALWAYS the customer's actual quoted amount and is locked!
+  // Initialize line items: Row 0 is ALWAYS the customer's actual base quoted amount and is locked!
   const [items, setItems] = useState<{ description: string; quantity: number; unitPrice: number; isBasePackage: boolean }[]>(() => {
     if (Array.isArray(existingInvoice?.items) && existingInvoice.items.length > 0) {
       return existingInvoice.items.map((it: any, idx: number) => ({
         description: it?.description || (idx === 0 ? defaultServiceName : ""),
         quantity: Number(it?.quantity) || 1,
-        unitPrice: idx === 0 ? (actualQuotedAmount || Number(it?.unitPrice) || 0) : (Number(it?.unitPrice) || 0),
+        unitPrice: Number(it?.unitPrice) || (idx === 0 ? actualQuotedAmount : 0),
         isBasePackage: idx === 0
       }));
     }
@@ -1615,16 +1635,32 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
                   <PlusCircle className="w-3.5 h-3.5 text-primary-orange" /> Quick-Add Requested Parts from this Job:
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {job.jobExtensions.filter((ext: any) => typeof ext === 'object' && ext?.partName).map((ext: any, extIdx: number) => (
-                    <button
-                      key={extIdx}
-                      type="button"
-                      onClick={() => handleAddExtension(ext)}
-                      className="text-[11px] font-bold bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 px-3 py-1 rounded-lg flex items-center gap-1.5 transition-colors shadow-2xs"
-                    >
-                      <Plus className="w-3 h-3 text-primary-orange" /> Add &ldquo;{ext.partName}&rdquo; (+₹{Number(ext.cost) || 0})
-                    </button>
-                  ))}
+                  {job.jobExtensions.filter((ext: any) => typeof ext === 'object' && ext?.partName).map((ext: any, extIdx: number) => {
+                    const isAlreadyAdded = items.some(it => it.description.toLowerCase().trim() === ext.partName.toLowerCase().trim());
+                    return (
+                      <button
+                        key={extIdx}
+                        type="button"
+                        onClick={() => handleAddExtension(ext)}
+                        disabled={isAlreadyAdded}
+                        className={`text-[11px] font-bold px-3 py-1 rounded-lg flex items-center gap-1.5 transition-colors shadow-2xs ${
+                          isAlreadyAdded
+                            ? "bg-amber-100/70 border border-amber-300 text-amber-800 cursor-not-allowed opacity-80"
+                            : "bg-white border border-amber-300 hover:bg-amber-100 text-amber-900"
+                        }`}
+                      >
+                        {isAlreadyAdded ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> &ldquo;{ext.partName}&rdquo; Added (+₹{Number(ext.cost) || 0})
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3 h-3 text-primary-orange" /> Add &ldquo;{ext.partName}&rdquo; (+₹{Number(ext.cost) || 0})
+                          </>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
