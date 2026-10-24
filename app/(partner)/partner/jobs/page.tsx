@@ -1712,7 +1712,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
                     ✓ All-Inclusive
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
+                {/* <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setGstMode("18")}
@@ -1735,7 +1735,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
                   >
                     0% (Exempt)
                   </button>
-                </div>
+                </div> */}
               </div>
 
               <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs space-y-1">
