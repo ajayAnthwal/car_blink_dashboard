@@ -97,7 +97,13 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
         const ackKey = `acknowledged_partner_status_${uid}`;
         const ackStatus = typeof window !== "undefined" ? localStorage.getItem(ackKey) : null;
 
-        if (ackStatus && ackStatus !== clearStatus) {
+        // Auto-acknowledge if already approved so stale/missing cache never triggers
+        if (clearStatus === "Approved" && ackStatus !== "Approved") {
+          localStorage.setItem(ackKey, "Approved");
+        }
+
+        // Only show status change modal for Approved or Rejected transitions, NEVER "Pending" on approved accounts
+        if (ackStatus && ackStatus !== clearStatus && clearStatus !== "Pending") {
           setStatusModal({
             isOpen: true,
             status: clearStatus,
@@ -114,7 +120,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
         }
       } catch (e) {}
 
-      if (prevStatusRef.current && prevStatusRef.current !== clearStatus) {
+      if (prevStatusRef.current && prevStatusRef.current !== clearStatus && clearStatus !== "Pending") {
         setStatusModal({
           isOpen: true,
           status: clearStatus,
@@ -156,13 +162,23 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
       console.log("[PartnerLayout] Live verification event received:", payload);
       try {
         await refreshUser();
-        const raw = payload?.status || payload?.verificationStatus || status;
-        let norm: "Pending" | "Approved" | "Rejected" = "Pending";
+        const raw = payload?.status || payload?.verificationStatus;
+        if (!raw && !payload?.isVerified) return; // Only process actual verification payload
+
+        let norm: "Pending" | "Approved" | "Rejected" | null = null;
         if (raw === "APPROVED" || raw === "APPROVED_VERIFIED" || payload?.isVerified) {
           norm = "Approved";
         } else if (raw === "REJECTED") {
           norm = "Rejected";
+        } else if (raw === "PENDING" || raw === "UNDER_REVIEW") {
+          norm = "Pending";
         }
+
+        if (!norm) return;
+
+        // Never trigger Pending popup for an already approved partner
+        if (clearStatus === "Approved" && norm === "Pending") return;
+
         const reason = payload?.rejectionReason || payload?.notes || rejectionReason;
 
         setStatusModal({
@@ -176,8 +192,6 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
           toast.success("🎉 Congratulations! Your CarBlink Partner Account is Approved!", { duration: 6000 });
         } else if (norm === "Rejected") {
           toast.error(`Application Rejected: ${reason || "Requirements not met"}`, { duration: 8000 });
-        } else {
-          toast("Application status updated: Pending Review", { icon: "ℹ️" });
         }
       } catch (err) {
         console.error("[PartnerLayout] Error handling live socket event:", err);
@@ -187,18 +201,18 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
     socket.on("partner_verified", handleLiveEvent);
     socket.on("partner_status_updated", handleLiveEvent);
     socket.on("kyc_status_changed", handleLiveEvent);
-    socket.on("notification:new", handleLiveEvent);
 
     return () => {
       socket.off("partner_verified", handleLiveEvent);
       socket.off("partner_status_updated", handleLiveEvent);
       socket.off("kyc_status_changed", handleLiveEvent);
-      socket.off("notification:new", handleLiveEvent);
     };
-  }, [socket, status, rejectionReason, refreshUser]);
+  }, [socket, status, rejectionReason, refreshUser, clearStatus]);
 
   const renderStatusModal = () => {
     if (!statusModal?.isOpen) return null;
+    // Safety guard: If partner is already approved, NEVER show "Pending Review" modal
+    if (clearStatus === "Approved" && statusModal.status === "Pending") return null;
 
     const isApp = statusModal.status === "Approved";
     const isRej = statusModal.status === "Rejected";

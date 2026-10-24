@@ -194,7 +194,7 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      <Card className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40">
+      {/* <Card className="bg-white/90 backdrop-blur-md shadow-subtle border-white/40">
         <CardHeader>
           <CardTitle className="flex items-center space-x-3 text-xl">
             <div className="bg-orange-50 p-2 rounded-xl text-primary-orange">
@@ -275,7 +275,7 @@ export default function PaymentsPage() {
             )}
           </form>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Total Savings & Discounts Banner */}
       <Card className="bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 text-white shadow-md rounded-3xl border border-teal-500/30 overflow-hidden">
