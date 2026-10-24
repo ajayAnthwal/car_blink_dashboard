@@ -39,8 +39,10 @@ import {
 export default function ExecutiveDashboardPage() {
   const { user } = useAuth();
   const { socket } = useSocket();
-  const queryClient = useQueryClient();
   const [liveLeadAlert, setLiveLeadAlert] = React.useState<any>(null);
+  const [dismissedLeadIds, setDismissedLeadIds] = React.useState<string[]>([]);
+  const [dismissCancellationsBanner, setDismissCancellationsBanner] = React.useState(false);
+  const [dismissExtraWorkBanner, setDismissExtraWorkBanner] = React.useState(false);
   
   const { data: followUpsData, isLoading: loadingFollowUps } = usePendingFollowUps({ page: 1, limit: 100 });
   const { data: escalationsData, isLoading: loadingEscalations } = useEscalations({ page: 1, limit: 100 });
@@ -249,7 +251,7 @@ export default function ExecutiveDashboardPage() {
 
   // Derived Latest Incoming Lead / Partner Registration Banner
   const latestNewLead = React.useMemo(() => {
-    if (liveLeadAlert) return liveLeadAlert;
+    if (liveLeadAlert && !dismissedLeadIds.includes(String(liveLeadAlert.id))) return liveLeadAlert;
 
     // 1. Check for pending cancellation requests (Highest Priority)
     let latestCancellationItem: any = null;
@@ -335,10 +337,12 @@ export default function ExecutiveDashboardPage() {
       };
     }
 
-    const items = [latestCancellationItem, latestPartnerItem, latestWebItem, latestPlatformItem].filter(Boolean);
+    const items = [latestCancellationItem, latestPartnerItem, latestWebItem, latestPlatformItem]
+      .filter(Boolean)
+      .filter((item: any) => !dismissedLeadIds.includes(String(item.id)));
     if (items.length === 0) return null;
     return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-  }, [liveLeadAlert, pendingCancellations, pendingPartners, wLds, lds]);
+  }, [liveLeadAlert, pendingCancellations, pendingPartners, wLds, lds, dismissedLeadIds]);
 
   // Compute Stats
   const stats = React.useMemo(() => {
@@ -535,22 +539,26 @@ export default function ExecutiveDashboardPage() {
                   {latestNewLead.isCancellation ? "Review & Retain Customer" : (latestNewLead.isExtraWork ? "Review Extra Work" : (latestNewLead.isPartnerRegistration ? "Review & Verify Partner" : (latestNewLead.isVerification ? "View Booking & Monitor Status" : (latestNewLead.isBid ? "Review Bids & Assign Partner" : "View Lead & Convert"))))} <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Link>
               </Button>
-              {latestNewLead.isLive && (
-                <button 
-                  onClick={() => setLiveLeadAlert(null)}
-                  className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
-                  title="Dismiss alert"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
+              <button 
+                type="button"
+                onClick={() => {
+                  if (latestNewLead?.id) {
+                    setDismissedLeadIds(prev => [...prev, String(latestNewLead.id)]);
+                  }
+                  setLiveLeadAlert(null);
+                }}
+                className="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-xl transition-all border border-white/20 shadow-sm shrink-0"
+                title="Dismiss alert"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Cancellation Requests Executive Callout Banner */}
-      {pendingCancellations && pendingCancellations.length > 0 && (
+      {!dismissCancellationsBanner && pendingCancellations && pendingCancellations.length > 0 && (
         <div className="bg-gradient-to-r from-rose-50 to-red-50 border border-rose-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center">
             <div className="bg-rose-100 p-2.5 rounded-xl mr-3.5 shrink-0 text-rose-700">
@@ -570,16 +578,26 @@ export default function ExecutiveDashboardPage() {
               </p>
             </div>
           </div>
-          <Button asChild size="sm" className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 rounded-xl shadow-xs">
-            <Link href="/executive/cancellations">
-              Review Cancellations <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-            </Link>
-          </Button>
+          <div className="flex items-center space-x-2 shrink-0 w-full sm:w-auto justify-end">
+            <Button asChild size="sm" className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 rounded-xl shadow-xs">
+              <Link href="/executive/cancellations">
+                Review Cancellations <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </Link>
+            </Button>
+            <button 
+              type="button"
+              onClick={() => setDismissCancellationsBanner(true)}
+              className="text-gray-400 hover:text-gray-700 hover:bg-rose-100 p-2 rounded-xl transition-colors shrink-0"
+              title="Dismiss banner"
+            >
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
         </div>
       )}
 
       {/* Extra Work Executive Review Callout */}
-      {pendingExtraWorkData && pendingExtraWorkData.length > 0 && (
+      {!dismissExtraWorkBanner && pendingExtraWorkData && pendingExtraWorkData.length > 0 && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center">
             <div className="bg-amber-100 p-2.5 rounded-xl mr-3.5 shrink-0 text-amber-700">
@@ -599,11 +617,21 @@ export default function ExecutiveDashboardPage() {
               </p>
             </div>
           </div>
-          <Button asChild size="sm" className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs shrink-0 rounded-xl shadow-xs">
-            <Link href="/executive/extra-work">
-              Review Extra Work <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-            </Link>
-          </Button>
+          <div className="flex items-center space-x-2 shrink-0 w-full sm:w-auto justify-end">
+            <Button asChild size="sm" className="bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs shrink-0 rounded-xl shadow-xs">
+              <Link href="/executive/extra-work">
+                Review Extra Work <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </Link>
+            </Button>
+            <button 
+              type="button"
+              onClick={() => setDismissExtraWorkBanner(true)}
+              className="text-gray-400 hover:text-gray-700 hover:bg-amber-100 p-2 rounded-xl transition-colors shrink-0"
+              title="Dismiss banner"
+            >
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
         </div>
       )}
 

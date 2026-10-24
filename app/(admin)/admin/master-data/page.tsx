@@ -4,6 +4,9 @@
 import React, { useState, useMemo } from "react";
 import { 
   useMasterDataServices, 
+  useCreateServiceMutation,
+  useUpdateServiceMutation,
+  useDeleteServiceMutation,
   useMasterDataStates,
   useCreateStateMutation,
   useUpdateStateMutation,
@@ -71,9 +74,9 @@ export default function MasterDataPage() {
   const updateCityMutation = useUpdateCityMutation();
   const deleteCityMutation = useDeleteCityMutation();
   
-  const services = servicesData || [];
-  const states = statesData || [];
-  const cities = citiesData || [];
+  const services = Array.isArray(servicesData) ? servicesData : (Array.isArray(servicesData?.data) ? servicesData.data : (Array.isArray(servicesData?.services) ? servicesData.services : []));
+  const states = Array.isArray(statesData) ? statesData : (Array.isArray(statesData?.data) ? statesData.data : (Array.isArray(statesData?.states) ? statesData.states : []));
+  const cities = Array.isArray(citiesData) ? citiesData : (Array.isArray(citiesData?.data) ? citiesData.data : (Array.isArray(citiesData?.cities) ? citiesData.cities : []));
 
   // Filtered Lists
   const filteredStates = useMemo(() => {

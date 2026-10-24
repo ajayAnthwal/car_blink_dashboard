@@ -448,7 +448,8 @@ export const useMasterDataServices = () => {
     queryKey: ["admin", "masterData", "services"],
     queryFn: async () => {
       const res = await getServices();
-      return Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const raw = res?.data !== undefined ? res.data : res;
+      return Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.services) ? raw.services : []));
     }
   });
 };
@@ -458,7 +459,8 @@ export const useMasterDataStates = (params?: { page?: number; limit?: number; se
     queryKey: ["admin", "masterData", "states", params],
     queryFn: async () => {
       const res = await getStates(params);
-      return res?.data || res || [];
+      const raw = res?.data !== undefined ? res.data : res;
+      return Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.states) ? raw.states : []));
     }
   });
 };
@@ -514,7 +516,8 @@ export const useMasterDataCities = () => {
     queryKey: ["admin", "masterData", "cities"],
     queryFn: async () => {
       const res = await getCities();
-      return Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const raw = res?.data !== undefined ? res.data : res;
+      return Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.cities) ? raw.cities : []));
     }
   });
 };

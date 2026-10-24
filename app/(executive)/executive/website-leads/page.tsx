@@ -8,7 +8,7 @@ import { getCities, getServices, getVehicleBrands, getVehicleModels } from "@/li
 import { useWebsiteLeads, useConvertWebsiteLead } from "@/features/executive/hooks/useExecutiveQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Megaphone, Phone, Mail, Car, MapPin, Calendar, ExternalLink, X, Search, Filter, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Target, RefreshCw } from "lucide-react";
+import { Loader2, Megaphone, Phone, Mail, Car, Wrench, MapPin, Calendar, ExternalLink, X, Search, Filter, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Target, RefreshCw } from "lucide-react";
 import { useSocket } from "@/lib/SocketContext";
 import { format } from "date-fns";
 
@@ -104,12 +104,54 @@ export default function MarketingLeadsPage() {
     setIsMasterDataLoading(true);
     setConvertMessage("");
 
-    // Extract services from the message text if present
-    const msg = selectedLead?.message || "";
+    // 1. Comprehensive Service Extraction from Lead
     let extractedServices = "";
-    const servicesMatch = msg.match(/Services:\s*([^|]+)/i);
-    if (servicesMatch && servicesMatch[1]) {
-      extractedServices = servicesMatch[1].trim();
+
+    // A) Check populated serviceIds
+    if (selectedLead?.serviceIds && selectedLead.serviceIds.length > 0) {
+      const firstSrv = selectedLead.serviceIds[0];
+      if (typeof firstSrv === 'object' && firstSrv?.name) {
+        extractedServices = firstSrv.name;
+      }
+    }
+
+    // B) Check direct serviceType or customServiceName
+    if (!extractedServices && selectedLead?.serviceType) {
+      extractedServices = selectedLead.serviceType;
+    }
+    if (!extractedServices && selectedLead?.customServiceName) {
+      extractedServices = selectedLead.customServiceName;
+    }
+
+    // C) Check message regex patterns
+    const msg = selectedLead?.message || "";
+    if (!extractedServices && msg) {
+      // Pattern 1: Services: Car Wash, Dent & Paint
+      const servicesMatch = msg.match(/Services:\s*([^|]+)/i);
+      if (servicesMatch && servicesMatch[1]) {
+        extractedServices = servicesMatch[1].trim();
+      }
+      
+      // Pattern 2: Quick Callback prefix (e.g. "Tyres: tyres change | Car: ...")
+      if (!extractedServices) {
+        const prefixMatch = msg.match(/^([^:|]+):/);
+        if (prefixMatch && prefixMatch[1]) {
+          const candidate = prefixMatch[1].trim();
+          if (!candidate.toLowerCase().includes('location') && 
+              !candidate.toLowerCase().includes('custom address') &&
+              !candidate.toLowerCase().includes('query')) {
+            extractedServices = candidate;
+          }
+        }
+      }
+
+      // Pattern 3: "Tyres Request for Mahindra Xylo"
+      if (!extractedServices) {
+        const reqMatch = msg.match(/^([^|]+?)\s+Request for/i);
+        if (reqMatch && reqMatch[1]) {
+          extractedServices = reqMatch[1].trim();
+        }
+      }
     }
 
     try {
@@ -122,24 +164,76 @@ export default function MarketingLeadsPage() {
       setCities(fetchedCities);
       setBrands(fetchedBrands);
 
-      if (extractedServices && fetchedServices.length > 0) {
-        const matchedService = fetchedServices.find(s => extractedServices.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(extractedServices.toLowerCase()));
-        if (matchedService) {
-          setSelectedServiceId(matchedService._id);
-        } else {
-          setSelectedServiceId(fetchedServices[0]._id);
+      let matchedService: any = null;
+
+      // 1. If lead already had an ObjectId in serviceIds
+      if (selectedLead?.serviceIds && selectedLead.serviceIds.length > 0) {
+        const rawId = typeof selectedLead.serviceIds[0] === 'object' 
+          ? selectedLead.serviceIds[0]._id 
+          : selectedLead.serviceIds[0];
+        matchedService = fetchedServices.find(s => String(s._id) === String(rawId));
+      }
+
+      // 2. If extractedServices string is available, match by name or substring
+      if (!matchedService && extractedServices) {
+        const cleanExtracted = extractedServices.toLowerCase().trim();
+        matchedService = fetchedServices.find(s => 
+          s.name.toLowerCase() === cleanExtracted ||
+          cleanExtracted.includes(s.name.toLowerCase()) || 
+          s.name.toLowerCase().includes(cleanExtracted)
+        );
+      }
+
+      // 3. Substring match across the entire message text
+      if (!matchedService && msg) {
+        const lowerMsg = msg.toLowerCase();
+        matchedService = fetchedServices.find(s => lowerMsg.includes(s.name.toLowerCase()));
+      }
+
+      // 4. Fallback: Check if message has common service keywords
+      if (!matchedService && msg) {
+        const lowerMsg = msg.toLowerCase();
+        if (/tyre|tire|puncture|wheel/i.test(lowerMsg)) {
+          matchedService = fetchedServices.find(s => /tyres/i.test(s.name));
+        } else if (/dent|paint|scratch|mirror|bumper|body/i.test(lowerMsg)) {
+          matchedService = fetchedServices.find(s => /dent & paint/i.test(s.name));
+        } else if (/wash|foam|cleaning/i.test(lowerMsg)) {
+          matchedService = fetchedServices.find(s => /car wash/i.test(s.name));
+        } else if (/battery|jumpstart/i.test(lowerMsg)) {
+          matchedService = fetchedServices.find(s => /battery/i.test(s.name));
+        } else if (/brake|pad/i.test(lowerMsg)) {
+          matchedService = fetchedServices.find(s => /brake/i.test(s.name));
+        } else if (/clutch/i.test(lowerMsg)) {
+          matchedService = fetchedServices.find(s => /clutch/i.test(s.name));
+        } else if (/engine|oil/i.test(lowerMsg)) {
+          matchedService = fetchedServices.find(s => /engine/i.test(s.name));
+        } else if (/service|periodic|maintenance/i.test(lowerMsg)) {
+          matchedService = fetchedServices.find(s => /periodic/i.test(s.name));
         }
-      } else if (fetchedServices.length > 0) {
-        setSelectedServiceId(fetchedServices[0]._id);
+      }
+
+      if (matchedService) {
+        setSelectedServiceId(matchedService._id);
+      } else {
+        const defaultService = fetchedServices.find(s => /periodic service/i.test(s.name));
+        setSelectedServiceId(defaultService ? defaultService._id : (fetchedServices.length > 0 ? fetchedServices[0]._id : ""));
       }
 
       const fullAddress = (selectedLead?.city || "").toLowerCase();
       if (fetchedCities.length > 0) {
-        const matchedCity = fetchedCities.find(c => fullAddress.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(fullAddress));
+        let matchedCity = fetchedCities.find(c => fullAddress.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(fullAddress));
+        if (!matchedCity) {
+          const segments = fullAddress.split(',').map((s: string) => s.trim()).filter(Boolean);
+          for (const seg of segments) {
+            matchedCity = fetchedCities.find(c => c.name.toLowerCase() === seg || c.name.toLowerCase().includes(seg));
+            if (matchedCity) break;
+          }
+        }
         if (matchedCity) {
           setSelectedCityId(matchedCity._id);
         } else {
-          setSelectedCityId(fetchedCities[0]._id);
+          const fallbackCity = fetchedCities.find(c => /dehradun|delhi|gurgaon|noida/i.test(c.name));
+          setSelectedCityId(fallbackCity ? fallbackCity._id : fetchedCities[0]._id);
         }
       }
 
@@ -552,6 +646,28 @@ export default function MarketingLeadsPage() {
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Vehicle</h4>
                     <p className="font-medium text-gray-900">
                       {selectedLead.vehicleBrand || selectedLead.vehicleModel ? `${selectedLead.vehicleBrand || ''} ${selectedLead.vehicleModel || ''}` : 'Not provided'}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Requested Service</h4>
+                    <p className="font-semibold text-primary-navy flex items-center gap-1.5">
+                      <Wrench className="w-4 h-4 text-primary-orange" />
+                      {(() => {
+                        if (selectedLead.serviceIds && selectedLead.serviceIds.length > 0) {
+                          const s = selectedLead.serviceIds[0];
+                          if (typeof s === 'object' && s?.name) return s.name;
+                        }
+                        if (selectedLead.serviceType) return selectedLead.serviceType;
+                        if (selectedLead.customServiceName) return selectedLead.customServiceName;
+                        const msg = selectedLead.message || "";
+                        const sMatch = msg.match(/Services:\s*([^|]+)/i);
+                        if (sMatch && sMatch[1]) return sMatch[1].trim();
+                        const qMatch = msg.match(/^([^:|]+):/);
+                        if (qMatch && qMatch[1] && !qMatch[1].toLowerCase().includes('location') && !qMatch[1].toLowerCase().includes('custom address')) {
+                          return qMatch[1].trim();
+                        }
+                        return "General Inspection / Inquiry";
+                      })()}
                     </p>
                   </div>
                 </div>
