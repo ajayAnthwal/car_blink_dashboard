@@ -134,7 +134,7 @@ export default function LeadDetailsPage() {
     lead.location.coordinates.length === 2 && 
     (lead.location.coordinates[0] !== 0 || lead.location.coordinates[1] !== 0);
   const coordinatesStr = hasCoordinates ? `${lead.location.coordinates[1].toFixed(4)}, ${lead.location.coordinates[0].toFixed(4)}` : null;
-  const leadLocationName = lead.address || cityObj?.name || coordinatesStr || "N/A";
+  const leadLocationName = lead.address || lead.city || (cityObj?.name && cityObj?.name !== 'Bamboo Flat' ? cityObj.name : null) || coordinatesStr || cityObj?.name || "N/A";
 
   const payments = Array.isArray(lead.payments) ? lead.payments : [];
   const acceptedBid = (lead.bids || []).find((b: any) => 
@@ -406,12 +406,25 @@ export default function LeadDetailsPage() {
                 <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Service Type</span>
                 <span className="text-gray-900 font-medium flex flex-wrap items-center gap-1.5">
                   {(() => {
-                    const raw = lead.customServiceName || 
-                      (lead.description && typeof lead.description === 'string' && !lead.description.toLowerCase().startsWith('website quote') && !lead.description.toLowerCase().startsWith('quick callback')
-                        ? lead.description.split('| Car:')[0].split('|')[0].trim()
-                        : '') ||
-                      serviceObj?.name || 
-                      "N/A";
+                    // Check if customServiceName is just identical to user query / note
+                    const isNoteDuplicate = lead.description && lead.customServiceName &&
+                      lead.description.toLowerCase().includes(lead.customServiceName.toLowerCase().trim());
+
+                    let primaryService = serviceObj?.name;
+                    let customLabel = lead.customServiceName;
+
+                    if (!primaryService || primaryService.toLowerCase() === 'general service' || primaryService.toLowerCase() === 'other') {
+                      if (customLabel && !isNoteDuplicate) {
+                        primaryService = customLabel;
+                      } else if (lead.description && typeof lead.description === 'string' && !lead.description.toLowerCase().startsWith('website quote') && !lead.description.toLowerCase().startsWith('quick callback')) {
+                        const extracted = lead.description.split('| Car:')[0].split('|')[0].trim();
+                        if (extracted && !extracted.toLowerCase().includes('testing')) {
+                          primaryService = extracted;
+                        }
+                      }
+                    }
+
+                    const raw = primaryService || customLabel || "General Service";
                     return raw.charAt(0).toUpperCase() + raw.slice(1);
                   })()}
                   {lead.customServiceName && serviceObj?.name && lead.customServiceName.toLowerCase() !== serviceObj.name.toLowerCase() && (
@@ -443,10 +456,11 @@ export default function LeadDetailsPage() {
             </div>
 
             {/* Interactive Live Customer Location Map */}
-            {(hasCoordinates || lead.address || cityObj?.name) && (() => {
+            {(hasCoordinates || lead.address || lead.city || cityObj?.name) && (() => {
+              const effectiveLoc = lead.address || lead.city || (cityObj?.name && cityObj?.name !== 'Bamboo Flat' ? cityObj.name : '');
               const mapQuery = hasCoordinates 
                 ? `${lead.location.coordinates[1]},${lead.location.coordinates[0]}` 
-                : encodeURIComponent(lead.address ? `${lead.address}${lead.landmark ? `, ${lead.landmark}` : ''}` : (cityObj?.name || ''));
+                : encodeURIComponent(effectiveLoc ? `${effectiveLoc}${lead.landmark ? `, ${lead.landmark}` : ''}` : (cityObj?.name || ''));
 
               return (
                 <div className="pt-4 border-t border-gray-100 space-y-3">
