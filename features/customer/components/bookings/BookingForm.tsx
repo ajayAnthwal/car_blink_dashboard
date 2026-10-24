@@ -370,6 +370,55 @@ export function BookingForm({
             </button>
           </div>
 
+          {/* Dynamic State and City Dropdowns */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-1">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-dark flex items-center gap-1">
+                <span>Select State</span>
+                <span className="text-red-500 font-bold">*</span>
+              </label>
+              <select
+                value={selectedState || ""}
+                onChange={(e) => {
+                  const newState = e.target.value;
+                  setValue("state", newState);
+                  setValue("cityId", "");
+                  onStateChange(newState);
+                }}
+                className="w-full h-11 px-3.5 py-2 rounded-xl border border-neutral-muted/30 bg-neutral-bg text-sm font-medium text-neutral-dark focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange transition-all cursor-pointer shadow-xs"
+              >
+                <option value="">Select State</option>
+                {states.map((st: any) => (
+                  <option key={st.value || st.name} value={st.value || st.name}>
+                    {st.name || st.value}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-dark flex items-center gap-1">
+                <span>Select City</span>
+                <span className="text-red-500 font-bold">*</span>
+              </label>
+              <select
+                value={watch("cityId") || ""}
+                onChange={(e) => setValue("cityId", e.target.value)}
+                disabled={!selectedState}
+                className={`w-full h-11 px-3.5 py-2 rounded-xl border border-neutral-muted/30 bg-neutral-bg text-sm font-medium text-neutral-dark focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange transition-all cursor-pointer shadow-xs ${
+                  !selectedState ? "opacity-60 cursor-not-allowed bg-gray-100" : ""
+                }`}
+              >
+                <option value="">{selectedState ? "Select City" : "Select State First"}</option>
+                {cities.map((ct: any) => (
+                  <option key={ct._id || ct.name} value={ct._id || ct.name}>
+                    {ct.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {/* Manual Option: Type Address / Area */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">

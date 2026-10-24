@@ -7,6 +7,7 @@ import * as z from "zod";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { updateUserProfile } from "@/lib/services";
 import { useCities } from "@/features/customer/hooks/useCustomerQueries";
+import { INDIAN_STATES, getCitiesForState } from "@/lib/data/locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
@@ -30,10 +31,32 @@ export function ProfileForm() {
   
   const { data: citiesData, isLoading: isLoadingCities } = useCities();
   
-  const states = Array.from(new Set((citiesData || []).map((c: any) => c.state))).filter(Boolean).map((s: any) => ({ name: s, value: s }));
+  // Comprehensive Indian States list merged with backend cities
+  const backendStates = Array.from(new Set((citiesData || []).map((c: any) => c.state))).filter(Boolean) as string[];
+  const allStatesList = Array.from(new Set([...INDIAN_STATES, ...backendStates])).sort();
+  const states = allStatesList.map((s: string) => ({ name: s, value: s }));
   
   const [selectedState, setSelectedState] = useState("");
-  const filteredCities = (citiesData || []).filter((c: any) => selectedState ? c.state === selectedState : true).map((c: any) => ({ value: c._id, label: c.name }));
+  
+  // Combine backend DB cities (with _id) and master locations list
+  const stateMasterCities = getCitiesForState(selectedState);
+  const backendMatchingCities = (citiesData || []).filter((c: any) => selectedState ? c.state?.toLowerCase() === selectedState.toLowerCase() : true);
+  
+  // Build clean unified list of city options
+  const cityOptionsDict: Record<string, { value: string; label: string }> = {};
+  backendMatchingCities.forEach((c: any) => {
+    if (c && c.name) {
+      cityOptionsDict[c.name.toLowerCase()] = { value: String(c._id || c.name), label: c.name };
+    }
+  });
+  stateMasterCities.forEach((cityName: string) => {
+    if (cityName && !cityOptionsDict[cityName.toLowerCase()]) {
+      cityOptionsDict[cityName.toLowerCase()] = { value: cityName, label: cityName };
+    }
+  });
+  const filteredCities: { value: string; label: string }[] = Object.keys(cityOptionsDict)
+    .map((k) => cityOptionsDict[k])
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +111,21 @@ export function ProfileForm() {
 
     try {
       const payload: any = { ...data };
-      if (!payload.cityId || payload.cityId.trim() === "") delete payload.cityId;
+      if (payload.cityId) {
+        // If cityId is not a 24-character hex ObjectId, search backend DB or store in address
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(payload.cityId);
+        if (!isMongoId) {
+          const match = (citiesData || []).find((c: any) => c.name.toLowerCase() === payload.cityId.toLowerCase());
+          if (match && match._id) {
+            payload.cityId = match._id;
+          } else {
+            // Do not send non-hex ID to ObjectId field to prevent CastError
+            delete payload.cityId;
+          }
+        }
+      } else {
+        delete payload.cityId;
+      }
       if (!payload.state || payload.state.trim() === "") delete payload.state;
       if (!payload.email || payload.email.trim() === "") delete payload.email;
 

@@ -311,6 +311,8 @@ function LoginContent() {
         <p className="text-gray-500 text-sm">Access your CarBlink account</p>
       </div>
 
+      {/* Login with Google button (Commented out) */}
+      {/*
       <div className="mb-6">
         <GoogleButton text="Continue with Google" />
         <div className="relative my-6 text-center">
@@ -322,6 +324,7 @@ function LoginContent() {
           </span>
         </div>
       </div>
+      */}
 
       <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
         <button

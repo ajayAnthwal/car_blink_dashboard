@@ -33,7 +33,13 @@ import {
   getSuperAdminNotifications,
   sendSuperAdminNotification,
   getServices,
+  getStates,
+  createState,
+  updateState,
+  deleteState,
   getCities,
+  updateCity,
+  getLocationHierarchy,
   createService,
   updateService,
   deleteService,
@@ -447,6 +453,62 @@ export const useMasterDataServices = () => {
   });
 };
 
+export const useMasterDataStates = (params?: { page?: number; limit?: number; search?: string; isActive?: string }) => {
+  return useQuery({
+    queryKey: ["admin", "masterData", "states", params],
+    queryFn: async () => {
+      const res = await getStates(params);
+      return res?.data || res || [];
+    }
+  });
+};
+
+export const useCreateStateMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => createState(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "states"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "cities"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "hierarchy"] });
+    }
+  });
+};
+
+export const useUpdateStateMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateState(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "states"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "cities"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "hierarchy"] });
+    }
+  });
+};
+
+export const useDeleteStateMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, deleteLinkedCities }: { id: string; deleteLinkedCities?: boolean }) => deleteState(id, deleteLinkedCities),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "states"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "cities"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "hierarchy"] });
+    }
+  });
+};
+
+export const useLocationHierarchy = () => {
+  return useQuery({
+    queryKey: ["admin", "masterData", "hierarchy"],
+    queryFn: async () => {
+      const res = await getLocationHierarchy();
+      return res?.data || res || [];
+    }
+  });
+};
+
 export const useMasterDataCities = () => {
   return useQuery({
     queryKey: ["admin", "masterData", "cities"],
@@ -493,6 +555,18 @@ export const useCreateCityMutation = () => {
     mutationFn: (data: any) => createCity(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "cities"] });
+    }
+  });
+};
+
+export const useUpdateCityMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateCity(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "cities"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "states"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "masterData", "hierarchy"] });
     }
   });
 };
