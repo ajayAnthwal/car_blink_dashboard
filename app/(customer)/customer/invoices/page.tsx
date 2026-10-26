@@ -137,7 +137,7 @@ export default function CustomerInvoicesPage() {
             </Button>
           )}
           <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-3 rounded-2xl flex items-center gap-3">
-            <Receipt className="w-8 h-8 text-primary-orange" />
+            {/* <Receipt className="w-8 h-8 text-primary-orange" /> */}
             <div>
               <div className="text-2xl font-black">{invoices.length}</div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Total Invoices</div>
@@ -200,10 +200,10 @@ export default function CustomerInvoicesPage() {
                           <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">INVOICE DATE</span>
                           <span className="text-xs font-bold text-gray-700">{invDate}</span>
                         </div>
-                        <Badge className={`text-xs font-extrabold px-3 py-1 rounded-full border-none ${inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                        {/* <Badge className={`text-xs font-extrabold px-3 py-1 rounded-full border-none ${inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
                           }`}>
                           {inv.status === 'PAID' ? 'PAID ✓' : 'READY FOR PAYMENT'}
-                        </Badge>
+                        </Badge> */}
                       </div>
 
                       <h3 className="font-bold text-gray-900 text-lg font-heading group-hover:text-primary-orange transition-colors line-clamp-1">
