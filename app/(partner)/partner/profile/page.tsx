@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Store, MapPin, Briefcase, Loader2, ShieldCheck, Upload, File } from "lucide-react";
+import { Store, MapPin, Briefcase, Loader2, ShieldCheck, Upload, File, Plus, X, Sparkles } from "lucide-react";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
 
 export default function PartnerProfilePage() {
@@ -37,6 +37,7 @@ export default function PartnerProfilePage() {
     businessAddress: "",
     cityId: "",
     servicesOffered: [] as string[],
+    customServices: [] as string[],
     gstNumber: "",
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
@@ -44,6 +45,8 @@ export default function PartnerProfilePage() {
     ifscCode: "",
     accountHolderName: "",
   });
+
+  const [customServiceInput, setCustomServiceInput] = useState("");
 
   const [kycDocType, setKycDocType] = useState("ID_PROOF");
   const [kycFile, setKycFile] = useState<File | null>(null);
@@ -60,8 +63,8 @@ export default function PartnerProfilePage() {
           businessAddress: profileData.businessAddress || "",
           cityId: profileData.cityId?._id || profileData.cityId || "",
           servicesOffered: (profileData.servicesOffered || []).map((s: unknown) => s._id || s),
+          customServices: Array.isArray(profileData.customServices) ? profileData.customServices : [],
           gstNumber: profileData.gstNumber || "",
-          latitude: profileData.location?.coordinates?.[1] || profileData.latitude || undefined,
           latitude: profileData.location?.coordinates?.[1] || profileData.latitude || undefined,
           longitude: profileData.location?.coordinates?.[0] || profileData.longitude || undefined,
           accountNumber: profileData.bankDetails?.accountNumber || "",
@@ -91,6 +94,29 @@ export default function PartnerProfilePage() {
           : [...prev.servicesOffered, serviceId]
       };
     });
+  };
+
+  const handleAddCustomService = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = customServiceInput.trim();
+    if (!trimmed) return;
+    if (formData.customServices.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+      setMessage({ type: "error", text: "This custom service has already been added." });
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      customServices: [...prev.customServices, trimmed]
+    }));
+    setCustomServiceInput("");
+  };
+
+  const handleRemoveCustomService = (serviceToRemove: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setFormData(prev => ({
+      ...prev,
+      customServices: prev.customServices.filter(s => s !== serviceToRemove)
+    }));
   };
 
   const handleGetLocation = () => {
@@ -127,22 +153,27 @@ export default function PartnerProfilePage() {
         businessAddress: formData.businessAddress,
         gstNumber: formData.gstNumber,
         servicesOffered: formData.servicesOffered,
+        customServices: formData.customServices,
         latitude: formData.latitude,
         longitude: formData.longitude,
-        bankDetails: {
+      };
+
+      // Only send bankDetails if an actual unmasked account number was modified by partner
+      if (formData.accountNumber && !formData.accountNumber.includes('•')) {
+        payload.bankDetails = {
           accountNumber: formData.accountNumber,
           ifscCode: formData.ifscCode,
           accountHolderName: formData.accountHolderName,
-        }
-      };
+        };
+      }
       
       if (formData.cityId) {
         payload.cityId = formData.cityId;
       }
 
       if (isNewProfile) {
-        if (formData.servicesOffered.length === 0) {
-          throw new Error("Please select at least one service offered.");
+        if (formData.servicesOffered.length === 0 && formData.customServices.length === 0) {
+          throw new Error("Please select or add at least one service offered.");
         }
         await createMutation.mutateAsync(payload);
         setMessage({ type: "success", text: "Profile created successfully!" });
@@ -303,6 +334,73 @@ export default function PartnerProfilePage() {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Custom Services Section */}
+              <div className="mt-5 pt-4 border-t border-dashed border-neutral-muted/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-dark uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary-orange" />
+                    Custom Services (Not in predefined list)
+                  </span>
+                  {formData.customServices.length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-200">
+                      {formData.customServices.length} Custom Added
+                    </span>
+                  )}
+                </div>
+
+                {/* Add Custom Service Input Bar */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. CNG Kit Tuning, Sunroof Repair, Alloy Restoration..."
+                    value={customServiceInput}
+                    onChange={(e) => setCustomServiceInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomService();
+                      }
+                    }}
+                    className="text-xs"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddCustomService}
+                    disabled={!customServiceInput.trim()}
+                    className="bg-primary-navy hover:bg-primary-navy-light text-white text-xs font-bold shrink-0 px-4"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                  </Button>
+                </div>
+
+                {/* Custom Services Chips List */}
+                {formData.customServices.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {formData.customServices.map((custom) => (
+                      <div
+                        key={custom}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50/80 border border-orange-200 text-xs font-semibold text-gray-800 shadow-2xs group hover:border-orange-300 transition-all"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary-orange shrink-0"></span>
+                        <span>{custom}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveCustomService(custom, e)}
+                          className="text-gray-400 hover:text-red-500 transition-colors ml-1 p-0.5 rounded hover:bg-orange-100/50"
+                          title="Remove custom service"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-400 italic">
+                    Provide specialized or unique workshop services? Type the service name above and click &quot;+ Add&quot;.
+                  </p>
+                )}
               </div>
 
             </div>
