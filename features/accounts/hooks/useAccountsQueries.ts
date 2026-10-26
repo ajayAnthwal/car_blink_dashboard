@@ -47,7 +47,7 @@ export const useAccountsDashboardData = () => {
       const refundsList = extractArray(refundsRes, "refunds");
       const settlementsList = extractArray(settlementsRes, "settlements");
 
-      const pendingRefunds = refundsList.filter((r: any) => r.status === 'PENDING');
+      const pendingRefunds = refundsList.filter((r: any) => r.status === 'PENDING' || r.status === 'REQUESTED' || r.status === 'APPROVED');
       const pendingSettlements = settlementsList.filter((s: any) => s.status === 'PENDING');
 
       return {
@@ -235,8 +235,11 @@ export const useAccountsNotifications = () => {
     queryKey: ["accounts", "notifications"],
     queryFn: async () => {
       const res = await getNotifications();
-      return Array.isArray(res?.data?.docs) ? res.data.docs 
-           : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+      return Array.isArray(res?.data?.notifications) ? res.data.notifications
+           : (Array.isArray(res?.notifications) ? res.notifications
+           : (Array.isArray(res?.data?.docs) ? res.data.docs 
+           : (Array.isArray(res?.data) ? res.data 
+           : (Array.isArray(res) ? res : []))));
     },
   });
 };

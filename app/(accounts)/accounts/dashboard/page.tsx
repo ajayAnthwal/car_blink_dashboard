@@ -34,19 +34,29 @@ export default function AccountsDashboardPage() {
   const { socket } = useSocket();
   const queryClient = useQueryClient();
 
-  // Real-time synchronization for new partner withdrawals & completed payouts
+  // Real-time synchronization for new partner withdrawals, cancellations, refunds & notifications
   React.useEffect(() => {
     if (!socket) return;
     const handleAccountsRefresh = () => {
       queryClient.invalidateQueries({ queryKey: ["accounts", "withdrawals"] });
       queryClient.invalidateQueries({ queryKey: ["accounts", "dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["accounts", "transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts", "refunds"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts", "notifications"] });
     };
     socket.on("new_withdrawal_request", handleAccountsRefresh);
     socket.on("withdrawal_processed", handleAccountsRefresh);
+    socket.on("new_refund", handleAccountsRefresh);
+    socket.on("refund_requested", handleAccountsRefresh);
+    socket.on("cancellation_forwarded", handleAccountsRefresh);
+    socket.on("notification:new", handleAccountsRefresh);
     return () => {
       socket.off("new_withdrawal_request", handleAccountsRefresh);
       socket.off("withdrawal_processed", handleAccountsRefresh);
+      socket.off("new_refund", handleAccountsRefresh);
+      socket.off("refund_requested", handleAccountsRefresh);
+      socket.off("cancellation_forwarded", handleAccountsRefresh);
+      socket.off("notification:new", handleAccountsRefresh);
     };
   }, [socket, queryClient]);
 
