@@ -8,7 +8,7 @@ import { clearSessionCookie } from "@/app/actions/auth";
  * local/session storage keys, browser cookies, and React Query caches
  * to prevent cross-role session contamination and stale token leakage.
  */
-export async function sanitizeSession(queryClient?: any): Promise<void> {
+export async function sanitizeSession(queryClient?: any, broadcastLogout: boolean = true): Promise<void> {
   // 1. Reset in-memory API token header
   setApiAccessToken(null);
 
@@ -68,8 +68,8 @@ export async function sanitizeSession(queryClient?: any): Promise<void> {
       }
     });
 
-    // Broadcast Logout event to sync website tabs
-    if (typeof window !== "undefined") {
+    // Broadcast Logout event to sync website tabs only when true
+    if (broadcastLogout && typeof window !== "undefined") {
       try {
         document.cookie = "carblink_logged_out=1; path=/; max-age=10;";
         window.localStorage.setItem("carblink_logout_event", Date.now().toString());

@@ -79,8 +79,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleLogin = async (newUser: User, newAccessToken: string, newRefreshToken: string) => {
-    // 1. Sanitize any existing session state or tokens first
-    await sanitizeSession(queryClient);
+    // 1. Sanitize any existing session state or tokens first (do NOT broadcast logout on login)
+    await sanitizeSession(queryClient, false);
+    if (typeof document !== 'undefined') {
+      document.cookie = "carblink_logged_out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+    }
 
     // 2. Hydrate new session tokens
     setAccessToken(newAccessToken);
