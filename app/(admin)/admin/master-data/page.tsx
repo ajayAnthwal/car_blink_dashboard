@@ -1,13 +1,14 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   useMasterDataServices, 
   useCreateServiceMutation,
   useUpdateServiceMutation,
   useDeleteServiceMutation,
   useMasterDataStates,
+  useMasterDataAllStates,
   useCreateStateMutation,
   useUpdateStateMutation,
   useDeleteStateMutation,
@@ -42,24 +43,184 @@ import {
   Tag
 } from "lucide-react";
 
+interface PaginationControlsProps {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  limit: number;
+  onPageChange: (newPage: number) => void;
+  onLimitChange: (newLimit: number) => void;
+  itemName: string;
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  totalItems,
+  limit,
+  onPageChange,
+  onLimitChange,
+  itemName,
+}: PaginationControlsProps) {
+  if (totalItems === 0) return null;
+
+  const start = Math.min((page - 1) * limit + 1, totalItems);
+  const end = Math.min(page * limit, totalItems);
+
+  // Generate page numbers with ellipsis windowing
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (page <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages];
+    }
+    if (page >= totalPages - 3) {
+      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, "...", page - 1, page, page + 1, "...", totalPages];
+  };
+
+  const pages = getPageNumbers();
+
+  return (
+    <div className="p-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/60">
+      {/* Left: Info and Page Size Selector */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 font-medium">
+        <span>
+          Showing <strong className="text-gray-900">{start}</strong> to <strong className="text-gray-900">{end}</strong> of{" "}
+          <strong className="text-gray-900">{totalItems.toLocaleString()}</strong> {itemName}
+        </span>
+        <div className="flex items-center gap-1.5 pl-2 border-l border-gray-200">
+          <span>Show</span>
+          <select
+            value={limit}
+            onChange={(e) => {
+              onLimitChange(Number(e.target.value));
+              onPageChange(1);
+            }}
+            className="h-8 px-2.5 py-0.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span>per page</span>
+        </div>
+      </div>
+
+      {/* Right: Navigation Controls */}
+      <div className="flex items-center gap-1.5">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          disabled={page <= 1}
+          className="rounded-xl h-8 px-2.5 text-xs font-semibold text-gray-700 disabled:opacity-40"
+        >
+          <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+          <span>Prev</span>
+        </Button>
+
+        <div className="flex items-center gap-1">
+          {pages.map((p, idx) => {
+            if (p === "...") {
+              return (
+                <span key={`ellipsis-${idx}`} className="px-2 text-xs font-bold text-gray-400 select-none">
+                  ...
+                </span>
+              );
+            }
+            const isCurrent = p === page;
+            return (
+              <Button
+                key={`page-${p}`}
+                variant={isCurrent ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPageChange(Number(p))}
+                className={`rounded-xl h-8 w-8 p-0 text-xs font-bold transition-all ${
+                  isCurrent
+                    ? "bg-gray-900 text-white shadow-sm hover:bg-gray-800"
+                    : "text-gray-700 hover:bg-gray-100 border-gray-200"
+                }`}
+              >
+                {p}
+              </Button>
+            );
+          })}
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          disabled={page >= totalPages}
+          className="rounded-xl h-8 px-2.5 text-xs font-semibold text-gray-700 disabled:opacity-40"
+        >
+          <span>Next</span>
+          <ChevronRight className="w-3.5 h-3.5 ml-1" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function MasterDataPage() {
   const [activeTab, setActiveTab] = useState<"states" | "cities" | "services">("states");
   
-  // Pagination
+  // Pagination & Limits
   const [servicePage, setServicePage] = useState(1);
+  const [serviceLimit, setServiceLimit] = useState(10);
   const [statePage, setStatePage] = useState(1);
+  const [stateLimit, setStateLimit] = useState(10);
   const [cityPage, setCityPage] = useState(1);
-  const limit = 10;
+  const [cityLimit, setCityLimit] = useState(10);
   
   // Search & Filter
   const [stateSearch, setStateSearch] = useState("");
   const [citySearch, setCitySearch] = useState("");
+  const [serviceSearch, setServiceSearch] = useState("");
   const [selectedStateFilter, setSelectedStateFilter] = useState<string>("ALL");
 
-  // React Query Hooks
-  const { data: servicesData, isLoading: isServicesLoading } = useMasterDataServices();
-  const { data: statesData, isLoading: isStatesLoading } = useMasterDataStates();
-  const { data: citiesData, isLoading: isCitiesLoading } = useMasterDataCities();
+  // Debounced search queries for smooth server queries
+  const [debouncedStateSearch, setDebouncedStateSearch] = useState("");
+  const [debouncedCitySearch, setDebouncedCitySearch] = useState("");
+  const [debouncedServiceSearch, setDebouncedServiceSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedStateSearch(stateSearch), 350);
+    return () => clearTimeout(timer);
+  }, [stateSearch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedCitySearch(citySearch), 350);
+    return () => clearTimeout(timer);
+  }, [citySearch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedServiceSearch(serviceSearch), 350);
+    return () => clearTimeout(timer);
+  }, [serviceSearch]);
+
+  // React Query Hooks (Server-side Paginated)
+  const { data: servicesData, isLoading: isServicesLoading } = useMasterDataServices({
+    page: servicePage,
+    limit: serviceLimit,
+    search: debouncedServiceSearch.trim() || undefined,
+  });
+  const { data: statesData, isLoading: isStatesLoading } = useMasterDataStates({
+    page: statePage,
+    limit: stateLimit,
+    search: debouncedStateSearch.trim() || undefined,
+  });
+  const { data: allStatesData } = useMasterDataAllStates();
+  const { data: citiesData, isLoading: isCitiesLoading } = useMasterDataCities({
+    page: cityPage,
+    limit: cityLimit,
+    search: debouncedCitySearch.trim() || undefined,
+    stateId: selectedStateFilter !== "ALL" ? selectedStateFilter : undefined,
+  });
   
   // Mutations
   const createServiceMutation = useCreateServiceMutation();
@@ -74,43 +235,19 @@ export default function MasterDataPage() {
   const updateCityMutation = useUpdateCityMutation();
   const deleteCityMutation = useDeleteCityMutation();
   
-  const services = Array.isArray(servicesData) ? servicesData : (Array.isArray(servicesData?.data) ? servicesData.data : (Array.isArray(servicesData?.services) ? servicesData.services : []));
-  const states = Array.isArray(statesData) ? statesData : (Array.isArray(statesData?.data) ? statesData.data : (Array.isArray(statesData?.states) ? statesData.states : []));
-  const cities = Array.isArray(citiesData) ? citiesData : (Array.isArray(citiesData?.data) ? citiesData.data : (Array.isArray(citiesData?.cities) ? citiesData.cities : []));
+  const services = servicesData?.items || servicesData?.data || (Array.isArray(servicesData) ? servicesData : []);
+  const totalServices = servicesData?.total ?? services.length;
+  const totalServicePages = servicesData?.totalPages || Math.ceil(totalServices / serviceLimit) || 1;
 
-  // Filtered Lists
-  const filteredStates = useMemo(() => {
-    if (!stateSearch.trim()) return states;
-    const q = stateSearch.toLowerCase().trim();
-    return states.filter((s: any) => 
-      s.name?.toLowerCase().includes(q) || 
-      s.code?.toLowerCase().includes(q)
-    );
-  }, [states, stateSearch]);
+  const states = statesData?.items || statesData?.data || (Array.isArray(statesData) ? statesData : []);
+  const totalStates = statesData?.total ?? states.length;
+  const totalStatePages = statesData?.totalPages || Math.ceil(totalStates / stateLimit) || 1;
 
-  const filteredCities = useMemo(() => {
-    return cities.filter((c: any) => {
-      const matchesSearch = !citySearch.trim() || 
-        c.name?.toLowerCase().includes(citySearch.toLowerCase().trim());
-      
-      const matchesState = selectedStateFilter === "ALL" || 
-        c.stateId === selectedStateFilter || 
-        c.stateId?._id === selectedStateFilter ||
-        c.state?.toLowerCase() === selectedStateFilter.toLowerCase();
+  const allStates = allStatesData || states;
 
-      return matchesSearch && matchesState;
-    });
-  }, [cities, citySearch, selectedStateFilter]);
-
-  // Paginated Slices
-  const paginatedServices = services.slice((servicePage - 1) * limit, servicePage * limit);
-  const totalServicePages = Math.ceil(services.length / limit) || 1;
-
-  const paginatedStates = filteredStates.slice((statePage - 1) * limit, statePage * limit);
-  const totalStatePages = Math.ceil(filteredStates.length / limit) || 1;
-
-  const paginatedCities = filteredCities.slice((cityPage - 1) * limit, cityPage * limit);
-  const totalCityPages = Math.ceil(filteredCities.length / limit) || 1;
+  const cities = citiesData?.items || citiesData?.data || (Array.isArray(citiesData) ? citiesData : []);
+  const totalCities = citiesData?.total ?? cities.length;
+  const totalCityPages = citiesData?.totalPages || Math.ceil(totalCities / cityLimit) || 1;
 
   // Active form states
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -207,7 +344,7 @@ export default function MasterDataPage() {
     }
 
     try {
-      const selectedStateObj = states.find((s: any) => s._id === newCity.stateId || s.name === newCity.state);
+      const selectedStateObj = allStates.find((s: any) => s._id === newCity.stateId || s.name === newCity.state);
       const stateId = selectedStateObj?._id || newCity.stateId;
       const stateName = selectedStateObj?.name || newCity.state;
 
@@ -341,11 +478,11 @@ export default function MasterDataPage() {
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full md:w-auto">
             <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 text-center">
-              <span className="block text-2xl font-black text-white font-heading">{states.length}</span>
+              <span className="block text-2xl font-black text-white font-heading">{totalStates}</span>
               <span className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider">States</span>
             </div>
             <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 text-center">
-              <span className="block text-2xl font-black text-primary-orange font-heading">{cities.length}</span>
+              <span className="block text-2xl font-black text-primary-orange font-heading">{totalCities.toLocaleString()}</span>
               <span className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider">Cities</span>
             </div>
             <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 text-center col-span-2 sm:col-span-1">
@@ -389,7 +526,7 @@ export default function MasterDataPage() {
             }`}
           >
             <Globe2 className="w-4 h-4 text-primary-orange" />
-            <span>1. States ({states.length})</span>
+            <span>1. States ({totalStates})</span>
           </button>
 
           <button
@@ -401,7 +538,7 @@ export default function MasterDataPage() {
             }`}
           >
             <Building2 className="w-4 h-4 text-blue-600" />
-            <span>2. Cities ({cities.length})</span>
+            <span>2. Cities ({totalCities.toLocaleString()})</span>
           </button>
 
           <button
@@ -413,7 +550,7 @@ export default function MasterDataPage() {
             }`}
           >
             <Wrench className="w-4 h-4 text-emerald-600" />
-            <span>3. Services Catalog</span>
+            <span>3. Services Catalog ({totalServices})</span>
           </button>
         </div>
 
@@ -539,7 +676,7 @@ export default function MasterDataPage() {
                 <div>
                   <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
                     <Globe2 className="w-5 h-5 text-primary-orange" />
-                    <span>Registered States ({filteredStates.length})</span>
+                    <span>Registered States ({totalStates})</span>
                   </CardTitle>
                   <p className="text-xs text-gray-500 mt-1">Hierarchical Level 1 — Click &quot;View Cities&quot; to inspect all cities linked to that state.</p>
                 </div>
@@ -560,13 +697,13 @@ export default function MasterDataPage() {
                   <div className="flex items-center justify-center py-20 text-primary-orange">
                     <Loader2 className="w-8 h-8 animate-spin" />
                   </div>
-                ) : filteredStates.length === 0 ? (
+                ) : states.length === 0 ? (
                   <div className="text-center py-20 text-gray-400">
                     No states found matching your search.
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100">
-                    {paginatedStates.map((stateItem: any) => (
+                    {states.map((stateItem: any) => (
                       <div
                         key={stateItem._id}
                         className="p-4 sm:p-5 hover:bg-orange-50/30 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
@@ -580,8 +717,8 @@ export default function MasterDataPage() {
                               <h4 className="font-bold text-gray-900 text-base">{stateItem.name}</h4>
                               <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
                                 stateItem.isActive !== false
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : "bg-gray-100 text-gray-600 border-gray-200"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : "bg-gray-100 text-gray-600 border-gray-200"
                               }`}>
                                 {stateItem.isActive !== false ? "Active" : "Inactive"}
                               </span>
@@ -634,33 +771,15 @@ export default function MasterDataPage() {
               </CardContent>
 
               {/* Pagination */}
-              {totalStatePages > 1 && (
-                <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-                  <span className="text-xs text-gray-500 font-semibold">
-                    Page {statePage} of {totalStatePages} ({filteredStates.length} states)
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setStatePage(p => Math.max(1, p - 1))}
-                      disabled={statePage === 1}
-                      className="rounded-xl h-8 px-2"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setStatePage(p => Math.min(totalStatePages, p + 1))}
-                      disabled={statePage >= totalStatePages}
-                      className="rounded-xl h-8 px-2"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <PaginationControls
+                page={statePage}
+                totalPages={totalStatePages}
+                totalItems={totalStates}
+                limit={stateLimit}
+                onPageChange={setStatePage}
+                onLimitChange={setStateLimit}
+                itemName="states"
+              />
             </Card>
           </div>
         </div>
@@ -719,14 +838,14 @@ export default function MasterDataPage() {
                       value={newCity.stateId || ""}
                       onChange={(e) => {
                         const sId = e.target.value;
-                        const sObj = states.find((s: any) => s._id === sId);
+                        const sObj = allStates.find((s: any) => s._id === sId);
                         setNewCity({ ...newCity, stateId: sId, state: sObj?.name || "" });
                       }}
                       required
                       className="w-full h-11 px-3 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
                     >
                       <option value="">-- Select Parent State --</option>
-                      {states.map((st: any) => (
+                      {allStates.map((st: any) => (
                         <option key={st._id} value={st._id}>
                           {st.name} {st.code ? `(${st.code})` : ""}
                         </option>
@@ -771,7 +890,7 @@ export default function MasterDataPage() {
                 <div>
                   <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-blue-600" />
-                    <span>Registered Cities ({filteredCities.length})</span>
+                    <span>Registered Cities ({totalCities.toLocaleString()})</span>
                   </CardTitle>
                   <p className="text-xs text-gray-500 mt-1">Hierarchical Level 2 — Linked directly to corresponding state.</p>
                 </div>
@@ -784,8 +903,8 @@ export default function MasterDataPage() {
                       onChange={(e) => { setSelectedStateFilter(e.target.value); setCityPage(1); }}
                       className="w-full h-10 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
-                      <option value="ALL">All States ({states.length})</option>
-                      {states.map((st: any) => (
+                      <option value="ALL">All States ({allStates.length})</option>
+                      {allStates.map((st: any) => (
                         <option key={st._id} value={st._id}>
                           {st.name}
                         </option>
@@ -811,13 +930,13 @@ export default function MasterDataPage() {
                   <div className="flex items-center justify-center py-20 text-blue-600">
                     <Loader2 className="w-8 h-8 animate-spin" />
                   </div>
-                ) : filteredCities.length === 0 ? (
+                ) : cities.length === 0 ? (
                   <div className="text-center py-20 text-gray-400">
                     No cities found for this search or state filter.
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100">
-                    {paginatedCities.map((cityItem: any) => {
+                    {cities.map((cityItem: any) => {
                       const linkedStateName = typeof cityItem.stateId === "object" && cityItem.stateId?.name
                         ? cityItem.stateId.name 
                         : cityItem.state || "Unassigned";
@@ -880,33 +999,15 @@ export default function MasterDataPage() {
               </CardContent>
 
               {/* Pagination */}
-              {totalCityPages > 1 && (
-                <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-                  <span className="text-xs text-gray-500 font-semibold">
-                    Page {cityPage} of {totalCityPages} ({filteredCities.length} cities)
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCityPage(p => Math.max(1, p - 1))}
-                      disabled={cityPage === 1}
-                      className="rounded-xl h-8 px-2"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCityPage(p => Math.min(totalCityPages, p + 1))}
-                      disabled={cityPage >= totalCityPages}
-                      className="rounded-xl h-8 px-2"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <PaginationControls
+                page={cityPage}
+                totalPages={totalCityPages}
+                totalItems={totalCities}
+                limit={cityLimit}
+                onPageChange={setCityPage}
+                onLimitChange={setCityLimit}
+                itemName="cities"
+              />
             </Card>
           </div>
         </div>
@@ -976,43 +1077,79 @@ export default function MasterDataPage() {
 
           <div className="lg:col-span-8">
             <Card className="bg-white shadow-xl border-gray-100 rounded-3xl overflow-hidden flex flex-col">
-              <CardHeader className="p-6 border-b border-gray-100 bg-gray-50/50">
-                <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Wrench className="w-5 h-5 text-emerald-600" />
-                  <span>Configured Services ({services.length})</span>
-                </CardTitle>
+              <CardHeader className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <Wrench className="w-5 h-5 text-emerald-600" />
+                    <span>Configured Services ({totalServices})</span>
+                  </CardTitle>
+                  <p className="text-xs text-gray-500 mt-1">Platform service catalog packages available for booking.</p>
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input
+                    placeholder="Search services..."
+                    value={serviceSearch}
+                    onChange={(e) => { setServiceSearch(e.target.value); setServicePage(1); }}
+                    className="pl-9 h-10 bg-white border-gray-200 text-xs rounded-xl"
+                  />
+                </div>
               </CardHeader>
-              <CardContent className="p-0 divide-y divide-gray-100">
-                {paginatedServices.map((s: any) => (
-                  <div key={s._id} className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-base">{s.name}</h4>
-                      <p className="text-xs text-gray-500 mt-0.5">{s.description || "Standard platform package"}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingServiceId(s._id);
-                          setNewService({ name: s.name, description: s.description || "" });
-                        }}
-                        className="h-9 w-9 p-0 text-gray-600 rounded-xl"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => triggerDelete("service", s)}
-                        className="h-9 w-9 p-0 text-red-500 rounded-xl"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
+              <CardContent className="p-0">
+                {isServicesLoading ? (
+                  <div className="flex items-center justify-center py-20 text-emerald-600">
+                    <Loader2 className="w-8 h-8 animate-spin" />
                   </div>
-                ))}
+                ) : services.length === 0 ? (
+                  <div className="text-center py-20 text-gray-400">
+                    No services found matching your search.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {services.map((s: any) => (
+                      <div key={s._id} className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-base">{s.name}</h4>
+                          <p className="text-xs text-gray-500 mt-0.5">{s.description || "Standard platform package"}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingServiceId(s._id);
+                              setNewService({ name: s.name, description: s.description || "" });
+                            }}
+                            className="h-9 w-9 p-0 text-gray-600 rounded-xl"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => triggerDelete("service", s)}
+                            className="h-9 w-9 p-0 text-red-500 rounded-xl"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
+
+              {/* Pagination */}
+              <PaginationControls
+                page={servicePage}
+                totalPages={totalServicePages}
+                totalItems={totalServices}
+                limit={serviceLimit}
+                onPageChange={setServicePage}
+                onLimitChange={setServiceLimit}
+                itemName="services"
+              />
             </Card>
           </div>
         </div>

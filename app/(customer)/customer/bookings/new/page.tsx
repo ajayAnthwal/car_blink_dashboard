@@ -24,12 +24,13 @@ export default function NewBookingPage() {
   const { data: citiesData } = useCities();
   
   const vehicles = (vehiclesData?.docs || vehiclesData?.data || vehiclesData || []);
-  const services = (servicesData?.services || servicesData || []).filter((s: any) => 
-    s.category && 
-    s.category.toLowerCase() !== 'admin' && 
-    s.category.toLowerCase() !== 'other' &&
-    s.name !== 'Unique Test Service Category'
-  );
+  const rawServices = servicesData?.services || servicesData || [];
+  const services = (Array.isArray(rawServices) ? rawServices : [])
+    .filter((s: any) => s && s.isActive !== false && !s.deletedAt && s.category?.toLowerCase() !== 'admin')
+    .map((s: any) => ({
+      ...s,
+      category: s.category || "General Services"
+    }));
   const states = Array.from(new Set((citiesData || []).map((c: any) => c.state))).filter(Boolean).map((s: any) => ({ name: s, value: s }));
   
   const [selectedState, setSelectedState] = useState("");

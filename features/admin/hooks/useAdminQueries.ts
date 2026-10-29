@@ -204,7 +204,8 @@ export const useAdminStaff = () => {
     queryKey: ["admin", "staff"],
     queryFn: async () => {
       const res = await getSuperAdminStaff();
-      return Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const list = res?.data?.docs || res?.data || res?.docs || res;
+      return Array.isArray(list) ? list : [];
     }
   });
 };
@@ -443,13 +444,25 @@ export const useSendAdminMarketingNotificationMutation = () => {
 // Master Data Services & Cities
 // ==========================================
 
-export const useMasterDataServices = () => {
+export const useMasterDataServices = (params?: { page?: number; limit?: number; search?: string; category?: string }) => {
   return useQuery({
-    queryKey: ["admin", "masterData", "services"],
+    queryKey: ["admin", "masterData", "services", params],
     queryFn: async () => {
-      const res = await getServices();
-      const raw = res?.data !== undefined ? res.data : res;
-      return Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.services) ? raw.services : []));
+      const res = await getServices(params);
+      const payload = res?.total !== undefined ? res : (res?.data?.total !== undefined ? res.data : (res?.data !== undefined ? res.data : res));
+      const items = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload?.services) ? payload.services : (Array.isArray(payload) ? payload : []));
+      const total = payload?.total ?? payload?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : items.length);
+      const page = payload?.page ?? payload?.pagination?.page ?? params?.page ?? 1;
+      const limit = payload?.limit ?? payload?.pagination?.limit ?? params?.limit ?? 10;
+      const totalPages = payload?.totalPages ?? payload?.pages ?? Math.max(1, Math.ceil(total / (limit || 1)));
+      return {
+        items,
+        total,
+        totalPages,
+        page,
+        limit,
+        data: items,
+      };
     }
   });
 };
@@ -459,8 +472,32 @@ export const useMasterDataStates = (params?: { page?: number; limit?: number; se
     queryKey: ["admin", "masterData", "states", params],
     queryFn: async () => {
       const res = await getStates(params);
+      const payload = res?.total !== undefined ? res : (res?.data?.total !== undefined ? res.data : (res?.data !== undefined ? res.data : res));
+      const items = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload?.states) ? payload.states : (Array.isArray(payload) ? payload : []));
+      const total = payload?.total ?? payload?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : items.length);
+      const page = payload?.page ?? payload?.pagination?.page ?? params?.page ?? 1;
+      const limit = payload?.limit ?? payload?.pagination?.limit ?? params?.limit ?? 10;
+      const totalPages = payload?.totalPages ?? payload?.pages ?? Math.max(1, Math.ceil(total / (limit || 1)));
+      return {
+        items,
+        total,
+        totalPages,
+        page,
+        limit,
+        data: items,
+      };
+    }
+  });
+};
+
+export const useMasterDataAllStates = () => {
+  return useQuery({
+    queryKey: ["admin", "masterData", "states", "all"],
+    queryFn: async () => {
+      const res = await getStates({ page: 1, limit: 100 });
       const raw = res?.data !== undefined ? res.data : res;
-      return Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.states) ? raw.states : []));
+      const items = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : (Array.isArray(raw?.states) ? raw.states : []));
+      return items;
     }
   });
 };
@@ -511,13 +548,25 @@ export const useLocationHierarchy = () => {
   });
 };
 
-export const useMasterDataCities = () => {
+export const useMasterDataCities = (params?: { page?: number; limit?: number; search?: string; state?: string; stateId?: string; isActive?: string }) => {
   return useQuery({
-    queryKey: ["admin", "masterData", "cities"],
+    queryKey: ["admin", "masterData", "cities", params],
     queryFn: async () => {
-      const res = await getCities();
-      const raw = res?.data !== undefined ? res.data : res;
-      return Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.cities) ? raw.cities : []));
+      const res = await getCities(params);
+      const payload = res?.total !== undefined ? res : (res?.data?.total !== undefined ? res.data : (res?.data !== undefined ? res.data : res));
+      const items = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload?.cities) ? payload.cities : (Array.isArray(payload) ? payload : []));
+      const total = payload?.total ?? payload?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : items.length);
+      const page = payload?.page ?? payload?.pagination?.page ?? params?.page ?? 1;
+      const limit = payload?.limit ?? payload?.pagination?.limit ?? params?.limit ?? 10;
+      const totalPages = payload?.totalPages ?? payload?.pages ?? Math.max(1, Math.ceil(total / (limit || 1)));
+      return {
+        items,
+        total,
+        totalPages,
+        page,
+        limit,
+        data: items,
+      };
     }
   });
 };

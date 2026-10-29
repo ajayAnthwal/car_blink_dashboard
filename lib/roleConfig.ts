@@ -44,7 +44,8 @@ import {
   Sliders,
   Wallet,
   Receipt,
-  Info
+  Info,
+  UserCheck
 } from "lucide-react";
 import { Role } from "@/lib/constants";
 
@@ -69,7 +70,7 @@ export interface RoleConfigData {
   navSections: NavSection[];
 }
 
-export const roleConfig: Record<Role, RoleConfigData> = {
+export const roleConfig: Record<Role | "ADMIN", RoleConfigData> = {
   CUSTOMER: {
     roleName: "Customer",
     portalTitle: "Customer Portal",
@@ -217,6 +218,38 @@ export const roleConfig: Record<Role, RoleConfigData> = {
         label: "Management",
         items: [
           { name: "User Management", href: "/admin/users", icon: UsersIcon },
+          { name: "Staff", href: "/admin/staff", icon: UserCheck },
+          { name: "Verifications (KYC)", href: "/admin/kyc", icon: ShieldCheck },
+          { name: "Master Data", href: "/admin/master-data", icon: Settings },
+        ],
+      },
+      {
+        label: "Monitoring",
+        items: [
+          { name: "Global Booking Oversight", href: "/admin/bookings", icon: Activity },
+          { name: "Dispute & Support", href: "/admin/support", icon: HelpCircle },
+          { name: "Platform Settings", href: "/admin/platform-settings", icon: Sliders },
+        ],
+      },
+    ],
+  },
+  ADMIN: {
+    roleName: "Admin",
+    portalTitle: "Admin Console",
+    themeColor: "text-primary-orange",
+    accentBgColor: "bg-primary-orange",
+    navSections: [
+      {
+        label: "Overview",
+        items: [
+          { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: "Management",
+        items: [
+          { name: "User Management", href: "/admin/users", icon: UsersIcon },
+          { name: "Staff", href: "/admin/staff", icon: UserCheck },
           { name: "Verifications (KYC)", href: "/admin/kyc", icon: ShieldCheck },
           { name: "Master Data", href: "/admin/master-data", icon: Settings },
         ],

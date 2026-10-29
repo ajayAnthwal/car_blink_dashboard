@@ -29,7 +29,7 @@ export function Header() {
   const pathname = usePathname();
 
   const currentRole = user?.role || "CUSTOMER";
-  const config = roleConfig[currentRole];
+  const config = roleConfig[currentRole as keyof typeof roleConfig] || roleConfig.SUPER_ADMIN || roleConfig.CUSTOMER;
 
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();

@@ -126,17 +126,51 @@ export const uploadFile = async (file: File, folder?: string) => {
 import { State, City } from "country-state-city";
 import { indianCarBrands, indianCarModels } from "./data/cars";
 
-export const getCities = async (page = 1, limit = 5000) => {
+export const getCities = async (
+  paramsOrPage?: { page?: number; limit?: number; search?: string; state?: string; stateId?: string; isActive?: string } | number,
+  limitArg?: number
+) => {
   try {
-    const response = await apiClient.get(`/cities?page=${page}&limit=${limit}`);
+    const query = new URLSearchParams();
+    if (typeof paramsOrPage === "object" && paramsOrPage !== null) {
+      if (paramsOrPage.page) query.append("page", String(paramsOrPage.page));
+      if (paramsOrPage.limit) query.append("limit", String(paramsOrPage.limit));
+      if (paramsOrPage.search) query.append("search", paramsOrPage.search);
+      if (paramsOrPage.state) query.append("state", paramsOrPage.state);
+      if (paramsOrPage.stateId) query.append("stateId", paramsOrPage.stateId);
+      if (paramsOrPage.isActive) query.append("isActive", paramsOrPage.isActive);
+    } else {
+      const page = paramsOrPage || 1;
+      const limit = limitArg || 5000;
+      query.append("page", String(page));
+      query.append("limit", String(limit));
+    }
+    const qStr = query.toString();
+    const response = await apiClient.get(`/cities${qStr ? `?${qStr}` : ""}`);
     return response.data;
   } catch (err) {
     return { data: [] };
   }
 };
 
-export const getServices = async (page = 1, limit = 100) => {
-  const response = await apiClient.get(`/services?page=${page}&limit=${limit}`);
+export const getServices = async (
+  paramsOrPage?: { page?: number; limit?: number; search?: string; category?: string } | number,
+  limitArg?: number
+) => {
+  const query = new URLSearchParams();
+  if (typeof paramsOrPage === "object" && paramsOrPage !== null) {
+    if (paramsOrPage.page) query.append("page", String(paramsOrPage.page));
+    if (paramsOrPage.limit) query.append("limit", String(paramsOrPage.limit));
+    if (paramsOrPage.search) query.append("search", paramsOrPage.search);
+    if (paramsOrPage.category) query.append("category", paramsOrPage.category);
+  } else {
+    const page = paramsOrPage || 1;
+    const limit = limitArg || 100;
+    query.append("page", String(page));
+    query.append("limit", String(limit));
+  }
+  const qStr = query.toString();
+  const response = await apiClient.get(`/services${qStr ? `?${qStr}` : ""}`);
   return response.data;
 };
 

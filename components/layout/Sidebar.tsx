@@ -32,7 +32,7 @@ export function Sidebar({
   
   // Default to CUSTOMER config if user/role is not available yet to avoid crashes
   const currentRole = user?.role || "CUSTOMER";
-  const config = roleConfig[currentRole];
+  const config = roleConfig[currentRole as keyof typeof roleConfig] || roleConfig.SUPER_ADMIN || roleConfig.CUSTOMER;
 
   const { data: bookingsData } = useCustomerBookings();
   const customerBookings = bookingsData?.bookings || [];
