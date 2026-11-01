@@ -1009,17 +1009,23 @@ export default function PartnerJobsPage() {
                               const finalPayment = paymentsList.find((p: any) => (p?.paymentType === 'FINAL' || p?.paymentType === 'FULL'));
                               const isFinalPending = finalPayment?.status === 'PENDING' && finalPayment?.provider === 'CASH';
 
-                              const totalJobAmount = Number(
-                                job.invoice?.grandTotal ||
-                                (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
+                              const approvedExtensionsCost = (job.jobExtensions || [])
+                                .filter((e: any) => e.status === 'APPROVED')
+                                .reduce((sum: number, ext: any) => sum + (Number(ext.cost) || 0), 0);
+
+                              const customerGrossPackage = Number(
                                 bData.pricing?.customerGrossQuote ||
-                                bData.acceptedBidId?.quotedAmount ||
-                                job.bidId?.quotedAmount ||
+                                bData.acceptedQuoteAmount ||
+                                (typeof bData.acceptedBidId === 'object' ? bData.acceptedBidId?.quotedAmount : 0) ||
+                                (typeof job.bidId === 'object' ? job.bidId?.quotedAmount : 0) ||
+                                bData.totalAmount ||
                                 bData.finalAmount ||
-                                job.finalAmount ||
+                                job.invoice?.grandTotal ||
                                 0
                               );
-                              const remainingDue = Math.max(0, totalJobAmount - totalPaidSoFar);
+
+                              const customerTotalJobAmount = customerGrossPackage + approvedExtensionsCost;
+                              const remainingDue = Math.max(0, customerTotalJobAmount - totalPaidSoFar);
 
                               if (remainingDue <= 0.01 && totalPaidSoFar > 0) {
                                 const cashPayment = paymentsList.find((p: any) => p?.provider === 'CASH' && p?.status === 'SUCCESS');
@@ -1037,7 +1043,7 @@ export default function PartnerJobsPage() {
                                     </div>
                                     {isCashCollected && (
                                       <p className="text-[11px] text-gray-400 px-1">
-                                        Cash collected from customer. Platform commission is automatically tracked and settled in your CarBlink Wallet ledger.
+                                        Cash collected from customer. Platform commission and settlements are automatically tracked in your CarBlink Wallet ledger.
                                       </p>
                                     )}
                                   </div>
@@ -1065,21 +1071,31 @@ export default function PartnerJobsPage() {
                               const cleanRemainingDue = Math.round(remainingDue * 100) / 100;
 
                               return (
-                                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-800 border border-slate-700">
-                                  <div>
-                                    <p className="text-xs text-gray-400 font-medium">Final Remaining Due:</p>
-                                    <p className="text-xl font-extrabold text-primary-orange">₹{cleanRemainingDue.toFixed(2)}</p>
-                                    {advancePaid > 0 && (
-                                      <p className="text-[10px] text-emerald-400 font-medium">Advance Deducted: -₹{advancePaid.toFixed(2)}</p>
-                                    )}
+                                <div className="space-y-2.5 p-4 rounded-2xl bg-slate-800/90 border border-slate-700 shadow-sm">
+                                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                    <div>
+                                      <p className="text-xs text-gray-400 font-medium">Customer Cash Remaining to Collect:</p>
+                                      <p className="text-2xl font-black text-primary-orange">₹{cleanRemainingDue.toFixed(2)}</p>
+                                      {advancePaid > 0 && (
+                                        <p className="text-[11px] text-emerald-400 font-semibold mt-0.5">Customer Advance Paid Online: -₹{advancePaid.toFixed(2)}</p>
+                                      )}
+                                    </div>
+                                    <Button
+                                      className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-2.5 px-5 rounded-xl w-full sm:w-auto shadow-sm"
+                                      isLoading={markOfflinePaymentMutation.isPending}
+                                      onClick={() => handleMarkOfflinePayment(job.bookingId?._id || job.bookingId, cleanRemainingDue, 'FINAL')}
+                                    >
+                                      Collect &amp; Mark Cash (₹{cleanRemainingDue.toFixed(2)})
+                                    </Button>
                                   </div>
-                                  <Button
-                                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2 px-4 rounded-xl w-full sm:w-auto"
-                                    isLoading={markOfflinePaymentMutation.isPending}
-                                    onClick={() => handleMarkOfflinePayment(job.bookingId?._id || job.bookingId, cleanRemainingDue, 'FINAL')}
-                                  >
-                                    Mark Received in Cash (₹{cleanRemainingDue.toFixed(2)})
-                                  </Button>
+                                  <div className="text-[11px] text-gray-400 border-t border-slate-700/60 pt-2 flex flex-col gap-0.5">
+                                    <span className="text-gray-300 font-medium">
+                                      💡 Collect the full remaining balance of ₹{cleanRemainingDue.toFixed(2)} in cash from the customer upon vehicle handover.
+                                    </span>
+                                    <span className="text-gray-400">
+                                      Your original bid is ₹{totalVal.toFixed(2)} (Net entitlement: ₹{netPayable.toFixed(2)} after 15% platform fee). Any excess cash collected beyond your net share is automatically settled in your CarBlink Wallet ledger.
+                                    </span>
+                                  </div>
                                 </div>
                               );
                             })()}
