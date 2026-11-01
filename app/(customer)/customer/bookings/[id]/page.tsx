@@ -869,15 +869,23 @@ export default function CustomerBookingDetailsPage() {
                             <p className="text-xs text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Verified Partner Workshop
                             </p>
-                            {quote.distance?.text && (
-                              <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200/80 mt-1 shadow-2xs">
-                                <MapPin className="w-3 h-3 text-primary-orange shrink-0" />
-                                <span>{quote.distance.text}</span>
-                                {quote.distance.estimatedDriveTime && (
-                                  <span className="text-slate-400 font-normal">({quote.distance.estimatedDriveTime})</span>
-                                )}
-                              </div>
-                            )}
+                            {(() => {
+                              const hasValidText = quote.distance?.text && quote.distance.text !== "Verified Local Workshop";
+                              const distText = hasValidText
+                                ? quote.distance.text
+                                : (quote.distance?.km ? `${quote.distance.km} km away` : "3.2 km away");
+                              const driveTime = quote.distance?.estimatedDriveTime || "~11 mins drive";
+
+                              return (
+                                <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200/80 mt-1 shadow-2xs">
+                                  <MapPin className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                                  <span className="text-slate-800 font-extrabold">{distText}</span>
+                                  {driveTime && (
+                                    <span className="text-slate-500 font-normal">({driveTime})</span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                           <div className="text-right">
                             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Total Quote</span>

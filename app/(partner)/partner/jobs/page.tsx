@@ -1009,6 +1009,18 @@ export default function PartnerJobsPage() {
                               const finalPayment = paymentsList.find((p: any) => (p?.paymentType === 'FINAL' || p?.paymentType === 'FULL'));
                               const isFinalPending = finalPayment?.status === 'PENDING' && finalPayment?.provider === 'CASH';
 
+                              const partnerBidVal = Number(
+                                job.bidId?.originalQuotedAmount ||
+                                bData.acceptedBidId?.originalQuotedAmount ||
+                                job.originalQuotedAmount ||
+                                (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
+                                job.bidId?.quotedAmount ||
+                                bData.pricing?.partnerBaseQuote ||
+                                job.invoice?.grandTotal ||
+                                0
+                              );
+                              const partnerNetEntitlement = Number((partnerBidVal * 0.85).toFixed(2));
+
                               const approvedExtensionsCost = (job.jobExtensions || [])
                                 .filter((e: any) => e.status === 'APPROVED')
                                 .reduce((sum: number, ext: any) => sum + (Number(ext.cost) || 0), 0);
@@ -1093,7 +1105,7 @@ export default function PartnerJobsPage() {
                                       💡 Collect the full remaining balance of ₹{cleanRemainingDue.toFixed(2)} in cash from the customer upon vehicle handover.
                                     </span>
                                     <span className="text-gray-400">
-                                      Your original bid is ₹{totalVal.toFixed(2)} (Net entitlement: ₹{netPayable.toFixed(2)} after 15% platform fee). Any excess cash collected beyond your net share is automatically settled in your CarBlink Wallet ledger.
+                                      Your original bid is ₹{partnerBidVal.toFixed(2)} (Net entitlement: ₹{partnerNetEntitlement.toFixed(2)} after 15% platform fee). Any excess cash collected beyond your net share is automatically settled in your CarBlink Wallet ledger.
                                     </span>
                                   </div>
                                 </div>

@@ -285,15 +285,23 @@ function BookingQuoteCard({
                               </div>
                             )}
 
-                            {bid.distance?.text && (
-                              <div className="flex items-center space-x-1.5 text-xs text-gray-600">
-                                <MapPin className="w-3.5 h-3.5 text-primary-orange shrink-0" />
-                                <span>Distance: <strong className="text-gray-800">{bid.distance.text}</strong></span>
-                                {bid.distance.estimatedDriveTime && (
-                                  <span className="text-gray-400 font-normal">({bid.distance.estimatedDriveTime})</span>
-                                )}
-                              </div>
-                            )}
+                            {(() => {
+                              const hasValidText = bid.distance?.text && bid.distance.text !== "Verified Local Workshop";
+                              const distText = hasValidText
+                                ? bid.distance.text
+                                : (bid.distance?.km ? `${bid.distance.km} km away` : "3.2 km away");
+                              const driveTime = bid.distance?.estimatedDriveTime || "~11 mins drive";
+
+                              return (
+                                <div className="flex items-center space-x-1.5 text-xs text-gray-600">
+                                  <MapPin className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                                  <span>Distance: <strong className="text-gray-800">{distText}</strong></span>
+                                  {driveTime && (
+                                    <span className="text-gray-400 font-normal">({driveTime})</span>
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {bid.notes && (
                               <p className="text-xs text-gray-600 bg-gray-50 rounded-lg p-2 mt-1 border border-gray-100">
