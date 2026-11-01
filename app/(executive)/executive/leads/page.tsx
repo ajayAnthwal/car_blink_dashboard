@@ -188,13 +188,14 @@ export default function ExecutiveLeadsPage() {
   };
 
   // --- Forward Quote Modal State & Form ---
-  const [forwardBidData, setForwardBidData] = useState<{ leadId: string, bids: any[] } | null>(null);
+  const [forwardBidData, setForwardBidData] = useState<{ leadId: string; bids: any[]; lead?: any } | null>(null);
+  const [forwardedLeadIds, setForwardedLeadIds] = useState<Set<string>>(new Set());
+  const [quoteAdjustments, setQuoteAdjustments] = useState<Record<string, { quoteAmount?: number; discountAmount?: number; adjustedAmount?: number; notes?: string }>>({});
 
   const forwardForm = useForm<ForwardQuoteFormValues>({
     resolver: zodResolver(forwardQuoteSchema),
     defaultValues: { bidIds: [] }
   });
-
 
   const handleConfirmQuote = async (leadId: string) => {
     try {
@@ -208,12 +209,42 @@ export default function ExecutiveLeadsPage() {
 
   const handleForwardSubmit = (data: ForwardQuoteFormValues) => {
     if (!forwardBidData) return;
+
+    const adjustmentsPayload = data.bidIds.map(bidId => {
+      const adj = quoteAdjustments[bidId];
+      const orig = forwardBidData.bids.find((b: any) => (b._id || b.id) === bidId)?.quotedAmount || 0;
+      const hasPriceChange = adj?.adjustedAmount !== undefined && adj.adjustedAmount > 0 && adj.adjustedAmount !== orig;
+      const hasDiscount = adj?.discountAmount !== undefined && adj.discountAmount > 0;
+      const hasNotes = adj?.notes && adj.notes.trim().length > 0;
+
+      if (!hasPriceChange && !hasDiscount && !hasNotes) return null;
+
+      return {
+        bidId,
+        quoteAmount: adj?.quoteAmount !== undefined ? adj.quoteAmount : orig,
+        discountAmount: adj?.discountAmount || 0,
+        adjustedAmount: adj?.adjustedAmount !== undefined ? adj.adjustedAmount : (orig - (adj?.discountAmount || 0)),
+        notes: adj?.notes || ""
+      };
+    }).filter(Boolean);
+
     forwardMutation.mutate(
-      { id: forwardBidData.leadId, data },
+      {
+        id: forwardBidData.leadId,
+        data: {
+          bidIds: data.bidIds,
+          quoteAdjustments: adjustmentsPayload
+        }
+      },
       {
         onSuccess: () => {
           toast.success("Quotes successfully forwarded to the customer!");
+          if (forwardBidData?.leadId) {
+            setForwardedLeadIds(prev => new Set(prev).add(forwardBidData.leadId));
+          }
           setForwardBidData(null);
+          setQuoteAdjustments({});
+          refetchLeads();
         },
         onError: (err: any) => {
           toast.error(err?.message || "Failed to forward quote.");
@@ -445,6 +476,8 @@ export default function ExecutiveLeadsPage() {
                             ? ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) || (lead.hasPaidAdvance && lead.isAdvancePaid))
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                 : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse') 
+                            : (lead.status === 'QUOTED' || (lead.forwardedBidIds && lead.forwardedBidIds.length > 0) || forwardedLeadIds.has(lead._id))
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                             : lead.assignment?.assignedPartnerIds?.length > 0 
                             ? 'bg-warning/10 text-warning-dark border-warning/20' 
                             : 'bg-secondary-blue/10 text-secondary-blue border-secondary-blue/20'
@@ -461,6 +494,8 @@ export default function ExecutiveLeadsPage() {
                             ? ((lead.payments?.some((p: any) => p.status === 'SUCCESS' && (p.paymentType === 'ADVANCE' || p.paymentType === 'FULL' || p.amount > 0)) || (lead.hasPaidAdvance && lead.isAdvancePaid))
                                 ? 'CUSTOMER ACCEPTED & PAID ✓'
                                 : 'AWAITING ADVANCE PAYMENT ⏳') 
+                            : (lead.status === 'QUOTED' || (lead.forwardedBidIds && lead.forwardedBidIds.length > 0) || forwardedLeadIds.has(lead._id))
+                            ? 'QUOTES FORWARDED ✓'
                             : lead.assignment?.assignedPartnerIds?.length > 0 
                             ? (lead.bids?.length > 0 ? 'QUOTES RECEIVED' : 'BIDDING REQUESTED') 
                             : 'UNASSIGNED'}
@@ -578,19 +613,36 @@ export default function ExecutiveLeadsPage() {
                           </div>
                         )}
 
-                        {(lead.status === 'PENDING' || lead.status === 'QUOTED') && lead.bids?.length > 0 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full text-[10px] h-7 text-secondary-blue border-secondary-blue/30 hover:bg-secondary-blue/10 whitespace-nowrap"
-                            onClick={() => {
-                              setForwardBidData({ leadId: lead._id, bids: lead.bids });
-                              forwardForm.reset({ bidIds: lead.bids.map((b: any) => b._id) });
-                            }}
-                          >
-                            Forward Quotes
-                          </Button>
-                        )}
+                        {(lead.status === 'PENDING' || lead.status === 'QUOTED') && lead.bids?.length > 0 && (() => {
+                          const isQuoteForwarded = lead.status === 'QUOTED' || 
+                            Boolean(lead.forwardedBidIds && lead.forwardedBidIds.length > 0) || 
+                            forwardedLeadIds.has(lead._id);
+
+                          return (
+                            <Button
+                              size="sm"
+                              variant={isQuoteForwarded ? "default" : "outline"}
+                              className={`w-full text-[10px] h-7 whitespace-nowrap font-bold transition-all shadow-xs flex items-center justify-center gap-1 ${
+                                isQuoteForwarded
+                                  ? "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white border-emerald-600 shadow-emerald-600/20"
+                                  : "text-secondary-blue border-secondary-blue/30 hover:bg-secondary-blue/10"
+                              }`}
+                              onClick={() => {
+                                setForwardBidData({ leadId: lead._id, bids: lead.bids, lead });
+                                forwardForm.reset({ bidIds: lead.bids.map((b: any) => b._id) });
+                              }}
+                            >
+                              {isQuoteForwarded ? (
+                                <>
+                                  <CheckCircle className="w-3.5 h-3.5 text-white shrink-0" />
+                                  <span>Quotes Forwarded ✓</span>
+                                </>
+                              ) : (
+                                <span>Forward Quotes</span>
+                              )}
+                            </Button>
+                          );
+                        })()}
 
                         {/* Send Satisfaction Template Button (Only when job is COMPLETED) */}
                         {lead.status === "COMPLETED" ? (
@@ -993,80 +1045,336 @@ export default function ExecutiveLeadsPage() {
         </div>
       )}
 
-      {/* Forward Quote Modal */}
+      {/* ========================================================================= */}
+      {/* 🌟 COMPLETELY REDESIGNED EXECUTIVE REVIEW & FORWARD QUOTES MODAL 🌟 */}
+      {/* ========================================================================= */}
       {forwardBidData && (
-        <div className="fixed inset-0 bg-neutral-navy/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 font-heading">Forward Quotes</h3>
-                <p className="text-sm text-gray-500 mt-1">Send received bids to the customer</p>
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
+            
+            {/* Top Gradient Header */}
+            <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-primary-navy to-slate-900 text-white flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-primary-orange shadow-inner">
+                  <Zap className="w-6 h-6 fill-primary-orange text-primary-orange" />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-black font-heading tracking-tight text-white flex items-center gap-2">
+                    Review & Forward Quotes
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                      Live Proposal
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-300 font-medium mt-0.5">
+                    Adjust workshop pricing, configure customer discounts, and dispatch quotes
+                  </p>
+                </div>
               </div>
+
               <button
-                onClick={() => setForwardBidData(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+                type="button"
+                onClick={() => { setForwardBidData(null); setQuoteAdjustments({}); }}
+                className="w-9 h-9 flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all shadow-sm"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto">
-              <div className="mb-4 bg-primary-navy/5 p-4 rounded-xl border border-primary-navy/10">
-                <p className="font-semibold text-primary-navy mb-3">Select Quotes to Forward:</p>
-                <form id="forwardForm" onSubmit={forwardForm.handleSubmit(handleForwardSubmit)}>
-                  <Controller
-                    name="bidIds"
-                    control={forwardForm.control}
-                    render={({ field }) => (
-                      <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                        {forwardBidData.bids.map((bid: any) => {
-                          const isSelected = field.value.includes(bid._id);
-                          return (
+            {/* Context Header Strip (Vehicle & Service Info) */}
+            {forwardBidData.lead && (
+              <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 font-semibold text-slate-700">
+                  <span className="flex items-center gap-1.5 text-primary-navy font-bold">
+                    <Car className="w-4 h-4 text-primary-orange" />
+                    {forwardBidData.lead.vehicleId?.brand} {forwardBidData.lead.vehicleId?.model}
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="flex items-center gap-1 text-slate-600">
+                    <Wrench className="w-3.5 h-3.5 text-slate-400" />
+                    {forwardBidData.lead.serviceId?.name || forwardBidData.lead.customServiceName || "Service Request"}
+                  </span>
+                  {(forwardBidData.lead.address || forwardBidData.lead.city) && (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <span className="flex items-center gap-1 text-slate-500 truncate max-w-[200px]">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{forwardBidData.lead.address || forwardBidData.lead.city}</span>
+                      </span>
+                    </>
+                  )}
+                </div>
+                <span className="text-[11px] font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-600 shadow-2xs">
+                  ID: {forwardBidData.leadId.substring(0, 8)}
+                </span>
+              </div>
+            )}
+
+            {/* Modal Body: Quote Proposal Cards */}
+            <div className="p-6 overflow-y-auto space-y-4 custom-scrollbar bg-slate-50/40 flex-1">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">
+                    Workshop Proposals ({forwardBidData.bids.length} Received)
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Select quotes you want to forward to customer. You can revise quote price or apply discounts.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200/60">
+                  {forwardForm.watch("bidIds").length} Selected
+                </span>
+              </div>
+
+              <form id="forwardForm" onSubmit={forwardForm.handleSubmit(handleForwardSubmit)}>
+                <Controller
+                  name="bidIds"
+                  control={forwardForm.control}
+                  render={({ field }) => (
+                    <div className="space-y-4">
+                      {forwardBidData.bids.map((bid: any) => {
+                        const isSelected = field.value.includes(bid._id);
+                        const originalAmt = bid.originalQuotedAmount || bid.quotedAmount;
+                        const currentAdjustment = quoteAdjustments[bid._id] || {
+                          quoteAmount: originalAmt,
+                          discountAmount: 0,
+                          adjustedAmount: originalAmt,
+                          notes: ""
+                        };
+                        const activeQuotePrice = currentAdjustment.quoteAmount !== undefined 
+                          ? currentAdjustment.quoteAmount 
+                          : (currentAdjustment.adjustedAmount !== undefined ? currentAdjustment.adjustedAmount : originalAmt);
+                        const activeDiscount = currentAdjustment.discountAmount || 0;
+                        const finalCustomerPrice = Math.max(1, activeQuotePrice - activeDiscount);
+
+                        return (
+                          <div
+                            key={bid._id}
+                            className={`rounded-2xl transition-all duration-200 overflow-hidden ${
+                              isSelected
+                                ? 'bg-white border-2 border-blue-600 shadow-lg shadow-blue-500/5 ring-4 ring-blue-50'
+                                : 'bg-white border border-slate-200 hover:border-slate-300 shadow-xs opacity-75 hover:opacity-100'
+                            }`}
+                          >
+                            {/* Workshop Header Bar */}
                             <div
-                              key={bid._id}
                               onClick={() => {
                                 if (isSelected) field.onChange(field.value.filter(id => id !== bid._id));
                                 else field.onChange([...field.value, bid._id]);
                               }}
-                              className={`flex items-center space-x-3 p-3 rounded-xl border transition-all cursor-pointer ${isSelected ? 'border-secondary-blue bg-secondary-blue/5' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                              className={`p-4 flex items-center justify-between cursor-pointer select-none transition-colors ${
+                                isSelected ? 'bg-blue-50/30' : 'hover:bg-slate-50'
+                              }`}
                             >
-                              <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-secondary-blue text-white' : 'border-2 border-gray-300'}`}>
-                                {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                              <div className="flex items-center gap-3.5">
+                                <div className={`w-6 h-6 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                                  isSelected 
+                                    ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-200' 
+                                    : 'border-2 border-slate-300 bg-white'
+                                }`}>
+                                  {isSelected && (
+                                    <svg className="w-3.5 h-3.5 text-white stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black text-slate-900 text-base">
+                                      {bid.partnerId?.businessName || "Verified Workshop"}
+                                    </span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200">
+                                      Verified Partner
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-1">
+                                    {bid.estimatedDuration && (
+                                      <span className="flex items-center gap-1 font-semibold text-slate-600">
+                                        <Clock className="w-3.5 h-3.5 text-slate-400" /> {bid.estimatedDuration} hrs completion
+                                      </span>
+                                    )}
+                                    {bid.notes && (
+                                      <span className="truncate max-w-[220px] text-slate-400" title={bid.notes}>
+                                        • &ldquo;{bid.notes}&rdquo;
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex-1 cursor-pointer">
-                                <div className="font-bold text-gray-900 text-sm">{bid.partnerId?.businessName}</div>
-                                <div className="text-xs text-gray-500 mt-0.5">₹{bid.quotedAmount} {bid.estimatedDuration ? `• ${bid.estimatedDuration}` : ''}</div>
+
+                              <div className="text-right">
+                                <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">
+                                  Workshop Quote
+                                </span>
+                                <span className="text-lg font-black text-slate-900 font-mono">
+                                  ₹{originalAmt.toLocaleString()}
+                                </span>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  />
-                  {forwardForm.formState.errors.bidIds && (
-                    <p className="text-red-500 text-xs font-medium mt-2">{forwardForm.formState.errors.bidIds.message}</p>
+
+                            {/* Active Configuration Box */}
+                            {isSelected && (
+                              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/60 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                  {/* Step 1: Quote Price Input */}
+                                  <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-xs font-bold text-slate-800">
+                                        1. Quote Price (₹)
+                                      </label>
+                                      <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                        Editable
+                                      </span>
+                                    </div>
+                                    <div className="relative">
+                                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">₹</span>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        placeholder={String(originalAmt)}
+                                        value={activeQuotePrice}
+                                        onChange={(e) => {
+                                          const newQuote = Math.max(1, Number(e.target.value) || 0);
+                                          const disc = currentAdjustment.discountAmount || 0;
+                                          const finalPrice = Math.max(1, newQuote - disc);
+                                          setQuoteAdjustments(prev => ({
+                                            ...prev,
+                                            [bid._id]: {
+                                              ...prev[bid._id],
+                                              quoteAmount: newQuote,
+                                              discountAmount: disc,
+                                              adjustedAmount: finalPrice,
+                                              notes: prev[bid._id]?.notes || ""
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full h-10 pl-8 pr-3 bg-slate-50/50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 rounded-lg text-sm font-extrabold text-slate-900 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400">
+                                      Workshop base was ₹{originalAmt}. Change to adjust rate.
+                                    </p>
+                                  </div>
+
+                                  {/* Step 2: Discount Input */}
+                                  <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-xs font-bold text-slate-800">
+                                        2. Discount / Price Cut (₹)
+                                      </label>
+                                      <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                        Optional
+                                      </span>
+                                    </div>
+                                    <div className="relative">
+                                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">₹</span>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        placeholder="0"
+                                        value={currentAdjustment.discountAmount !== undefined ? currentAdjustment.discountAmount : ""}
+                                        onChange={(e) => {
+                                          const disc = Math.max(0, Number(e.target.value) || 0);
+                                          const curQuote = currentAdjustment.quoteAmount !== undefined ? currentAdjustment.quoteAmount : originalAmt;
+                                          const finalPrice = Math.max(1, curQuote - disc);
+                                          setQuoteAdjustments(prev => ({
+                                            ...prev,
+                                            [bid._id]: {
+                                              ...prev[bid._id],
+                                              quoteAmount: curQuote,
+                                              discountAmount: disc,
+                                              adjustedAmount: finalPrice,
+                                              notes: prev[bid._id]?.notes || ""
+                                            }
+                                          }));
+                                        }}
+                                        className="w-full h-10 pl-8 pr-3 bg-slate-50/50 border border-slate-200 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100 rounded-lg text-sm font-extrabold text-slate-900 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400">
+                                      Deducted from quote price to boost customer conversion.
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Step 3: Customer Final Invoice Pill (Live Result) */}
+                                <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                  <div>
+                                    <span className="text-[11px] font-bold tracking-wider uppercase text-emerald-100 block">
+                                      Customer Final Invoice Price
+                                    </span>
+                                    <div className="flex items-baseline gap-2 mt-0.5">
+                                      <span className="text-2xl font-black font-mono">
+                                        ₹{finalCustomerPrice.toLocaleString()}
+                                      </span>
+                                      {activeDiscount > 0 && (
+                                        <span className="text-xs bg-white text-emerald-800 font-black px-2 py-0.5 rounded-full shadow-2xs">
+                                          ₹{activeDiscount} OFF APPLIED
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="text-right text-xs text-emerald-100 font-medium sm:border-l sm:border-white/20 sm:pl-4">
+                                    <div className="font-mono">
+                                      Quote: ₹{activeQuotePrice} − Disc: ₹{activeDiscount}
+                                    </div>
+                                    <div className="text-[10px] text-emerald-200 mt-0.5">
+                                      {activeQuotePrice !== originalAmt
+                                        ? `(Original Workshop: ₹${originalAmt})`
+                                        : "Standard Workshop Price"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
-                </form>
+                />
+                {forwardForm.formState.errors.bidIds && (
+                  <p className="text-red-500 text-xs font-bold mt-2">{forwardForm.formState.errors.bidIds.message}</p>
+                )}
+              </form>
+
+              {/* Bottom Notice */}
+              <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-slate-200/80 text-[11px] text-slate-500 shadow-2xs">
+                <span className="text-blue-500 text-sm shrink-0">🛡️</span>
+                <span>
+                  <strong>Full Pricing Authority:</strong> Executive changes are audited. Original workshop bids remain permanently recorded for partner payouts.
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom Modal Footer */}
+            <div className="p-5 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 mt-auto">
+              <div className="text-xs text-slate-600 font-medium hidden sm:block">
+                <span>Total Selected: <strong className="text-slate-900">{forwardForm.watch("bidIds").length} Quotes</strong></span>
               </div>
 
-              <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                Are you sure you want to forward the selected quotes to the customer? The booking status will be changed to <span className="font-bold">QUOTED</span> and the customer will receive an SMS notification.
-              </p>
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 sm:flex-initial bg-white border-slate-200 hover:bg-slate-100 text-slate-700 h-11 px-5 rounded-xl font-bold text-xs shadow-2xs"
+                  onClick={() => { setForwardBidData(null); setQuoteAdjustments({}); }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  form="forwardForm"
+                  type="submit"
+                  disabled={forwardForm.watch("bidIds").length === 0}
+                  className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white h-11 px-7 rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  isLoading={forwardMutation.isPending}
+                >
+                  <span>Forward Quotes ({forwardForm.watch("bidIds").length}) &rarr;</span>
+                </Button>
+              </div>
             </div>
 
-            <div className="p-5 border-t border-gray-100 bg-gray-50 flex space-x-3 mt-auto">
-              <Button type="button" variant="outline" className="flex-1 bg-white border-gray-200 hover:bg-gray-100 text-gray-700 h-12 rounded-xl" onClick={() => setForwardBidData(null)}>
-                Cancel
-              </Button>
-              <Button
-                form="forwardForm"
-                type="submit"
-                className="flex-1 bg-secondary-blue hover:bg-secondary-blue/90 text-white h-12 rounded-xl"
-                isLoading={forwardMutation.isPending}
-              >
-                Forward {forwardForm.watch("bidIds").length > 0 && `(${forwardForm.watch("bidIds").length})`}
-              </Button>
-            </div>
           </div>
         </div>
       )}

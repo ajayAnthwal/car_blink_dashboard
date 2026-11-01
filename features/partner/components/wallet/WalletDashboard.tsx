@@ -231,12 +231,16 @@ export function WalletDashboard() {
                 {isNegative && <span className="text-xs sm:text-base ml-2 sm:ml-3 bg-red-500/20 text-red-300 border border-red-500/30 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full font-bold uppercase">(Negative Due)</span>}
               </h2>
               {isNegative ? (
-                <p className="text-xs text-red-300 font-medium">
-                  Your wallet is negative due to cash collected on bookings. Please clear your dues to keep receiving new job leads.
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-red-300 font-medium">
+                    {balance <= -500 
+                      ? `⚠️ Outstanding commission is ₹${Math.abs(balance).toLocaleString('en-IN')}. Please settle your balance to receive new leads.`
+                      : `Platform commission for cash jobs is ₹${Math.abs(balance).toLocaleString('en-IN')}. This will be auto-settled from upcoming online payments, or you can clear it below.`}
+                  </p>
+                </div>
               ) : (
                 <p className="text-xs text-gray-300 font-medium flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Available for instant payout to bank account / UPI
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Available for instant payout to bank account / UPI (All cash commissions settled)
                 </p>
               )}
             </div>

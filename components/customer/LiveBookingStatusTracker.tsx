@@ -214,7 +214,7 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
     : currentBooking?.vehicleDetails?.makeModel || "Your Vehicle";
   const vehicleReg = currentBooking?.vehicleId?.registrationNumber || "";
   const serviceName = currentBooking?.serviceId?.name || currentBooking?.serviceName || "Car Service";
-  const bookingCode = currentBooking?.bookingId || currentBooking?._id?.slice(-6).toUpperCase() || "";
+  const bookingCode = currentBooking?.bookingId || (currentBooking?._id ? String(currentBooking._id).slice(-6).toUpperCase() : "");
 
   // Strict verified advance payment check
   const hasPaidAdvanceStrict = Boolean(
@@ -381,7 +381,7 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
                         : "bg-white/10 text-white/70 hover:bg-white/15"
                     }`}
                   >
-                    {bCar} (#{b.bookingId || b._id?.slice(-4).toUpperCase()})
+                    {bCar} (#{b.bookingId || (b._id ? String(b._id).slice(-4).toUpperCase() : '')})
                   </button>
                 );
               })}

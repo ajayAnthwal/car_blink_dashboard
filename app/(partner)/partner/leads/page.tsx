@@ -2,15 +2,20 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Target, Loader2, MapPin, Calendar, Car, Wrench, X } from "lucide-react";
-import { usePartnerLeads, useCreateBidMutation } from "@/features/partner/hooks/usePartnerQueries";
+import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, AlertTriangle } from "lucide-react";
+import { usePartnerLeads, useCreateBidMutation, useWalletStatement } from "@/features/partner/hooks/usePartnerQueries";
 
 export default function LeadsPage() {
   const { data: leadsData, isLoading } = usePartnerLeads();
   const leads = leadsData?.leads || [];
+  const { data: walletData } = useWalletStatement();
+  
+  const walletStatement = (walletData && walletData.balance !== undefined) ? walletData : ((walletData as any)?.data || walletData || {});
+  const walletBalance = Number(walletStatement?.balance || 0);
   
   const createBidMutation = useCreateBidMutation();
 
@@ -52,6 +57,34 @@ export default function LeadsPage() {
         Browse service requests from customers in your area and place competitive bids to win jobs.
       </p>
 
+      {/* Threshold Alert Banner */}
+      {walletBalance <= -500 && (
+        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+          walletBalance < -1000 ? 'bg-red-50 border-red-300' : 'bg-orange-50 border-orange-300'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-full shrink-0 ${walletBalance < -1000 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className={`font-bold text-sm md:text-base ${walletBalance < -1000 ? 'text-red-900' : 'text-orange-950'}`}>
+                {walletBalance < -1000
+                  ? `🚨 Credit Limit Exceeded — Outstanding Commission: ₹${Math.abs(walletBalance).toLocaleString('en-IN')}`
+                  : `Please settle outstanding commission of ₹${Math.abs(walletBalance).toLocaleString('en-IN')} to receive new leads`}
+              </h3>
+              <p className={`text-xs font-medium mt-0.5 ${walletBalance < -1000 ? 'text-red-700' : 'text-orange-800'}`}>
+                {walletBalance < -1000
+                  ? 'Your negative wallet balance exceeds the ₹1,000 threshold. New booking leads are paused until cleared.'
+                  : 'Platform commission for cash jobs has reached the threshold limit. Please clear your dues in My Wallet to prevent leads from being paused.'}
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm" className={walletBalance < -1000 ? "bg-red-600 hover:bg-red-700 text-white shrink-0 font-bold" : "bg-orange-600 hover:bg-orange-700 text-white shrink-0 font-bold"}>
+            <Link href="/partner/wallet">Pay Dues Now</Link>
+          </Button>
+        </div>
+      )}
+
       {message.text && (
         <div className={`p-3 rounded-lg text-sm border ${
           message.type === "success" 
@@ -75,12 +108,9 @@ export default function LeadsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {leads.map((lead: any) => {
             const leadId = lead._id || lead.id;
-            const serviceTitle = lead.customServiceName || 
-              (lead.description && typeof lead.description === 'string' && !lead.description.toLowerCase().startsWith('website quote') && !lead.description.toLowerCase().startsWith('quick callback')
-                ? lead.description.split('| Car:')[0].split('|')[0].trim()
-                : '') ||
-              lead.serviceId?.name || 
-              "Service Request";
+            const serviceTitle = (typeof lead.serviceId === 'object' && lead.serviceId?.name) 
+              ? lead.serviceId.name 
+              : (lead.customServiceName || "Service Request");
             const formattedTitle = serviceTitle.charAt(0).toUpperCase() + serviceTitle.slice(1);
 
             return (
@@ -90,7 +120,7 @@ export default function LeadsPage() {
                   <div>
                     <h3 className="text-lg font-bold text-primary-navy mb-1">{formattedTitle}</h3>
                     <div className="flex items-center text-xs text-neutral-muted space-x-3">
-                      <span className="flex items-center"><MapPin className="w-3 h-3 mr-1"/> {lead.cityId?.name || "N/A"}</span>
+                      <span className="flex items-center truncate max-w-[220px]" title={lead.address || lead.city || (typeof lead.cityId === 'object' && lead.cityId?.name && lead.cityId?.name !== 'Bamboo Flat' ? lead.cityId.name : null) || "N/A"}><MapPin className="w-3 h-3 mr-1 shrink-0 text-primary-orange"/><span className="truncate">{lead.address || lead.city || (typeof lead.cityId === 'object' && lead.cityId?.name && lead.cityId?.name !== 'Bamboo Flat' ? lead.cityId.name : null) || "N/A"}</span></span>
                       <span className="flex items-center"><Calendar className="w-3 h-3 mr-1"/> {lead.preferredDate ? new Date(lead.preferredDate).toLocaleDateString() : "N/A"}</span>
                     </div>
                   </div>
@@ -139,14 +169,12 @@ export default function LeadsPage() {
             <CardContent className="pt-4 overflow-y-auto custom-scrollbar flex-1">
               <div className="mb-4 bg-primary-navy/5 p-3 rounded-lg text-sm">
                 <p className="font-medium text-primary-navy">
-                  {selectedLead.customServiceName || 
-                    (selectedLead.description && typeof selectedLead.description === 'string' && !selectedLead.description.toLowerCase().startsWith('website quote') && !selectedLead.description.toLowerCase().startsWith('quick callback')
-                      ? selectedLead.description.split('| Car:')[0].split('|')[0].trim()
-                      : '') ||
-                    selectedLead.serviceId?.name || 
-                    "Service Request"}
+                  {(typeof selectedLead.serviceId === 'object' && selectedLead.serviceId?.name) 
+                    ? selectedLead.serviceId.name 
+                    : (selectedLead.customServiceName || "Service Request")}
                 </p>
                 <p className="text-neutral-muted">{selectedLead.vehicleId?.brand} {selectedLead.vehicleId?.model}</p>
+                <p className="text-xs text-neutral-600 flex items-center mt-1.5 font-medium"><MapPin className="w-3.5 h-3.5 mr-1 text-primary-orange shrink-0" /><span>{selectedLead.address || selectedLead.city || (typeof selectedLead.cityId === 'object' && selectedLead.cityId?.name && selectedLead.cityId?.name !== 'Bamboo Flat' ? selectedLead.cityId.name : null) || "N/A"}</span></p>
               </div>
 
               <form onSubmit={handlePlaceBid} className="space-y-4">

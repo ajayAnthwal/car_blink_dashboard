@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/Select";
-import { Store, Truck, CreditCard, Banknote, MapPin, PenLine, Navigation, Calendar, Clock, LocateFixed, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Store, Truck, CreditCard, Banknote, MapPin, PenLine, Navigation, Calendar, Clock, LocateFixed, Loader2, CheckCircle2, AlertCircle, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import toast from "react-hot-toast";
@@ -48,6 +49,7 @@ export const TIME_SLOTS = [
 
 interface FormOption {
   _id?: string;
+  id?: string;
   name?: string;
   value?: string;
   brand?: string;
@@ -63,6 +65,7 @@ interface BookingFormProps {
   onStateChange: (state: string) => void;
   onSubmit: (data: BookingFormValues) => void;
   isSubmitting: boolean;
+  defaultVehicleId?: string;
 }
 
 export function BookingForm({
@@ -73,6 +76,7 @@ export function BookingForm({
   onStateChange,
   onSubmit,
   isSubmitting,
+  defaultVehicleId,
 }: BookingFormProps) {
   const {
     register,
@@ -168,6 +172,19 @@ export function BookingForm({
     );
   };
 
+  // Auto-select newly added vehicle or fallback to first vehicle if only 1 exists
+  useEffect(() => {
+    if (vehicles && vehicles.length > 0 && !watch("vehicleId")) {
+      const match = defaultVehicleId 
+        ? vehicles.find((v: FormOption) => (v._id || v.id) === defaultVehicleId)
+        : (vehicles.length === 1 ? vehicles[0] : null);
+      const selectedId = match?._id || match?.id;
+      if (selectedId) {
+        setValue("vehicleId", selectedId);
+      }
+    }
+  }, [vehicles, defaultVehicleId, setValue, watch]);
+
   const selectedState = watch("state");
   const selectedServiceMode = watch("serviceMode");
   const selectedPaymentMode = watch("paymentMode");
@@ -217,7 +234,20 @@ export function BookingForm({
       ? combinedDate.toISOString() 
       : new Date().toISOString();
 
-    const resolvedCityId = data.cityId || (user as any)?.cityId || (cities && cities.length > 0 ? cities[0]._id : "6a56fe37cd289f213b596a00");
+    let resolvedCityId = data.cityId || (user as any)?.cityId;
+    if (!resolvedCityId && data.address && Array.isArray(cities) && cities.length > 0) {
+      const addrLower = data.address.toLowerCase();
+      const matchedCity = cities.find((c: any) => c.name && c.name.length > 3 && addrLower.includes(c.name.toLowerCase()));
+      if (matchedCity) {
+        resolvedCityId = matchedCity._id;
+      }
+    }
+    if (!resolvedCityId && Array.isArray(cities) && cities.length > 0) {
+      resolvedCityId = cities[0]._id;
+    }
+    if (!resolvedCityId) {
+      resolvedCityId = "6a56fe37cd289f213b596a00";
+    }
     const submitData = {
       ...data,
       cityId: resolvedCityId,
@@ -250,14 +280,31 @@ export function BookingForm({
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-medium text-primary-navy">
+                Select Vehicle <span className="text-red-500 ml-0.5">*</span>
+              </label>
+              <Link
+                href="/customer/garage"
+                className="inline-flex items-center gap-1 text-xs font-bold text-primary-orange hover:text-orange-600 hover:underline transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add New Vehicle</span>
+              </Link>
+            </div>
             <Select
-              label="Select Vehicle"
               value={watch("vehicleId")}
               onChange={(e) => setValue("vehicleId", e.target.value)}
               options={vehicles.map(v => ({ value: v._id || "", label: `${v.brand || ""} ${v.model || ""}` }))}
               required
             />
             {errors.vehicleId && <p className="text-red-500 text-xs mt-1">{errors.vehicleId.message}</p>}
+            <p className="text-[11px] text-gray-500 mt-1.5 flex items-center justify-between">
+              <span>Don&apos;t see your car listed?</span>
+              <Link href="/customer/garage" className="font-semibold text-primary-orange hover:underline">
+                Add car to garage &rarr;
+              </Link>
+            </p>
           </div>
 
           <div>

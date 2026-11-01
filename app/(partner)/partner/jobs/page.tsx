@@ -957,10 +957,12 @@ export default function PartnerJobsPage() {
                             {(() => {
                               const totalVal = Number(
                                 job.invoice?.grandTotal ||
-                                bData.pricing?.customerGrossQuote ||
-                                bData.acceptedBidId?.quotedAmount ||
-                                job.bidId?.quotedAmount ||
+                                job.bidId?.originalQuotedAmount ||
+                                bData.acceptedBidId?.originalQuotedAmount ||
+                                job.originalQuotedAmount ||
                                 (job.finalAmount && job.finalAmount > (bData.pricing?.partnerBaseQuote || 0) ? job.finalAmount : 0) ||
+                                job.bidId?.quotedAmount ||
+                                bData.pricing?.partnerBaseQuote ||
                                 (job.advanceAmount || 0) + (job.finalAmount || 0) ||
                                 job.estimatedCost ||
                                 0
@@ -1020,10 +1022,24 @@ export default function PartnerJobsPage() {
                               const remainingDue = Math.max(0, totalJobAmount - totalPaidSoFar);
 
                               if (remainingDue <= 0.01 && totalPaidSoFar > 0) {
+                                const cashPayment = paymentsList.find((p: any) => p?.provider === 'CASH' && p?.status === 'SUCCESS');
+                                const isCashCollected = job.cashCollectedByPartner || Boolean(cashPayment);
+                                const cashAmount = cashPayment?.amount || job.cashCollectedAmount || 0;
+
                                 return (
-                                  <div className="flex items-center justify-between bg-emerald-500/20 p-3 rounded-xl border border-emerald-500/40 text-xs font-bold text-emerald-200">
-                                    <span>Payment Status:</span>
-                                    <span className="flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Full Payment Received</span>
+                                  <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between bg-emerald-500/20 p-3 rounded-xl border border-emerald-500/40 text-xs font-bold text-emerald-200">
+                                      <span>Payment Status:</span>
+                                      <span className="flex items-center gap-1">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                        {isCashCollected ? `Cash Collected by Partner (₹${Number(cashAmount).toFixed(2)})` : "Full Payment Received"}
+                                      </span>
+                                    </div>
+                                    {isCashCollected && (
+                                      <p className="text-[11px] text-gray-400 px-1">
+                                        Cash collected from customer. Platform commission is automatically tracked and settled in your CarBlink Wallet ledger.
+                                      </p>
+                                    )}
                                   </div>
                                 );
                               }
@@ -1219,30 +1235,19 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
   const defaultServiceName = sData?.name || "Car Service & Maintenance";
   const uploadInvoiceMutation = useUploadInvoiceMutation();
 
-  // 1. Calculate actual customer agreed / quoted amount (Base service package only, excluding extra parts)
+  // 1. Calculate partner's actual submitted quote (Base service package only, excluding extra parts)
   const actualQuotedAmount = useMemo(() => {
-    // If an existing invoice already has line items, row 0's unit price is the base package price
-    if (Array.isArray(existingInvoice?.items) && existingInvoice.items.length > 0) {
-      const firstItemPrice = Number(existingInvoice.items[0]?.unitPrice);
-      if (!isNaN(firstItemPrice) && firstItemPrice > 0) {
-        return firstItemPrice;
-      }
-    }
-
-    // Next check customer gross quote or accepted bid amount
-    const quotedVal = Number(
-      bData?.pricing?.customerGrossQuote ||
-      bData?.acceptedBidId?.quotedAmount ||
-      job?.bidId?.quotedAmount ||
-      bData?.pricing?.partnerBaseQuote ||
-      sData?.basePrice ||
-      0
+    // Priority 1: Partner's original bid quote directly
+    const partnerBidAmount = Number(
+      job?.bidId?.originalQuotedAmount ??
+      bData?.acceptedBidId?.originalQuotedAmount ??
+      job?.originalQuotedAmount
     );
-    if (!isNaN(quotedVal) && quotedVal > 0) {
-      return quotedVal;
+    if (!isNaN(partnerBidAmount) && partnerBidAmount > 0) {
+      return partnerBidAmount;
     }
 
-    // Fallback: if deriving from job.finalAmount, subtract any approved job extensions so extras aren't double-counted!
+    // Priority 2: Fallback from job.finalAmount (minus approved extras)
     if (job?.finalAmount) {
       const approvedExtras = (job?.jobExtensions || [])
         .filter((ext: any) => ext?.status === "APPROVED")
@@ -1251,7 +1256,22 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
       if (baseAmt > 0) return baseAmt;
     }
 
-    return Number(job?.finalAmount || 0);
+    // Priority 3: If an existing invoice already has line items
+    if (Array.isArray(existingInvoice?.items) && existingInvoice.items.length > 0) {
+      const firstItemPrice = Number(existingInvoice.items[0]?.unitPrice);
+      if (!isNaN(firstItemPrice) && firstItemPrice > 0) {
+        return firstItemPrice;
+      }
+    }
+
+    // Priority 4: Service base price or bid quotedAmount
+    const fallbackVal = Number(
+      job?.bidId?.quotedAmount ||
+      bData?.acceptedBidId?.quotedAmount ||
+      sData?.basePrice ||
+      0
+    );
+    return isNaN(fallbackVal) ? 0 : fallbackVal;
   }, [job, bData, sData, existingInvoice]);
 
   const [invoiceType, setInvoiceType] = useState<"PDF" | "ITEMIZED">(
@@ -1503,11 +1523,11 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
 
       {invoiceType === "ITEMIZED" ? (
         <div className="space-y-4">
-          {/* Customer Quoted Amount Protection Banner */}
-          <div className="bg-amber-50/70 border border-amber-200/80 p-3 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          {/* Submitted Quote Protection Banner */}
+          <div className="bg-emerald-50/70 border border-emerald-200/80 p-3 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <span className="font-extrabold text-amber-950">Customer Quoted Protection:</span> The base service package amount (<strong>₹{actualQuotedAmount}</strong>) is fixed to the customer&apos;s accepted quote and <u>cannot be modified</u>. If additional work or parts were required, use <strong>&quot;+ Add Item Line&quot;</strong> below.
+              <span className="font-extrabold text-emerald-950">Submitted Quote Protection:</span> The base service package amount (<strong>₹{actualQuotedAmount}</strong>) is fixed to your submitted bid estimate and <u>cannot be modified</u>. If additional work or parts were required, use <strong>&quot;+ Add Item Line&quot;</strong> below.
             </div>
           </div>
 
@@ -1765,7 +1785,7 @@ function JobInvoiceSection({ job, onInvoiceSubmitted }: { job: any; onInvoiceSub
 
             <div className="flex justify-between items-center font-extrabold text-gray-900 pt-1">
               <div>
-                <span className="text-sm block">Customer Final Payable Amount:</span>
+                <span className="text-sm block">Agreed Bill Total Amount:</span>
                 <span className="text-[11px] font-normal text-gray-500">(All-Inclusive of 18% GST)</span>
               </div>
               <span className="text-primary-orange text-2xl font-black font-heading">

@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAdminBookingDetails, useCancelAdminBookingMutation, useManualAssignAdminBookingMutation, useAdminUsers, useAdminPartners, useAdminAuditLogs, useEligiblePartnersForAdminBooking } from "@/features/admin/hooks/useAdminQueries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, Calendar, User, Wrench, ArrowLeft, Ban, MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee, Phone, Mail, Info, Camera, Zap, ShieldAlert, History } from "lucide-react";
+import { Loader2, Calendar, User, Wrench, ArrowLeft, Ban, MapPin, Clock, FileText, CheckCircle2, Car, IndianRupee, Phone, Mail, Info, Camera, Zap, ShieldAlert, History, ShieldCheck, AlertTriangle, Layers } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function AdminBookingDetailsPage() {
@@ -189,6 +189,293 @@ export default function AdminBookingDetailsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Executive Pricing Transparency & Security Audit Trail */}
+          {(() => {
+            const activeBid = booking.acceptedBidId || (Array.isArray(booking.bids) && booking.bids.length > 0 ? booking.bids[0] : null);
+            if (!activeBid && !booking.assignedPartnerId) return null;
+
+            const originalPartnerQuote = activeBid?.originalQuotedAmount !== undefined && activeBid?.originalQuotedAmount > 0
+              ? activeBid.originalQuotedAmount
+              : (activeBid?.quotedAmount !== undefined ? (activeBid.quotedAmount + (activeBid.executiveDiscount || 0)) : (booking.serviceId?.basePrice || 0));
+
+            const executiveSetPrice = activeBid?.executiveQuoteAmount !== undefined && activeBid?.executiveQuoteAmount > 0
+              ? activeBid.executiveQuoteAmount
+              : (activeBid?.quotedAmount !== undefined ? (activeBid.quotedAmount + (activeBid.executiveDiscount || 0)) : originalPartnerQuote);
+
+            const executiveDiscount = activeBid?.executiveDiscount || 0;
+            const customerFinalPrice = activeBid?.quotedAmount || (executiveSetPrice - executiveDiscount);
+
+            const isModified = Boolean(
+              activeBid?.isModifiedByExecutive || 
+              executiveDiscount > 0 || 
+              (activeBid?.executiveQuoteAmount && activeBid.executiveQuoteAmount !== originalPartnerQuote)
+            );
+
+            const markupOrDiff = executiveSetPrice - originalPartnerQuote;
+            const discountPercentage = originalPartnerQuote > 0 
+              ? ((executiveDiscount / originalPartnerQuote) * 100).toFixed(1)
+              : "0";
+            const isHighDiscount = Number(discountPercentage) > 25;
+
+            const modifierName = activeBid?.modifiedByUserId?.fullName || booking.assignedExecutiveId?.fullName || "Operations Executive";
+
+            return (
+              <Card className="bg-white/95 backdrop-blur-md shadow-md border-slate-200 overflow-hidden">
+                <CardHeader className={`border-b pb-4 flex flex-row items-center justify-between ${
+                  isModified ? "bg-amber-50/70 border-amber-200" : "bg-emerald-50/70 border-emerald-200"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      isModified ? "bg-amber-500 text-white shadow-xs" : "bg-emerald-600 text-white shadow-xs"
+                    }`}>
+                      {isModified ? <ShieldAlert className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base sm:text-lg text-slate-900 font-extrabold flex items-center gap-2">
+                        Executive Pricing & Security Audit Trail
+                      </CardTitle>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Transparency & anti-tampering verification for partner quotes vs executive adjustments
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className={`px-3 py-1.5 rounded-full text-xs font-black tracking-wide flex items-center gap-1.5 shadow-2xs ${
+                    isModified 
+                      ? "bg-amber-100 text-amber-900 border border-amber-300" 
+                      : "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                  }`}>
+                    {isModified ? (
+                      <>
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Executive Modified (v{activeBid?.version || 1})</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Direct Partner Quote (Verified)</span>
+                      </>
+                    )}
+                  </span>
+                </CardHeader>
+
+                <CardContent className="p-6 space-y-6">
+                  {/* The 3 Core Values Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* 1. Partner Original Quote */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                          1. Original Partner Quote
+                        </span>
+                        <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded">
+                          Workshop Base
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className="text-2xl sm:text-3xl font-black font-mono text-slate-800">
+                          ₹{originalPartnerQuote.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1.5 truncate">
+                        Quoted by: <strong className="text-slate-700">{activeBid?.partnerId?.businessName || booking.assignedPartnerId?.businessName || "Workshop"}</strong>
+                      </p>
+                    </div>
+
+                    {/* 2. Executive Final Price (Revised Base) */}
+                    <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700">
+                          2. Executive Price
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          markupOrDiff > 0 ? "bg-amber-100 text-amber-800" : (markupOrDiff < 0 ? "bg-blue-100 text-blue-800" : "bg-indigo-100 text-indigo-800")
+                        }`}>
+                          {markupOrDiff > 0 ? `+₹${markupOrDiff} Markup` : (markupOrDiff < 0 ? `-₹${Math.abs(markupOrDiff)} Cut` : "No Change")}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className="text-2xl sm:text-3xl font-black font-mono text-indigo-950">
+                          ₹{executiveSetPrice.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-indigo-600 mt-1.5">
+                        Base quote set by Operations Executive
+                      </p>
+                    </div>
+
+                    {/* 3. Executive Discount */}
+                    <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-emerald-700">
+                          3. Specific Discount Applied
+                        </span>
+                        {executiveDiscount > 0 && (
+                          <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded">
+                            {discountPercentage}% OFF
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-800">
+                          {executiveDiscount > 0 ? `-₹${executiveDiscount.toLocaleString()}` : "₹0"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-700 mt-1.5">
+                        {executiveDiscount > 0 ? "Promotional concession given to customer" : "No discount deducted"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Customer Net Payable Highlight Strip */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-black tracking-widest text-indigo-300 block">
+                        Final Price Forwarded to Customer
+                      </span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-black font-mono text-emerald-400">
+                          ₹{customerFinalPrice.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-300 font-medium">
+                          (Customer Invoice Base Amount)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-300 sm:text-right font-mono sm:border-l sm:border-white/10 sm:pl-5 space-y-0.5">
+                      <div>
+                        Formula: ₹{executiveSetPrice} (Exec Price) − ₹{executiveDiscount} (Disc) = <strong className="text-white">₹{customerFinalPrice}</strong>
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        Original Workshop Estimate: ₹{originalPartnerQuote}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Security & Audit Intelligence Box */}
+                  <div className={`p-4 rounded-xl border text-xs space-y-2 ${
+                    isModified 
+                      ? "bg-amber-50/50 border-amber-200 text-amber-900" 
+                      : "bg-slate-50 border-slate-200 text-slate-700"
+                  }`}>
+                    <div className="flex items-center gap-2 font-bold">
+                      {isModified ? (
+                        <>
+                          <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <span>Audit Log Analysis: Quote Modification Detected</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span>Audit Log Analysis: Pricing Integrity Confirmed</span>
+                        </>
+                      )}
+                    </div>
+
+                    <p className="leading-relaxed">
+                      {isModified ? (
+                        <>
+                          The original workshop quote of <strong>₹{originalPartnerQuote}</strong> was adjusted to <strong>₹{executiveSetPrice}</strong> by <strong>{modifierName}</strong>. 
+                          {executiveDiscount > 0 ? ` A specific promotional discount of ₹${executiveDiscount} (${discountPercentage}%) was applied, making the final price ₹${customerFinalPrice}.` : ""}
+                          {isHighDiscount ? " ⚠️ Note: The applied discount exceeds 25% of the original partner quote. Verify executive authorization." : ""}
+                        </>
+                      ) : (
+                        <>
+                          This booking uses the direct workshop quote of <strong>₹{originalPartnerQuote}</strong> submitted by the partner. No executive price markup or unauthorized discounts were applied.
+                        </>
+                      )}
+                    </p>
+
+                    {activeBid?.notes && (
+                      <div className="pt-2 border-t border-amber-200/60 text-[11px] text-amber-800">
+                        <strong>Partner/Executive Notes:</strong> &quot;{activeBid.notes}&quot;
+                      </div>
+                    )}
+                  </div>
+
+                  {/* All Received Bids Breakdown (if multiple bids or audit list) */}
+                  {Array.isArray(booking.bids) && booking.bids.length > 0 && (
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-blue-600" />
+                          All Workshop Quotes Audit Ledger ({booking.bids.length})
+                        </h4>
+                        <span className="text-[11px] text-slate-400">
+                          Super Admin Multi-Quote Audit
+                        </span>
+                      </div>
+
+                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-extrabold uppercase text-[10px] tracking-wider">
+                            <tr>
+                              <th className="p-3">Partner / Garage</th>
+                              <th className="p-3 text-right">Partner Quote</th>
+                              <th className="p-3 text-right">Executive Price</th>
+                              <th className="p-3 text-right">Discount</th>
+                              <th className="p-3 text-right">Customer Price</th>
+                              <th className="p-3 text-center">Audit Status</th>
+                              <th className="p-3 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                            {booking.bids.map((b: any, idx: number) => {
+                              const bOrig = b.originalQuotedAmount !== undefined && b.originalQuotedAmount > 0 ? b.originalQuotedAmount : (b.quotedAmount + (b.executiveDiscount || 0));
+                              const bExec = b.executiveQuoteAmount !== undefined && b.executiveQuoteAmount > 0 ? b.executiveQuoteAmount : (b.quotedAmount + (b.executiveDiscount || 0));
+                              const bDisc = b.executiveDiscount || 0;
+                              const bFinal = b.quotedAmount;
+                              const bIsMod = Boolean(b.isModifiedByExecutive || bDisc > 0 || (b.executiveQuoteAmount && b.executiveQuoteAmount !== bOrig));
+                              const isAccepted = b.status === "ACCEPTED" || b._id === booking.acceptedBidId?._id;
+
+                              return (
+                                <tr key={b._id || idx} className={`hover:bg-slate-50/80 transition-colors ${isAccepted ? "bg-emerald-50/40 font-semibold" : ""}`}>
+                                  <td className="p-3">
+                                    <div className="font-bold text-slate-900">{b.partnerId?.businessName || "Workshop"}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono">{b.partnerId?.uniquePartnerId || b._id}</div>
+                                  </td>
+                                  <td className="p-3 text-right font-mono font-bold text-slate-700">
+                                    ₹{bOrig.toLocaleString()}
+                                  </td>
+                                  <td className="p-3 text-right font-mono font-bold text-indigo-900">
+                                    ₹{bExec.toLocaleString()}
+                                  </td>
+                                  <td className="p-3 text-right font-mono font-bold text-emerald-600">
+                                    {bDisc > 0 ? `-₹${bDisc.toLocaleString()}` : "₹0"}
+                                  </td>
+                                  <td className="p-3 text-right font-mono font-black text-slate-900 text-sm">
+                                    ₹{bFinal.toLocaleString()}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      bIsMod ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-emerald-100 text-emerald-800"
+                                    }`}>
+                                      {bIsMod ? `Modified (v${b.version || 1})` : "Direct"}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                      isAccepted 
+                                        ? "bg-green-600 text-white shadow-2xs" 
+                                        : "bg-slate-200 text-slate-700"
+                                    }`}>
+                                      {isAccepted ? "ACCEPTED" : b.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Bid / Pricing Information */}
           <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200">

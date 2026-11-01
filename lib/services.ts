@@ -657,7 +657,19 @@ export const confirmQuoteSelection = async (id: string) => {
   return response.data;
 };
 
-export const forwardQuoteToCustomer = async (id: string, data: { bidIds: string[]; notes?: string }) => {
+export const forwardQuoteToCustomer = async (
+  id: string,
+  data: {
+    bidIds: string[];
+    notes?: string;
+    quoteAdjustments?: Array<{
+      bidId: string;
+      discountAmount?: number;
+      adjustedAmount?: number;
+      notes?: string;
+    }>;
+  }
+) => {
   const response = await apiClient.post(`/executive/leads/${id}/forward-quote`, data);
   return response.data;
 };

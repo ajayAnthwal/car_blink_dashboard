@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Calendar, ArrowLeft, Car, CheckCircle2 } from "lucide-react";
@@ -18,6 +18,8 @@ import toast from "react-hot-toast";
 
 export default function NewBookingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedVehicleId = searchParams?.get("vehicleId") || undefined;
 
   const { data: vehiclesData } = useGarageVehicles();
   const { data: servicesData } = useServices();
@@ -170,6 +172,7 @@ export default function NewBookingPage() {
           ) : (
             <BookingForm 
               key={formResetKey}
+              defaultVehicleId={preselectedVehicleId}
               vehicles={vehicles}
               services={services}
               states={states}

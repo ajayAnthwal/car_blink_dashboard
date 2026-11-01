@@ -267,7 +267,7 @@ export default function PartnerBidsPage() {
                           <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Quoted Amount</p>
                           <p className="text-xl font-black text-primary-orange flex items-center">
                             <IndianRupee className="w-4 h-4 mr-0.5" />
-                            {Number(bid.quotedAmount || 0).toLocaleString("en-IN")}
+                            {Number(bid.originalQuotedAmount ?? bid.quotedAmount ?? 0).toLocaleString("en-IN")}
                           </p>
                         </div>
 

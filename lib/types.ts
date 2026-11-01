@@ -117,6 +117,10 @@ export interface Bid {
   partnerId: string;
   bookingId: string | Booking;
   quotedAmount: number;
+  originalQuotedAmount?: number;
+  executiveDiscount?: number;
+  isModifiedByExecutive?: boolean;
+  version?: number;
   status: "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
   createdAt: string;
 }

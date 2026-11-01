@@ -84,7 +84,7 @@ export default function CustomerSatisfactionWidget() {
     ? `${currentBooking.vehicleId.brand} ${currentBooking.vehicleId.model || ""}`
     : currentBooking?.vehicleDetails?.makeModel || "Your Vehicle";
   const serviceName = currentBooking?.serviceId?.name || currentBooking?.serviceName || "Car Service";
-  const bookingCode = currentBooking?.bookingId || currentBooking?._id?.slice(-6).toUpperCase() || "";
+  const bookingCode = currentBooking?.bookingId || (currentBooking?._id ? String(currentBooking._id).slice(-6).toUpperCase() : "");
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {

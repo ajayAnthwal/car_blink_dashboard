@@ -818,21 +818,21 @@ export default function CustomerDashboardPage() {
       </div>
 
       {/* Pending Executive Review Section */}
-      {bookings.filter(b => b.status === 'PENDING').length > 0 && (
+      {safeBookings.filter(b => b && b.status === 'PENDING').length > 0 && (
         <div className="mt-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
             <Clock className="w-5 h-5 mr-2 text-amber-500 animate-spin" />
             Booking Request Submitted (Executive Review Pending ⏳)
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {bookings.filter(b => b.status === 'PENDING').map((booking) => (
+            {safeBookings.filter(b => b && b.status === 'PENDING').map((booking) => (
               <Link key={booking._id} href={`/customer/bookings/${booking._id}`} className="block group">
                 <Card className="bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-sm border-amber-200 group-hover:border-amber-400 hover:shadow-md transition-all duration-300 relative overflow-hidden h-full cursor-pointer">
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
                   <CardContent className="p-5">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">ID: {booking._id.substring(booking._id.length - 6).toUpperCase()}</p>
+                        <p className="text-xs text-gray-500 mb-1">ID: {String(booking._id || (booking as any).id || '').slice(-6).toUpperCase()}</p>
                         <h3 className="font-bold text-gray-900 line-clamp-1">{typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service Request'}</h3>
                       </div>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
@@ -873,7 +873,7 @@ export default function CustomerDashboardPage() {
                   <CardContent className="p-5">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">ID: {booking._id.substring(booking._id.length - 6).toUpperCase()}</p>
+                        <p className="text-xs text-gray-500 mb-1">ID: {String(booking._id || (booking as any).id || '').slice(-6).toUpperCase()}</p>
                         <h3 className="font-bold text-gray-900 line-clamp-1">{typeof booking.serviceId === 'object' ? booking.serviceId.name : 'Service'}</h3>
                       </div>
                       <StatusBadge status="QUOTED" />
@@ -1127,7 +1127,7 @@ export default function CustomerDashboardPage() {
                   <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary-orange bg-orange-50 px-3 py-1 rounded-full border border-orange-100 inline-block mb-1">
                     INVOICE
                   </span>
-                  <div className="text-xs font-mono font-bold text-gray-700">#INV-{(selectedInvoice._id || '0000').slice(-8).toUpperCase()}</div>
+                  <div className="text-xs font-mono font-bold text-gray-700">#INV-{String(selectedInvoice._id || (selectedInvoice as any).id || '0000').slice(-8).toUpperCase()}</div>
                   <div className="text-xs text-gray-500 mt-1">Date: {new Date(selectedInvoice.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                 </div>
               </div>

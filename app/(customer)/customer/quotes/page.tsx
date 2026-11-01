@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  MapPin,
   Car,
   Wrench,
   ShieldCheck,
@@ -73,6 +74,10 @@ interface Bid {
   bookingId: string;
   partnerId: Partner;
   quotedAmount: number;
+  originalQuotedAmount?: number;
+  executiveDiscount?: number;
+  isModifiedByExecutive?: boolean;
+  version?: number;
   estimatedDuration?: string;
   notes?: string;
   status: string;
@@ -280,6 +285,16 @@ function BookingQuoteCard({
                               </div>
                             )}
 
+                            {bid.distance?.text && (
+                              <div className="flex items-center space-x-1.5 text-xs text-gray-600">
+                                <MapPin className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                                <span>Distance: <strong className="text-gray-800">{bid.distance.text}</strong></span>
+                                {bid.distance.estimatedDriveTime && (
+                                  <span className="text-gray-400 font-normal">({bid.distance.estimatedDriveTime})</span>
+                                )}
+                              </div>
+                            )}
+
                             {bid.notes && (
                               <p className="text-xs text-gray-600 bg-gray-50 rounded-lg p-2 mt-1 border border-gray-100">
                                 <strong>Partner Note:</strong> {bid.notes}
@@ -292,6 +307,16 @@ function BookingQuoteCard({
                               <span className="text-[10px] uppercase font-bold text-gray-400 block sm:text-right">
                                 Total Estimate
                               </span>
+                              {bid.originalQuotedAmount && bid.originalQuotedAmount > bid.quotedAmount && (
+                                <div className="flex items-center gap-1.5 sm:justify-end">
+                                  <span className="text-xs text-gray-400 line-through">
+                                    ₹{bid.originalQuotedAmount.toLocaleString()}
+                                  </span>
+                                  <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                                    Save ₹{(bid.originalQuotedAmount - bid.quotedAmount).toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
                               <p className="text-2xl font-extrabold text-gray-900 font-heading">
                                 ₹{bid.quotedAmount?.toLocaleString()}
                               </p>

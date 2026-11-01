@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Car, Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { VehicleCard } from "@/features/customer/components/garage/VehicleCard";
 import { VehicleHistoryList } from "@/features/customer/components/garage/VehicleHistoryList";
 
 export default function MyGaragePage() {
+  const router = useRouter();
   const [selectedBrand, setSelectedBrand] = useState("");
   
   const { data: brandsData = [], isLoading: isLoadingBrands } = useVehicleBrands();
@@ -106,9 +108,13 @@ export default function MyGaragePage() {
       );
     } else {
       addVehicleMutation.mutate(payload, {
-        onSuccess: () => {
-          setMessage({ type: "success", text: "Vehicle added successfully to your garage!" });
+        onSuccess: (res: any) => {
+          const newVehicleId = res?.data?._id || res?._id || res?.vehicle?._id || "";
+          setMessage({ type: "success", text: "Vehicle added successfully! Redirecting to new booking..." });
           setSelectedBrand("");
+          setTimeout(() => {
+            router.push(newVehicleId ? `/customer/bookings/new?vehicleId=${newVehicleId}` : "/customer/bookings/new");
+          }, 800);
         },
         onError: (err: any) => {
           setMessage({ type: "error", text: err?.message || "Failed to save vehicle" });

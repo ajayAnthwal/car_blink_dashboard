@@ -51,6 +51,7 @@ import {
   Camera,
   Compass
 } from "lucide-react";
+import QuoteProcessingState from "@/components/customer/QuoteProcessingState";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { verifyPayment } from "@/lib/services";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -507,6 +508,7 @@ export default function CustomerBookingDetailsPage() {
     booking?.paymentStatus === 'PARTIALLY_PAID' ||
     ['VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(booking?.status)
   );
+  const hasPaidAdvanceStrict = hasPaidAdvance;
 
   const partnerInfo = (booking?.assignedPartnerId && typeof booking.assignedPartnerId === 'object')
     ? booking.assignedPartnerId
@@ -820,23 +822,24 @@ export default function CustomerBookingDetailsPage() {
               </span>
             </div>
             <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
-              {quotes.length} Quotes Available
+              {quotes.length === 0 ? "Live Price Analysis..." : `${quotes.length} Quotes Available`}
             </span>
           </div>
 
-          <CardContent className="p-6 sm:p-8 space-y-6">
+          <CardContent className={quotes.length === 0 ? "p-4 sm:p-5" : "p-6 sm:p-8 space-y-6"}>
             {quotes.length === 0 ? (
-              <div className="text-center py-10 space-y-3">
-                <div className="w-14 h-14 rounded-full bg-amber-50 text-primary-orange mx-auto flex items-center justify-center border border-amber-200">
-                  <Clock className="w-7 h-7 animate-spin" />
-                </div>
-                <h3 className="font-heading font-black text-xl text-primary-navy">
-                  Workshops Preparing Your Quotes
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto">
-                  Partner workshops in your area are evaluating your car model &amp; requirements. Quotes will appear here shortly with price &amp; duration.
-                </p>
-              </div>
+              <QuoteProcessingState 
+                vehicleDetails={
+                  typeof booking.vehicleId === 'object' && booking.vehicleId?.brand 
+                    ? `${booking.vehicleId.brand} ${booking.vehicleId.model || ''}`.trim() 
+                    : (booking.vehicleDetails?.makeModel || '')
+                }
+                serviceName={
+                  typeof booking.serviceId === 'object' && booking.serviceId?.name 
+                    ? booking.serviceId.name 
+                    : (booking.serviceName || '')
+                }
+              />
             ) : (
               <div className="space-y-4">
                 <p className="text-xs sm:text-sm text-gray-600 font-medium">
@@ -859,11 +862,22 @@ export default function CustomerBookingDetailsPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <h4 className="font-heading font-black text-base text-primary-navy">
-                              {quote.partnerId?.businessName || "Verified CarBlink Workshop"}
+                              {hasPaidAdvanceStrict
+                                ? (quote.partnerId?.businessName || "Verified CarBlink Workshop")
+                                : (quotes.length > 1 ? `CarBlink Verified Workshop #${quotes.indexOf(quote) + 1}` : "CarBlink Verified Workshop")}
                             </h4>
                             <p className="text-xs text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Verified Partner Workshop
                             </p>
+                            {quote.distance?.text && (
+                              <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200/80 mt-1 shadow-2xs">
+                                <MapPin className="w-3 h-3 text-primary-orange shrink-0" />
+                                <span>{quote.distance.text}</span>
+                                {quote.distance.estimatedDriveTime && (
+                                  <span className="text-slate-400 font-normal">({quote.distance.estimatedDriveTime})</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="text-right">
                             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Total Quote</span>
@@ -894,9 +908,10 @@ export default function CustomerBookingDetailsPage() {
                         <Button
                           onClick={() => handleSelectQuoteWithOption(quote, quoteTotal, "ADVANCE")}
                           isLoading={isAcceptingThis}
-                          className="w-full bg-primary-navy hover:bg-secondary-blue text-white font-extrabold text-xs py-3 rounded-xl shadow-xs"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-sm sm:text-base py-4 sm:py-4.5 rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5"
                         >
-                          Accept Quote &amp; Proceed to Advance (₹{quoteAdvance}) &rarr;
+                          <IndianRupee className="w-5 h-5 text-white" />
+                          <span>Accept Quote &amp; Pay Advance (₹{quoteAdvance}) &rarr;</span>
                         </Button>
                       </div>
                     );
@@ -962,12 +977,12 @@ export default function CustomerBookingDetailsPage() {
             <div className="space-y-3">
               <div className="max-w-md space-y-2">
                 <Button 
-                  className="w-full bg-primary-navy hover:bg-secondary-blue text-white rounded-xl py-6 font-extrabold text-sm shadow-md flex items-center justify-center gap-2" 
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-2xl py-6 font-black text-base sm:text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 border border-emerald-500/40" 
                   onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
                   isLoading={isExtensionProcessing}
                 >
-                  <IndianRupee className="w-4 h-4 text-primary-orange" />
-                  <span>Pay Advance Deposit (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')})</span>
+                  <IndianRupee className="w-5 h-5 text-white" />
+                  <span>Pay Advance Deposit Now (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')}) &rarr;</span>
                 </Button>
               </div>
 

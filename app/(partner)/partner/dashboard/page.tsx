@@ -282,29 +282,61 @@ export default function PartnerDashboardPage() {
         </div>
       )}
 
-      {/* ⚠️ Negative Wallet Balance / Credit Limit Warning */}
+      {/* ⚠️ Negative Wallet Balance / Commission Settlement Warning */}
       {walletBalance < 0 && (
         <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-          walletBalance < -1000 ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-200'
+          walletBalance < -1000 
+            ? 'bg-red-50 border-red-300' 
+            : walletBalance <= -500 
+            ? 'bg-orange-50 border-orange-300' 
+            : 'bg-amber-50 border-amber-200'
         }`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-full shrink-0 ${walletBalance < -1000 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+            <div className={`p-2.5 rounded-full shrink-0 ${
+              walletBalance < -1000 
+                ? 'bg-red-100 text-red-600' 
+                : walletBalance <= -500 
+                ? 'bg-orange-100 text-orange-600' 
+                : 'bg-amber-100 text-amber-600'
+            }`}>
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className={`font-bold text-sm md:text-base ${walletBalance < -1000 ? 'text-red-900' : 'text-amber-900'}`}>
+              <h3 className={`font-bold text-sm md:text-base ${
+                walletBalance < -1000 
+                  ? 'text-red-900' 
+                  : walletBalance <= -500 
+                  ? 'text-orange-950' 
+                  : 'text-amber-900'
+              }`}>
                 {walletBalance < -1000 
-                  ? `🚨 Credit Limit Exceeded — Outstanding Dues: ₹${Math.abs(walletBalance).toLocaleString('en-IN')}` 
-                  : `Outstanding Platform Commission Dues: ₹${Math.abs(walletBalance).toLocaleString('en-IN')}`}
+                  ? `🚨 Credit Limit Exceeded — Outstanding Commission: ₹${Math.abs(walletBalance).toLocaleString('en-IN')}` 
+                  : walletBalance <= -500
+                  ? `Please settle outstanding commission of ₹${Math.abs(walletBalance).toLocaleString('en-IN')} to receive new leads`
+                  : `Cash Commission Due: ₹${Math.abs(walletBalance).toLocaleString('en-IN')}`}
               </h3>
-              <p className={`text-xs font-medium mt-0.5 ${walletBalance < -1000 ? 'text-red-700' : 'text-amber-700'}`}>
+              <p className={`text-xs font-medium mt-0.5 ${
+                walletBalance < -1000 
+                  ? 'text-red-700' 
+                  : walletBalance <= -500 
+                  ? 'text-orange-800' 
+                  : 'text-amber-700'
+              }`}>
                 {walletBalance < -1000 
-                  ? 'Your dues exceed the ₹1,000 credit limit. New booking leads are paused until cleared.' 
-                  : 'Platform commission for cash jobs has accumulated. Please clear your dues in My Wallet.'}
+                  ? 'Your negative wallet balance exceeds the ₹1,000 credit limit. New booking leads are paused until cleared.' 
+                  : walletBalance <= -500
+                  ? `Commission from cash jobs has reached ₹${Math.abs(walletBalance).toLocaleString('en-IN')}. Please settle your balance in My Wallet to prevent leads from being paused.`
+                  : 'Platform commission for cash jobs will be automatically deducted from your upcoming online customer payments, or you can clear it anytime in My Wallet.'}
               </p>
             </div>
           </div>
-          <Button asChild size="sm" className={walletBalance < -1000 ? "bg-red-600 hover:bg-red-700 text-white shrink-0 font-bold" : "bg-amber-600 hover:bg-amber-700 text-white shrink-0 font-bold"}>
+          <Button asChild size="sm" className={
+            walletBalance < -1000 
+              ? "bg-red-600 hover:bg-red-700 text-white shrink-0 font-bold" 
+              : walletBalance <= -500 
+              ? "bg-orange-600 hover:bg-orange-700 text-white shrink-0 font-bold" 
+              : "bg-amber-600 hover:bg-amber-700 text-white shrink-0 font-bold"
+          }>
             <Link href="/partner/wallet">Pay Dues Now</Link>
           </Button>
         </div>
@@ -346,7 +378,7 @@ export default function PartnerDashboardPage() {
               const service = booking.serviceId || {};
               const vehicle = booking.vehicleId || {};
               const vehicleText = vehicle.brand ? `${vehicle.brand} ${vehicle.model || ""}` : (booking.description || "Customer Vehicle");
-              const price = job.finalAmount || job.bidId?.quotedAmount || 0;
+              const price = job.bidId?.originalQuotedAmount ?? booking.acceptedBidId?.originalQuotedAmount ?? job.originalQuotedAmount ?? job.finalAmount ?? job.bidId?.quotedAmount ?? 0;
 
               return (
                 <div key={job._id || job.id} className="bg-white/95 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs hover:shadow-xs transition-shadow">
@@ -607,7 +639,10 @@ export default function PartnerDashboardPage() {
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold text-gray-900">
-                        {job.finalAmount ? `₹${job.finalAmount.toLocaleString('en-IN')}` : '-'}
+                        {(() => {
+                          const displayAmt = job.bidId?.originalQuotedAmount ?? bookingObj?.acceptedBidId?.originalQuotedAmount ?? job.originalQuotedAmount ?? job.finalAmount;
+                          return displayAmt ? `₹${displayAmt.toLocaleString('en-IN')}` : '-';
+                        })()}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={job.status} />
