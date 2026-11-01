@@ -1026,18 +1026,21 @@ export default function PartnerJobsPage() {
                                 .reduce((sum: number, ext: any) => sum + (Number(ext.cost) || 0), 0);
 
                               const customerGrossPackage = Number(
+                                job.customerGrossQuote ||
                                 bData.pricing?.customerGrossQuote ||
                                 bData.acceptedQuoteAmount ||
-                                (typeof bData.acceptedBidId === 'object' ? bData.acceptedBidId?.quotedAmount : 0) ||
-                                (typeof job.bidId === 'object' ? job.bidId?.quotedAmount : 0) ||
                                 bData.totalAmount ||
                                 bData.finalAmount ||
+                                (typeof bData.acceptedBidId === 'object' ? bData.acceptedBidId?.quotedAmount : 0) ||
+                                (typeof job.bidId === 'object' ? job.bidId?.quotedAmount : 0) ||
                                 job.invoice?.grandTotal ||
                                 0
                               );
 
                               const customerTotalJobAmount = customerGrossPackage + approvedExtensionsCost;
-                              const remainingDue = Math.max(0, customerTotalJobAmount - totalPaidSoFar);
+                              const remainingDue = typeof job.customerRemainingDue === 'number'
+                                ? job.customerRemainingDue
+                                : Math.max(0, customerTotalJobAmount - totalPaidSoFar);
 
                               if (remainingDue <= 0.01 && totalPaidSoFar > 0) {
                                 const cashPayment = paymentsList.find((p: any) => p?.provider === 'CASH' && p?.status === 'SUCCESS');

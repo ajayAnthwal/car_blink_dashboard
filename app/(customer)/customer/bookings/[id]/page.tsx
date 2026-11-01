@@ -539,9 +539,11 @@ export default function CustomerBookingDetailsPage() {
   const basePackageQuote = booking.pricing?.customerGrossQuote || booking.acceptedQuoteAmount || acceptedQuoteAmount || (booking.serviceId?.basePrice || 0);
   const baseAmount = basePackageQuote;
   const invoiceGrandTotal = booking.invoice?.grandTotal || booking.jobDetails?.invoice?.grandTotal;
-  const calculatedTotalAmount = invoiceGrandTotal 
-    ? Number(invoiceGrandTotal)
-    : (booking.jobDetails?.finalAmount || (basePackageQuote + approvedExtensionsCost));
+  const customerAgreedTotal = Number(basePackageQuote || 0) + approvedExtensionsCost;
+  const calculatedTotalAmount = Math.max(
+    customerAgreedTotal,
+    Number(booking.finalAmount || 0)
+  );
   const couponDiscountAmount = booking.couponDiscountAmount || 0;
   const revisedTotalAmount = Math.max(0, calculatedTotalAmount - couponDiscountAmount);
   const remainingAmount = Math.max(0, revisedTotalAmount - totalPaidAmount);
