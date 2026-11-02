@@ -163,12 +163,67 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
     });
   }, [propBookings, bookingsData]);
 
-  if (isDismissed || activeBookings.length === 0) {
+  const currentBooking = activeBookings[selectedBookingIndex] || activeBookings[0] || null;
+  const bookingStatus = String(currentBooking?.status || "PENDING").toUpperCase();
+
+  // Strict verified advance payment check
+  const hasPaidAdvanceStrict = Boolean(
+    (currentBooking?.hasPaidAdvance && (currentBooking?.isAdvancePaid || (currentBooking?.paidAmount || 0) > 0)) ||
+    currentBooking?.isAdvancePaid ||
+    currentBooking?.paymentStatus === 'PAID' ||
+    currentBooking?.paymentStatus === 'PARTIALLY_PAID' ||
+    ['VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(bookingStatus)
+  );
+
+  // Resolve Partner / Workshop details (All hooks must execute unconditionally before any return!)
+  const partnerInfo = useMemo(() => {
+    if (!currentBooking) return null;
+    let p = currentBooking?.assignedPartnerId && typeof currentBooking.assignedPartnerId === 'object'
+      ? currentBooking.assignedPartnerId
+      : null;
+
+    if (!p && currentBooking?.acceptedBidId && typeof currentBooking.acceptedBidId === 'object' && currentBooking.acceptedBidId.partnerId) {
+      p = currentBooking.acceptedBidId.partnerId;
+    }
+
+    if (!p && currentBooking?.jobDetails?.partnerId && typeof currentBooking.jobDetails.partnerId === 'object') {
+      p = currentBooking.jobDetails.partnerId;
+    }
+
+    if (!p) return null;
+
+    const name = p.businessName || p.ownerName || p.userId?.fullName || "Verified Partner Workshop";
+    const address = p.businessAddress || p.address || "";
+    const phone = p.phone || p.userId?.phone || "";
+    const email = p.email || p.userId?.email || "";
+    const rating = p.rating || 4.8;
+    const coordinates = p.location?.coordinates;
+
+    let mapsUrl = "";
+    if (hasPaidAdvanceStrict) {
+      if (coordinates && Array.isArray(coordinates) && coordinates.length === 2 && (coordinates[0] !== 0 || coordinates[1] !== 0)) {
+        mapsUrl = `https://www.google.com/maps?q=${coordinates[1]},${coordinates[0]}`;
+      } else if (address) {
+        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${address}`.trim())}`;
+      }
+    }
+
+    return {
+      name,
+      address: hasPaidAdvanceStrict ? address : "Address unlocked after advance confirmation",
+      phone: hasPaidAdvanceStrict ? phone : "",
+      email: hasPaidAdvanceStrict ? email : "",
+      rating,
+      mapsUrl,
+      isVerified: p.isVerified !== false,
+      isUnlocked: hasPaidAdvanceStrict,
+    };
+  }, [currentBooking, hasPaidAdvanceStrict]);
+
+  // Early return after ALL hooks have executed unconditionally
+  if (isDismissed || activeBookings.length === 0 || !currentBooking) {
     return null;
   }
-
-  const currentBooking = activeBookings[selectedBookingIndex] || activeBookings[0];
-  const bookingStatus = String(currentBooking?.status || "PENDING").toUpperCase();
 
   // Map status to current stage index (0 to 4)
   const getStageIndex = (status: string, booking: any): number => {
@@ -215,59 +270,6 @@ export default function LiveBookingStatusTracker({ bookings: propBookings, onDis
   const vehicleReg = currentBooking?.vehicleId?.registrationNumber || "";
   const serviceName = currentBooking?.serviceId?.name || currentBooking?.serviceName || "Car Service";
   const bookingCode = currentBooking?.bookingId || (currentBooking?._id ? String(currentBooking._id).slice(-6).toUpperCase() : "");
-
-  // Strict verified advance payment check
-  const hasPaidAdvanceStrict = Boolean(
-    (currentBooking?.hasPaidAdvance && (currentBooking?.isAdvancePaid || (currentBooking?.paidAmount || 0) > 0)) ||
-    currentBooking?.isAdvancePaid ||
-    currentBooking?.paymentStatus === 'PAID' ||
-    currentBooking?.paymentStatus === 'PARTIALLY_PAID' ||
-    ['VERIFIED', 'IN_PROGRESS', 'WORK_STARTED', 'IN_SERVICE', 'DIAGNOSIS', 'REPAIRING', 'QUALITY_CHECK', 'JOB_COMPLETED', 'COMPLETED'].includes(bookingStatus)
-  );
-
-  // Resolve Partner / Workshop details
-  const partnerInfo = useMemo(() => {
-    let p = currentBooking?.assignedPartnerId && typeof currentBooking.assignedPartnerId === 'object'
-      ? currentBooking.assignedPartnerId
-      : null;
-
-    if (!p && currentBooking?.acceptedBidId && typeof currentBooking.acceptedBidId === 'object' && currentBooking.acceptedBidId.partnerId) {
-      p = currentBooking.acceptedBidId.partnerId;
-    }
-
-    if (!p && currentBooking?.jobDetails?.partnerId && typeof currentBooking.jobDetails.partnerId === 'object') {
-      p = currentBooking.jobDetails.partnerId;
-    }
-
-    if (!p) return null;
-
-    const name = p.businessName || p.ownerName || p.userId?.fullName || "Verified Partner Workshop";
-    const address = p.businessAddress || p.address || "";
-    const phone = p.phone || p.userId?.phone || "";
-    const email = p.email || p.userId?.email || "";
-    const rating = p.rating || 4.8;
-    const coordinates = p.location?.coordinates;
-
-    let mapsUrl = "";
-    if (hasPaidAdvanceStrict) {
-      if (coordinates && Array.isArray(coordinates) && coordinates.length === 2 && (coordinates[0] !== 0 || coordinates[1] !== 0)) {
-        mapsUrl = `https://www.google.com/maps?q=${coordinates[1]},${coordinates[0]}`;
-      } else if (address) {
-        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${address}`.trim())}`;
-      }
-    }
-
-    return {
-      name,
-      address: hasPaidAdvanceStrict ? address : "Address unlocked after advance confirmation",
-      phone: hasPaidAdvanceStrict ? phone : "",
-      email: hasPaidAdvanceStrict ? email : "",
-      rating,
-      mapsUrl,
-      isVerified: p.isVerified !== false,
-      isUnlocked: hasPaidAdvanceStrict,
-    };
-  }, [currentBooking, hasPaidAdvanceStrict]);
 
   const handleCopyPin = (e: React.MouseEvent) => {
     e.stopPropagation();

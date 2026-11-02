@@ -1576,3 +1576,8 @@ export const forwardExecutiveCancellationToAccounts = async (id: string, data: {
   return response.data;
 };
 
+export const createPaymentLink = async (data: { bookingId: string; paymentType: 'ADVANCE' | 'FINAL' }) => {
+  const response = await apiClient.post("/payment/create-payment-link", data);
+  return response.data;
+};
+

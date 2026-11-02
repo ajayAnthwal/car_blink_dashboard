@@ -17,7 +17,7 @@ export async function setSessionCookie(token: string, role?: string) {
     maxAge: ONE_YEAR_SECONDS,
   });
   cookies().set("car_blink_access_token", token, {
-    httpOnly: true,
+    httpOnly: false,
     secure: isProd,
     sameSite: "lax",
     path: "/",

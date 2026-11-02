@@ -216,14 +216,28 @@ apiClient.interceptors.response.use(
             return apiClient(originalRequest);
           }
         }
-        // If refresh fails, execute logout callback ONLY if user is not already on login page
-        if (logoutCallback && typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+        // If refresh fails, execute logout callback ONLY if user is not already on login page AND it was a genuine auth rejection
+        const isAuthRejection = Boolean(
+          error?.response?.status === 401 ||
+          (error as any)?.response?.data?.message?.includes('expired') ||
+          (error as any)?.response?.data?.message?.includes('invalid')
+        );
+        const isNetworkGlitch = typeof navigator !== 'undefined' && !navigator.onLine;
+
+        if (isAuthRejection && !isNetworkGlitch && logoutCallback && typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
           logoutCallback(true);
         }
         onRefreshed("");
         return Promise.reject(errorData || error);
-      } catch (refreshError) {
-        if (logoutCallback && typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+      } catch (refreshError: any) {
+        const isAuthRejection = Boolean(
+          refreshError?.response?.status === 401 ||
+          refreshError?.response?.data?.message?.includes('expired') ||
+          refreshError?.response?.data?.message?.includes('invalid')
+        );
+        const isNetworkGlitch = typeof navigator !== 'undefined' && !navigator.onLine;
+
+        if (isAuthRejection && !isNetworkGlitch && logoutCallback && typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
           logoutCallback(true);
         }
         onRefreshed("");

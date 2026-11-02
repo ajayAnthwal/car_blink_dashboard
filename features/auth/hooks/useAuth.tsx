@@ -71,9 +71,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getCookieOpts = () => {
-    const opts: any = { path: "/", expires: 365 };
+    const opts: any = { path: "/", expires: 365, sameSite: "lax" };
     if (typeof window !== "undefined" && window.location.hostname.endsWith("carblink.in")) {
       opts.domain = ".carblink.in";
+    }
+    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      opts.secure = true;
     }
     return opts;
   };
@@ -178,14 +181,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // If both tokens fail or missing
-        await sanitizeSession(queryClient);
-        setUser(null);
-        setAccessToken(null);
-      } catch (error) {
+        if (!storedAccessToken && !storedRefreshToken) {
+          await sanitizeSession(queryClient);
+          setUser(null);
+          setAccessToken(null);
+        } else {
+          // If we have stored tokens but the network is reconnecting or mobile just resumed,
+          // DO NOT wipe the session! Keep existing user state or wait for network recovery.
+          console.warn("[Auth] Mobile offline or transient network delay during session restore; keeping credentials.");
+        }
+      } catch (error: any) {
         console.error("Failed to restore session", error);
-        await sanitizeSession(queryClient);
-        setUser(null);
-        setAccessToken(null);
+        const errMsg = String(error?.message || "").toLowerCase();
+        const isExplicit401 = errMsg.includes("401") || errMsg.includes("unauthorized") || errMsg.includes("token expired") || errMsg.includes("invalid token");
+        if (isExplicit401) {
+          await sanitizeSession(queryClient);
+          setUser(null);
+          setAccessToken(null);
+        } else {
+          console.warn("[Auth] Preserving session despite transient error:", errMsg);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -210,9 +225,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
+    let focusTimer: any = null;
     const onFocus = () => {
-      if (localStorage.getItem("car_blink_refresh_token")) {
-        refreshUser();
+      if (typeof window !== "undefined" && localStorage.getItem("car_blink_refresh_token")) {
+        if (focusTimer) clearTimeout(focusTimer);
+        // Debounce 1.5s so mobile OS has time to reconnect the cellular/Wi-Fi socket
+        focusTimer = setTimeout(() => {
+          if (navigator.onLine) {
+            refreshUser();
+          }
+        }, 1500);
       }
     };
     window.addEventListener("focus", onFocus);
@@ -222,6 +244,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       setLogoutCallback(() => {});
       setTokenRefreshProvider(null as any);
+      if (focusTimer) clearTimeout(focusTimer);
       window.removeEventListener("focus", onFocus);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

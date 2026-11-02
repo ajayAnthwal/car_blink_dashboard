@@ -49,11 +49,14 @@ import {
   HelpCircle,
   Wrench,
   Camera,
-  Compass
+  Compass,
+  Share2,
+  Copy,
+  MessageCircle
 } from "lucide-react";
 import QuoteProcessingState from "@/components/customer/QuoteProcessingState";
 import { loadRazorpayScript } from "@/lib/razorpay";
-import { verifyPayment } from "@/lib/services";
+import { verifyPayment, createPaymentLink } from "@/lib/services";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -114,6 +117,8 @@ export default function CustomerBookingDetailsPage() {
   const [useRewardPoints, setUseRewardPoints] = useState(false);
   const [selectedPaymentPreference, setSelectedPaymentPreference] = useState<"CASH" | "ONLINE">("ONLINE");
   const [selectedImageModal, setSelectedImageModal] = useState<string | null>(null);
+  const [isSharingLink, setIsSharingLink] = useState<string | null>(null);
+  const [copiedType, setCopiedType] = useState<string | null>(null);
 
   useEffect(() => {
     if (booking?.paymentMode) {
@@ -266,6 +271,39 @@ export default function CustomerBookingDetailsPage() {
       toast.error(err?.message || "Failed to submit cancellation request");
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleSharePaymentLink = async (paymentType: 'ADVANCE' | 'FINAL', action: 'whatsapp' | 'copy') => {
+    setIsSharingLink(`${paymentType}_${action}`);
+    try {
+      const res = await createPaymentLink({ bookingId: id as string, paymentType });
+      const payload = res?.data || res;
+      const paymentUrl = payload?.paymentUrl;
+      const amount = payload?.amount;
+
+      if (!paymentUrl) {
+        throw new Error("Could not generate payment link");
+      }
+
+      const vehicleName = booking?.vehicleId?.brand
+        ? `${booking.vehicleId.brand} ${booking.vehicleId.model || ''} (${booking.vehicleId.regNumber || ''})`.trim()
+        : 'Car';
+
+      if (action === 'copy') {
+        await navigator.clipboard.writeText(paymentUrl);
+        setCopiedType(paymentType);
+        toast.success(`Payment link (₹${amount}) copied to clipboard! 📋`);
+        setTimeout(() => setCopiedType(null), 3000);
+      } else if (action === 'whatsapp') {
+        const textMsg = `Namaste! CarBlink par meri gaadi (${vehicleName}) ki service payment link:\nAmount Payable: ₹${amount}\nPayment Link: ${paymentUrl}\n\nKripya is link ko open karke UPI / Card se payment kar dijiye.`;
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(textMsg)}`;
+        window.open(waUrl, '_blank');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to generate payment link.");
+    } finally {
+      setIsSharingLink(null);
     }
   };
 
@@ -538,6 +576,28 @@ export default function CustomerBookingDetailsPage() {
   // Option A: Base package is the agreed customer gross quote (All-Inclusive 18% GST)
   const basePackageQuote = booking.pricing?.customerGrossQuote || booking.acceptedQuoteAmount || acceptedQuoteAmount || (booking.serviceId?.basePrice || 0);
   const baseAmount = basePackageQuote;
+
+  const acceptedBid = (booking?.acceptedBidId && typeof booking.acceptedBidId === 'object')
+    ? booking.acceptedBidId
+    : quotes.find((q: any) => 
+        String(q._id) === String(booking?.acceptedBidId?._id || booking?.acceptedBidId) ||
+        String(q.id) === String(booking?.acceptedBidId?._id || booking?.acceptedBidId)
+      );
+
+  const executiveDiscount = Number(
+    booking?.executiveDiscount ||
+    acceptedBid?.executiveDiscount || 
+    (acceptedBid?.executiveQuoteAmount && acceptedBid?.quotedAmount && acceptedBid.executiveQuoteAmount > acceptedBid.quotedAmount
+      ? acceptedBid.executiveQuoteAmount - acceptedBid.quotedAmount
+      : 0)
+  );
+
+  const originalPackageAmount = Number(
+    booking?.executiveQuoteAmount ||
+    (acceptedBid?.executiveQuoteAmount && acceptedBid.executiveQuoteAmount > (baseAmount || 0)
+      ? acceptedBid.executiveQuoteAmount
+      : ((baseAmount || 0) + (executiveDiscount || 0)))
+  );
   const invoiceGrandTotal = booking.invoice?.grandTotal || booking.jobDetails?.invoice?.grandTotal;
   const customerAgreedTotal = Number(basePackageQuote || 0) + approvedExtensionsCost;
   const calculatedTotalAmount = Math.max(
@@ -891,6 +951,23 @@ export default function CustomerBookingDetailsPage() {
                           </div>
                           <div className="text-right">
                             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Total Quote</span>
+                            {(() => {
+                              const origQuote = quote.executiveQuoteAmount || (quote.executiveDiscount ? (quoteTotal + quote.executiveDiscount) : (quote.originalQuotedAmount && quote.originalQuotedAmount > quoteTotal ? quote.originalQuotedAmount : null));
+                              const disc = quote.executiveDiscount || (origQuote && origQuote > quoteTotal ? (origQuote - quoteTotal) : 0);
+                              if (disc > 0 && origQuote) {
+                                return (
+                                  <div className="flex items-center gap-1.5 justify-end mb-0.5">
+                                    <span className="text-xs text-gray-400 line-through font-mono">
+                                      ₹{origQuote.toLocaleString("en-IN")}
+                                    </span>
+                                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded shadow-2xs">
+                                      ₹{disc.toLocaleString("en-IN")} OFF
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                             <span className="text-2xl font-black text-primary-orange font-heading">
                               ₹{quoteTotal.toLocaleString("en-IN")}
                             </span>
@@ -994,6 +1071,39 @@ export default function CustomerBookingDetailsPage() {
                   <IndianRupee className="w-5 h-5 text-white" />
                   <span>Pay Advance Deposit Now (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')}) &rarr;</span>
                 </Button>
+
+                {/* Shareable Advance Payment Link */}
+                <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl space-y-2 mt-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <Share2 className="w-3.5 h-3.5 text-primary-orange" />
+                    <span>Kisi aur se payment karwani hai? (Forward Link)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Yeh link kisi ko bhi share karein — wo bina login kiye direct UPI / Google Pay / Card se advance pay kar sakte hain.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleSharePaymentLink("ADVANCE", "whatsapp")}
+                      isLoading={isSharingLink === "ADVANCE_whatsapp"}
+                      className="border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <MessageCircle className="w-4 h-4 text-emerald-600" />
+                      <span>WhatsApp Share</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleSharePaymentLink("ADVANCE", "copy")}
+                      isLoading={isSharingLink === "ADVANCE_copy"}
+                      className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{copiedType === "ADVANCE" ? "Copied! ✓" : "Copy Link"}</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2 text-xs text-slate-500">
@@ -1310,6 +1420,39 @@ export default function CustomerBookingDetailsPage() {
                       💵 Confirm Cash Handed to Partner
                     </Button>
                   </div>
+
+                  {/* Share Final Payment Link */}
+                  <div className="bg-amber-100/60 border border-amber-300/80 p-3.5 rounded-2xl space-y-2 mt-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
+                      <Share2 className="w-3.5 h-3.5 text-primary-orange" />
+                      <span>Kisi aur se payment karwani hai? (Forward Payment Link)</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800">
+                      Yeh link WhatsApp par forward karein taaki koi bhi family member ya owner bina login kiye direct UPI / Cards se remaining balance pay kar sake.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleSharePaymentLink("FINAL", "whatsapp")}
+                        isLoading={isSharingLink === "FINAL_whatsapp"}
+                        className="border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <MessageCircle className="w-4 h-4 text-emerald-600" />
+                        <span>Share on WhatsApp</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleSharePaymentLink("FINAL", "copy")}
+                        isLoading={isSharingLink === "FINAL_copy"}
+                        className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{copiedType === "FINAL" ? "Link Copied! ✓" : "Copy Payment Link"}</span>
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-900 font-bold text-xs flex items-center gap-2">
@@ -1576,10 +1719,34 @@ export default function CustomerBookingDetailsPage() {
               </CardHeader>
               <CardContent className="p-5 sm:p-6 space-y-4 text-xs">
                 <div className="space-y-2.5">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Base Service Package (Incl. 18% GST)</span>
-                    <span className="font-mono font-bold text-gray-900">₹{(baseAmount || 0).toLocaleString("en-IN")}</span>
-                  </div>
+                  {executiveDiscount > 0 ? (
+                    <div className="space-y-1.5 bg-emerald-50/60 p-3 rounded-2xl border border-emerald-200/80 mb-1">
+                      <div className="flex justify-between text-gray-500 text-xs">
+                        <span>Original Quote Price</span>
+                        <span className="font-mono line-through text-gray-400">
+                          ₹{originalPackageAmount.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-emerald-700 font-extrabold text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Special Discount Applied</span>
+                        </span>
+                        <span className="font-mono">-₹{executiveDiscount.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-800 font-bold pt-1.5 border-t border-emerald-200/60 text-xs">
+                        <span>Base Service Package (Incl. 18% GST)</span>
+                        <span className="font-mono text-gray-900">
+                          ₹{(baseAmount || 0).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-gray-600">
+                      <span>Base Service Package (Incl. 18% GST)</span>
+                      <span className="font-mono font-bold text-gray-900">₹{(baseAmount || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
 
                   {approvedExtensions.map((ext: any, idx: number) => (
                     <div key={idx} className="flex justify-between items-center text-gray-700 bg-amber-50/70 p-2 rounded-lg border border-amber-200/60">

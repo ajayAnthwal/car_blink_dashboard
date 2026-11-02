@@ -315,16 +315,23 @@ function BookingQuoteCard({
                               <span className="text-[10px] uppercase font-bold text-gray-400 block sm:text-right">
                                 Total Estimate
                               </span>
-                              {bid.originalQuotedAmount && bid.originalQuotedAmount > bid.quotedAmount && (
-                                <div className="flex items-center gap-1.5 sm:justify-end">
-                                  <span className="text-xs text-gray-400 line-through">
-                                    ₹{bid.originalQuotedAmount.toLocaleString()}
-                                  </span>
-                                  <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
-                                    Save ₹{(bid.originalQuotedAmount - bid.quotedAmount).toLocaleString()}
-                                  </span>
-                                </div>
-                              )}
+                              {(() => {
+                                const origQuotePrice = bid.executiveQuoteAmount || (bid.executiveDiscount ? (bid.quotedAmount + bid.executiveDiscount) : (bid.originalQuotedAmount && bid.originalQuotedAmount > bid.quotedAmount ? bid.originalQuotedAmount : null));
+                                const discAmt = bid.executiveDiscount || (origQuotePrice && origQuotePrice > bid.quotedAmount ? (origQuotePrice - bid.quotedAmount) : 0);
+                                if (discAmt > 0 && origQuotePrice) {
+                                  return (
+                                    <div className="flex items-center gap-1.5 sm:justify-end mb-0.5">
+                                      <span className="text-xs text-gray-400 line-through font-mono">
+                                        ₹{origQuotePrice.toLocaleString()}
+                                      </span>
+                                      <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded shadow-2xs">
+                                        ₹{discAmt.toLocaleString()} OFF
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                               <p className="text-2xl font-extrabold text-gray-900 font-heading">
                                 ₹{bid.quotedAmount?.toLocaleString()}
                               </p>
