@@ -180,9 +180,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
 
-        // If both tokens fail or missing
+        // If both tokens fail or missing on initial load:
+        // Do NOT broadcast a logout to other tabs! Only update local tab state.
         if (!storedAccessToken && !storedRefreshToken) {
-          await sanitizeSession(queryClient);
+          await sanitizeSession(queryClient, false);
           setUser(null);
           setAccessToken(null);
         } else {
@@ -195,7 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const errMsg = String(error?.message || "").toLowerCase();
         const isExplicit401 = errMsg.includes("401") || errMsg.includes("unauthorized") || errMsg.includes("token expired") || errMsg.includes("invalid token");
         if (isExplicit401) {
-          await sanitizeSession(queryClient);
+          await sanitizeSession(queryClient, false);
           setUser(null);
           setAccessToken(null);
         } else {

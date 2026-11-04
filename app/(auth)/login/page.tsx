@@ -53,10 +53,10 @@ function LoginContent() {
       const cookieDomain = window.location.hostname.endsWith("carblink.in") ? "; domain=.carblink.in" : "";
       window.localStorage.removeItem("car_blink_access_token");
       window.localStorage.removeItem("car_blink_refresh_token");
-      document.cookie = `accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}`;
-      document.cookie = `car_blink_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}`;
-      document.cookie = `role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}`;
-      document.cookie = `user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}`;
+      document.cookie = `accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}${securePart}`;
+      document.cookie = `car_blink_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}${securePart}`;
+      document.cookie = `role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}${securePart}`;
+      document.cookie = `user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}${securePart}`;
     }
   }, [searchParams]);
 
@@ -97,13 +97,16 @@ function LoginContent() {
       setApiAccessToken(cleanToken);
 
       const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
-      const cookieDomain = typeof window !== "undefined" && window.location.hostname.endsWith("carblink.in") ? "; domain=.carblink.in" : "";
+      const isProd = typeof window !== "undefined" && window.location.hostname.endsWith("carblink.in");
+      const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+      const cookieDomain = isProd ? "; domain=.carblink.in" : "";
+      const securePart = isHttps ? "; Secure" : "";
 
       if (typeof window !== "undefined") {
         window.localStorage.setItem("car_blink_access_token", cleanToken);
         window.localStorage.setItem("carBlink_token", cleanToken);
-        document.cookie = `car_blink_access_token=${encodeURIComponent(cleanToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
-        document.cookie = `accessToken=${encodeURIComponent(cleanToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
+        document.cookie = `car_blink_access_token=${encodeURIComponent(cleanToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
+        document.cookie = `accessToken=${encodeURIComponent(cleanToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
       }
 
       getCurrentUserProfile()
@@ -113,8 +116,8 @@ function LoginContent() {
             throw new Error("Invalid user profile response");
           }
           if (typeof window !== "undefined") {
-            document.cookie = `role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
-            document.cookie = `user_role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
+            document.cookie = `role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
+            document.cookie = `user_role=${encodeURIComponent(resolvedUser.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
           }
           await login(resolvedUser, cleanToken, cleanToken);
           const route = getRoleDestination(resolvedUser);
@@ -167,10 +170,10 @@ function LoginContent() {
       if (typeof window !== "undefined") {
         window.localStorage.setItem("car_blink_access_token", tokens.accessToken);
         window.localStorage.setItem("carBlink_token", tokens.accessToken);
-        document.cookie = `car_blink_access_token=${encodeURIComponent(tokens.accessToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
-        document.cookie = `accessToken=${encodeURIComponent(tokens.accessToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
-        document.cookie = `role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
-        document.cookie = `user_role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
+        document.cookie = `car_blink_access_token=${encodeURIComponent(tokens.accessToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
+        document.cookie = `accessToken=${encodeURIComponent(tokens.accessToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
+        document.cookie = `role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
+        document.cookie = `user_role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
       }
       await login(user, tokens.accessToken, tokens.refreshToken || tokens.accessToken);
 
@@ -254,10 +257,10 @@ function LoginContent() {
       if (typeof window !== "undefined") {
         window.localStorage.setItem("car_blink_access_token", tokens.accessToken);
         window.localStorage.setItem("carBlink_token", tokens.accessToken);
-        document.cookie = `car_blink_access_token=${encodeURIComponent(tokens.accessToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
-        document.cookie = `accessToken=${encodeURIComponent(tokens.accessToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
-        document.cookie = `role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
-        document.cookie = `user_role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}`;
+        document.cookie = `car_blink_access_token=${encodeURIComponent(tokens.accessToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
+        document.cookie = `accessToken=${encodeURIComponent(tokens.accessToken)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
+        document.cookie = `role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
+        document.cookie = `user_role=${encodeURIComponent(user.role)}; path=/; expires=${expires}; SameSite=Lax${cookieDomain}${securePart}`;
       }
       await login(user, tokens.accessToken, tokens.refreshToken || tokens.accessToken);
       const targetRoute = getRoleDestination(user);

@@ -71,6 +71,10 @@ export default function CustomerDashboardPage() {
             const p = JSON.parse(storedParts);
             if (Array.isArray(p)) setDismissedPartsIds(p);
           } catch (e) {}
+
+        if (localStorage.getItem("carblink_dismissed_live_tracker") === "true") {
+          setDismissedActiveTracker(true);
+        }
         }
       }
     } catch (e) {}
@@ -517,7 +521,12 @@ export default function CustomerDashboardPage() {
       )}
 
       {/* Compact, Mobile-Responsive "Live Booking Status" Stepper & Tracker */}
-      <LiveBookingStatusTracker bookings={safeBookings} />
+      {!dismissedActiveTracker && (
+        <LiveBookingStatusTracker
+          bookings={safeBookings}
+          onDismiss={() => setDismissedActiveTracker(true)}
+        />
+      )}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 w-full min-w-0">
         <div className="min-w-0">

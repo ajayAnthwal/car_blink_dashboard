@@ -96,6 +96,8 @@ export default function MarketingLeadsPage() {
   const [selectedCityId, setSelectedCityId] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
+  const [selectedFuelType, setSelectedFuelType] = useState("PETROL");
+  const [selectedVehicleNumber, setSelectedVehicleNumber] = useState("");
   const [convertMessage, setConvertMessage] = useState("");
   const [isMasterDataLoading, setIsMasterDataLoading] = useState(false);
 
@@ -153,6 +155,8 @@ export default function MarketingLeadsPage() {
     setShowConvertModal(true);
     setIsMasterDataLoading(true);
     setConvertMessage("");
+    setSelectedFuelType((selectedLead?.fuelType || "PETROL").toUpperCase());
+    setSelectedVehicleNumber((selectedLead?.vehicleNumber || "").toUpperCase());
 
     // 1. Comprehensive Service Extraction from Lead
     let extractedServices = "";
@@ -431,7 +435,9 @@ export default function MarketingLeadsPage() {
           serviceId: selectedServiceId,
           cityId: selectedCityId,
           vehicleBrand: selectedBrand,
-          vehicleModel: selectedModel
+          vehicleModel: selectedModel,
+          fuelType: selectedFuelType,
+          vehicleNumber: selectedVehicleNumber
         }
       });
       setShowConvertModal(false);
@@ -648,9 +654,16 @@ export default function MarketingLeadsPage() {
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center text-gray-700 font-medium mb-1">
-                            <Car className="w-4 h-4 mr-2 text-gray-500" />
-                            {lead.vehicleBrand || lead.vehicleModel ? `${lead.vehicleBrand || ''} ${lead.vehicleModel || ''}` : 'Not provided'}
+                          <div className="flex items-center text-gray-700 font-medium mb-1 flex-wrap gap-1.5">
+                            <span className="flex items-center">
+                              <Car className="w-4 h-4 mr-2 text-gray-500" />
+                              {lead.vehicleBrand || lead.vehicleModel ? `${lead.vehicleBrand || ''} ${lead.vehicleModel || ''}` : 'Not provided'}
+                            </span>
+                            {lead.fuelType && (
+                              <span className="bg-orange-50 text-orange-700 border border-orange-200 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
+                                {lead.fuelType}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center text-gray-500 text-xs">
                             <MapPin className="w-3.5 h-3.5 mr-2 text-gray-400" />
@@ -818,6 +831,20 @@ export default function MarketingLeadsPage() {
                     <p className="font-medium text-gray-900">
                       {selectedLead.vehicleBrand || selectedLead.vehicleModel ? `${selectedLead.vehicleBrand || ''} ${selectedLead.vehicleModel || ''}` : 'Not provided'}
                     </p>
+                    {(selectedLead.fuelType || selectedLead.vehicleNumber) && (
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {selectedLead.fuelType && (
+                          <span className="bg-orange-100 text-orange-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase">
+                            {selectedLead.fuelType}
+                          </span>
+                        )}
+                        {selectedLead.vehicleNumber && (
+                          <span className="bg-gray-100 text-gray-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase">
+                            {selectedLead.vehicleNumber}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Requested Service</h4>
@@ -990,6 +1017,32 @@ export default function MarketingLeadsPage() {
                           <option key={m._id} value={m.name}>{m.name}</option>
                         ))}
                       </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Type *</label>
+                        <select 
+                          className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-primary-orange focus:ring-1 focus:ring-primary-orange font-medium"
+                          value={selectedFuelType}
+                          onChange={e => setSelectedFuelType(e.target.value)}
+                        >
+                          <option value="PETROL">Petrol</option>
+                          <option value="DIESEL">Diesel</option>
+                          <option value="CNG">CNG</option>
+                          <option value="ELECTRIC">Electric</option>
+                          <option value="HYBRID">Hybrid</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Reg. No</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. DL-01-AB-1234"
+                          className="w-full border border-gray-300 rounded-md p-2 text-sm uppercase focus:border-primary-orange focus:ring-1 focus:ring-primary-orange font-medium"
+                          value={selectedVehicleNumber}
+                          onChange={e => setSelectedVehicleNumber(e.target.value.toUpperCase())}
+                        />
+                      </div>
                     </div>
                   </>
                 )}
