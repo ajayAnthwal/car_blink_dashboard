@@ -51,6 +51,7 @@ function LoginContent() {
     const isLogoutOrSwitch = searchParams.get('logout') === 'true' || searchParams.get('switch') === 'true';
     if (isLogoutOrSwitch && typeof window !== 'undefined') {
       const cookieDomain = window.location.hostname.endsWith("carblink.in") ? "; domain=.carblink.in" : "";
+      const securePart = window.location.protocol === "https:" ? "; Secure" : "";
       window.localStorage.removeItem("car_blink_access_token");
       window.localStorage.removeItem("car_blink_refresh_token");
       document.cookie = `accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieDomain}${securePart}`;
@@ -166,6 +167,7 @@ function LoginContent() {
 
       const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
       const cookieDomain = typeof window !== "undefined" && window.location.hostname.endsWith("carblink.in") ? "; domain=.carblink.in" : "";
+      const securePart = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
 
       if (typeof window !== "undefined") {
         window.localStorage.setItem("car_blink_access_token", tokens.accessToken);
@@ -253,6 +255,7 @@ function LoginContent() {
       }
       const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
       const cookieDomain = typeof window !== "undefined" && window.location.hostname.endsWith("carblink.in") ? "; domain=.carblink.in" : "";
+      const securePart = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
 
       if (typeof window !== "undefined") {
         window.localStorage.setItem("car_blink_access_token", tokens.accessToken);
