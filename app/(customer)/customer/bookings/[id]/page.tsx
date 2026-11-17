@@ -1019,7 +1019,7 @@ export default function CustomerBookingDetailsPage() {
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5" />
               <span className="font-heading font-black text-sm uppercase tracking-wide">
-                Step 2: Pay Advance Deposit to Lock Service Slot
+                Step 2: Pay Partial payment to Lock Service Slot
               </span>
             </div>
             <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
@@ -1069,17 +1069,17 @@ export default function CustomerBookingDetailsPage() {
                   isLoading={isExtensionProcessing}
                 >
                   <IndianRupee className="w-5 h-5 text-white" />
-                  <span>Pay Advance Deposit Now (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')}) &rarr;</span>
+                  <span>Pay Partial payment Now (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')}) &rarr;</span>
                 </Button>
 
                 {/* Shareable Advance Payment Link */}
                 <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl space-y-2 mt-2">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
                     <Share2 className="w-3.5 h-3.5 text-primary-orange" />
-                    <span>Kisi aur se payment karwani hai? (Forward Link)</span>
+                    <span>Need someone else to pay? (Forward Link)</span>
                   </div>
                   <p className="text-[11px] text-slate-500">
-                    Yeh link kisi ko bhi share karein — wo bina login kiye direct UPI / Google Pay / Card se advance pay kar sakte hain.
+                    Share this link with anyone. They can pay the advance via UPI / Google Pay / Card without logging in.
                   </p>
                   <div className="grid grid-cols-2 gap-2 pt-0.5">
                     <Button
