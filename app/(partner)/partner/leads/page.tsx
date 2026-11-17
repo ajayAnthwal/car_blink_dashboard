@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, AlertTriangle } from "lucide-react";
+import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, AlertTriangle, FileText } from "lucide-react";
 import { usePartnerLeads, useCreateBidMutation, useWalletStatement } from "@/features/partner/hooks/usePartnerQueries";
 
 export default function LeadsPage() {
@@ -129,18 +129,34 @@ export default function LeadsPage() {
                   </span>
                 </div>
                 
-                <div className="bg-neutral-bg rounded-lg p-3 mb-4 text-sm border border-neutral-muted/10">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="bg-neutral-bg rounded-xl p-3.5 mb-4 text-sm border border-neutral-muted/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <Car className="w-4 h-4 text-neutral-muted mr-2" />
-                      <span className="font-medium text-neutral-dark">{lead.vehicleId?.brand} {lead.vehicleId?.model}</span>
+                      <span className="font-semibold text-neutral-dark">{lead.vehicleId?.brand} {lead.vehicleId?.model}</span>
                     </div>
-                    <span className="text-xs text-neutral-muted font-mono">ID: {leadId?.substring(0,8)}</span>
+                    <span className="text-xs text-neutral-muted font-mono font-medium">ID: {leadId?.substring(0,8)}</span>
                   </div>
-                  <div className="flex items-start">
-                    <Wrench className="w-4 h-4 text-neutral-muted mr-2 mt-0.5" />
-                    <span className="text-neutral-muted line-clamp-2">{lead.description || "No description provided."}</span>
-                  </div>
+
+                  {lead.description && (
+                    <div className="flex items-start text-xs text-neutral-700">
+                      <Wrench className="w-3.5 h-3.5 text-neutral-muted mr-2 mt-0.5 shrink-0" />
+                      <span className="break-words whitespace-pre-wrap">{lead.description}</span>
+                    </div>
+                  )}
+
+                  {/* Executive Special Instructions Banner */}
+                  {(lead.remarks || lead.assignment?.notes) && (
+                    <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-950 shadow-2xs">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1">
+                        <FileText className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                        <span>Executive Instructions / Notes:</span>
+                      </div>
+                      <p className="whitespace-pre-wrap break-words font-medium leading-relaxed bg-white/70 p-2 rounded-lg border border-amber-100">
+                        {lead.remarks || lead.assignment?.notes}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <Button className="w-full" onClick={() => setSelectedLead(lead)}>
@@ -167,14 +183,43 @@ export default function LeadsPage() {
               </button>
             </CardHeader>
             <CardContent className="pt-4 overflow-y-auto custom-scrollbar flex-1">
-              <div className="mb-4 bg-primary-navy/5 p-3 rounded-lg text-sm">
-                <p className="font-medium text-primary-navy">
-                  {(typeof selectedLead.serviceId === 'object' && selectedLead.serviceId?.name) 
-                    ? selectedLead.serviceId.name 
-                    : (selectedLead.customServiceName || "Service Request")}
+              <div className="mb-4 bg-primary-navy/5 p-3.5 rounded-xl text-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-primary-navy text-base">
+                    {(typeof selectedLead.serviceId === 'object' && selectedLead.serviceId?.name) 
+                      ? selectedLead.serviceId.name 
+                      : (selectedLead.customServiceName || "Service Request")}
+                  </p>
+                  <span className="text-xs font-mono text-neutral-500 font-bold">
+                    {(selectedLead.vehicleId?.brand || "")} {(selectedLead.vehicleId?.model || "")}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-600 flex items-center font-medium">
+                  <MapPin className="w-3.5 h-3.5 mr-1 text-primary-orange shrink-0" />
+                  <span>{selectedLead.address || selectedLead.city || (typeof selectedLead.cityId === 'object' && selectedLead.cityId?.name && selectedLead.cityId?.name !== 'Bamboo Flat' ? selectedLead.cityId.name : null) || "N/A"}</span>
                 </p>
-                <p className="text-neutral-muted">{selectedLead.vehicleId?.brand} {selectedLead.vehicleId?.model}</p>
-                <p className="text-xs text-neutral-600 flex items-center mt-1.5 font-medium"><MapPin className="w-3.5 h-3.5 mr-1 text-primary-orange shrink-0" /><span>{selectedLead.address || selectedLead.city || (typeof selectedLead.cityId === 'object' && selectedLead.cityId?.name && selectedLead.cityId?.name !== 'Bamboo Flat' ? selectedLead.cityId.name : null) || "N/A"}</span></p>
+
+                {selectedLead.description && (
+                  <div className="pt-2 border-t border-neutral-200/60 text-xs text-neutral-700">
+                    <span className="font-bold text-neutral-800 block mb-0.5">Customer Description:</span>
+                    <p className="whitespace-pre-wrap break-words">{selectedLead.description}</p>
+                  </div>
+                )}
+
+                {/* Executive Special Instructions */}
+                {(selectedLead.remarks || selectedLead.assignment?.notes) && (
+                  <div className="pt-2 border-t border-amber-200/60 text-xs">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-amber-950">
+                      <span className="font-bold text-amber-900 flex items-center gap-1.5 mb-1">
+                        <FileText className="w-3.5 h-3.5 text-primary-orange" />
+                        Executive Special Instructions / Notes:
+                      </span>
+                      <p className="whitespace-pre-wrap break-words font-medium leading-relaxed bg-white/80 p-2 rounded border border-amber-100">
+                        {selectedLead.remarks || selectedLead.assignment?.notes}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handlePlaceBid} className="space-y-4">

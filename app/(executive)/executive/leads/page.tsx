@@ -168,7 +168,10 @@ export default function ExecutiveLeadsPage() {
     setRadiusKm("all");
     setSelectedServiceFilter("all");
     setUseCityFilter(true); // Default to matching Lead's City / Address
-    assignForm.reset({ partnerIds: [], notes: "" });
+    assignForm.reset({
+      partnerIds: [],
+      notes: lead.remarks || lead.assignment?.notes || ""
+    });
   };
 
   const handleAssignSubmit = (data: AssignLeadFormValues) => {
@@ -1017,16 +1020,24 @@ export default function ExecutiveLeadsPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
-                    Notes for Partner <span className="text-gray-400 font-normal lowercase">(Optional)</span>
-                  </label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Specific Notes / Instructions for Partner <span className="text-gray-400 font-normal lowercase">(Optional)</span>
+                    </label>
+                    <span className="text-[11px] text-primary-navy font-semibold">
+                      Visible in full to partner
+                    </span>
+                  </div>
                   <textarea
                     {...assignForm.register("notes")}
-                    placeholder="E.g. Expedite this request..."
-                    rows={2}
-                    className="w-full text-sm rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy"
+                    placeholder="E.g. Specific instructions for the partner: Paint & Dent service requires work specifically on the front left door and bonnet only..."
+                    rows={4}
+                    className="w-full text-sm rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-navy/20 focus:border-primary-navy min-h-[105px] resize-y shadow-2xs leading-relaxed"
                   />
+                  <p className="text-[11px] text-gray-500">
+                    These instructions will be displayed prominently and unclipped on the partner&apos;s lead card, bidding modal, and workstation.
+                  </p>
                 </div>
               </form>
             </div>

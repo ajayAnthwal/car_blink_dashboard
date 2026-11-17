@@ -14,7 +14,7 @@ import {
 } from "@/features/accounts/hooks/useAccountsQueries";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File, CreditCard, Wallet, CheckCircle, XCircle, Copy, Check } from "lucide-react";
+import { BadgeIndianRupee, Loader2, ArrowRightCircle, UploadCloud, FileText, Search, ChevronLeft, ChevronRight, Eye, TrendingUp, Calendar, Clock, File, CreditCard, Wallet, CheckCircle, XCircle, Copy, Check, Banknote } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function SettlementsPage() {
@@ -23,16 +23,71 @@ export default function SettlementsPage() {
   const limit = 10;
   
   const [searchTerm, setSearchTerm] = useState("");
-  const { data: settlementsData, isLoading: isLoadingSettlements, refetch: refetchSettlements } = useSettlements({ page, limit, search: searchTerm });
+
+  const handleTabChange = (tab: "SETTLEMENTS" | "PAYMENTS" | "WITHDRAWALS") => {
+    setActiveTab(tab);
+    setPage(1);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
+
+  const { data: settlementsData, isLoading: isLoadingSettlements, refetch: refetchSettlements } = useSettlements({
+    page: activeTab === "SETTLEMENTS" ? page : 1,
+    limit,
+    search: searchTerm
+  });
   const allSettlements = settlementsData?.settlements || [];
-  const total = settlementsData?.total || 0;
+  const totalSettlements = settlementsData?.total !== undefined ? settlementsData.total : allSettlements.length;
   
   const { data: revenueStats, isLoading: isLoadingStats } = usePlatformRevenueStats();
-  const { data: txData, isLoading: isLoadingTx } = useAccountsTransactions({ page: 1, limit: 50, search: searchTerm });
-  const rawTxList = txData?.transactions || txData?.data?.transactions || (Array.isArray(txData) ? txData : []);
 
-  const { data: withdrawalsData, isLoading: isLoadingWithdrawals, refetch: refetchWithdrawals } = useAccountsWithdrawalRequests({ page: 1, limit: 50, search: searchTerm });
+  const { data: txData, isLoading: isLoadingTx } = useAccountsTransactions({
+    page: activeTab === "PAYMENTS" ? page : 1,
+    limit,
+    search: searchTerm
+  });
+  const rawTxList = txData?.transactions || txData?.data?.transactions || (Array.isArray(txData) ? txData : []);
+  const totalPayments = txData?.total !== undefined ? txData.total : (txData?.data?.total !== undefined ? txData.data.total : rawTxList.length);
+
+  const { data: withdrawalsData, isLoading: isLoadingWithdrawals, refetch: refetchWithdrawals } = useAccountsWithdrawalRequests({
+    page: activeTab === "WITHDRAWALS" ? page : 1,
+    limit,
+    search: searchTerm
+  });
   const withdrawalList = withdrawalsData?.withdrawals || [];
+  const totalWithdrawals = withdrawalsData?.total !== undefined ? withdrawalsData.total : withdrawalList.length;
+
+  const currentTotal = activeTab === "WITHDRAWALS"
+    ? totalWithdrawals
+    : activeTab === "PAYMENTS"
+    ? totalPayments
+    : totalSettlements;
+
+  const currentTotalPages = Math.max(1, Math.ceil(currentTotal / limit));
+
+  const paymentsMethodStats = React.useMemo(() => {
+    let onlineTotal = 0;
+    let onlineCount = 0;
+    let cashTotal = 0;
+    let cashCount = 0;
+
+    (rawTxList || []).forEach((p: any) => {
+      const isCash = String(p.method || p.provider || p.paymentMode || '').toUpperCase() === 'CASH';
+      const amt = Number(p.amount || 0);
+      if (isCash) {
+        cashTotal += amt;
+        cashCount += 1;
+      } else {
+        onlineTotal += amt;
+        onlineCount += 1;
+      }
+    });
+
+    return { onlineTotal, onlineCount, cashTotal, cashCount };
+  }, [rawTxList]);
 
   const computedRevenueStats = React.useMemo(() => {
     const now = new Date();
@@ -154,8 +209,6 @@ export default function SettlementsPage() {
     }
   };
 
-  const totalPages = Math.ceil(total / limit);
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center">
@@ -249,31 +302,31 @@ export default function SettlementsPage() {
         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 pb-4 border-b border-gray-100">
           <div className="flex items-center bg-gray-100 p-1 rounded-xl w-full sm:w-auto flex-wrap gap-1">
             <button
-              onClick={() => setActiveTab("WITHDRAWALS")}
+              onClick={() => handleTabChange("WITHDRAWALS")}
               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
                 activeTab === "WITHDRAWALS" ? "bg-primary-orange text-white shadow-sm" : "text-orange-700 hover:bg-orange-50"
               }`}
             >
               <Wallet className="w-4 h-4" />
-              Partner Wallet Withdrawals ({withdrawalList.length})
+              Partner Wallet Withdrawals ({totalWithdrawals})
             </button>
             <button
-              onClick={() => setActiveTab("SETTLEMENTS")}
+              onClick={() => handleTabChange("SETTLEMENTS")}
               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
                 activeTab === "SETTLEMENTS" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               <BadgeIndianRupee className="w-4 h-4 text-primary-orange" />
-              Partner Job Settlements ({total})
+              Partner Job Settlements ({totalSettlements})
             </button>
             <button
-              onClick={() => setActiveTab("PAYMENTS")}
+              onClick={() => handleTabChange("PAYMENTS")}
               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
                 activeTab === "PAYMENTS" ? "bg-emerald-600 text-white shadow-sm" : "text-emerald-700 hover:bg-emerald-50"
               }`}
             >
               <CreditCard className="w-4 h-4" />
-              Customer Payments ({rawTxList.length})
+              Customer Payments ({totalPayments})
             </button>
           </div>
 
@@ -284,7 +337,7 @@ export default function SettlementsPage() {
               placeholder={activeTab === "WITHDRAWALS" ? "Search partner or bank..." : activeTab === "PAYMENTS" ? "Search customer or payment ID..." : "Search by ID or Partner Name..."}
               className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-navy/20"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </CardHeader>
@@ -427,64 +480,118 @@ export default function SettlementsPage() {
                 <p>No customer payments found.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-neutral-muted uppercase bg-neutral-bg">
-                    <tr>
-                      <th className="px-4 py-3 rounded-l-lg">Txn / Booking ID</th>
-                      <th className="px-4 py-3">Customer Details</th>
-                      <th className="px-4 py-3">Payment Type</th>
-                      <th className="px-4 py-3">Amount</th>
-                      <th className="px-4 py-3">Date & Time</th>
-                      <th className="px-4 py-3 rounded-r-lg text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-muted/10">
-                    {rawTxList.map((p: any) => {
-                      const custName = p.customer?.fullName || p.customerId?.fullName || 'Customer';
-                      const custPhone = p.customer?.phone || p.customerId?.phone || '';
-                      const bId = p.bookingId?._id || p.bookingId || p._id;
-                      const isAdvance = p.paymentType === 'ADVANCE';
+              <div className="space-y-4">
+                {/* Online vs Cash Financial Distinction Summary Banner */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80">
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 shadow-2xs">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 border border-blue-100">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Online Payments (Razorpay / UPI / Card)</p>
+                      <div className="flex items-baseline gap-2 mt-0.5">
+                        <span className="text-base font-black text-blue-900 font-mono">
+                          ₹{paymentsMethodStats.onlineTotal.toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                          {paymentsMethodStats.onlineCount} Online Payments (Page)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                      return (
-                        <tr key={p._id} className="hover:bg-neutral-bg/50 transition-colors">
-                          <td className="px-4 py-3 font-medium text-primary-navy">
-                            <div>#{String(p.transactionId || p._id).slice(-8)}</div>
-                            <div className="text-xs text-neutral-muted">Booking: #{String(bId).slice(-6)}</div>
-                          </td>
-                          <td className="px-4 py-3 text-neutral-dark">
-                            <div className="font-bold">{custName}</div>
-                            {custPhone && <div className="text-xs text-neutral-muted">{custPhone}</div>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 text-xs font-extrabold rounded-full ${
-                              isAdvance ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
-                            }`}>
-                              {isAdvance ? '15% ADVANCE ⏳' : (p.paymentType || 'FULL')}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-extrabold text-base text-gray-900">
-                            ₹{p.amount?.toLocaleString('en-IN') || 0}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-neutral-dark whitespace-nowrap">
-                            {new Date(p.createdAt || p.paidAt || Date.now()).toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
-                              p.status === 'SUCCESS'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                : p.status === 'CREATED' || p.status === 'PENDING'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                : 'bg-red-100 text-red-800 border border-red-300'
-                            }`}>
-                              {p.status === 'SUCCESS' ? 'SUCCESS ✓' : p.status === 'CREATED' ? 'ORDER CREATED ⏳' : (p.status || 'PENDING')}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-emerald-100 shadow-2xs">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100">
+                      <Banknote className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Cash Collections (Workshop Direct)</p>
+                      <div className="flex items-baseline gap-2 mt-0.5">
+                        <span className="text-base font-black text-emerald-900 font-mono">
+                          ₹{paymentsMethodStats.cashTotal.toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          {paymentsMethodStats.cashCount} Cash Payments (Page)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-neutral-muted uppercase bg-neutral-bg">
+                      <tr>
+                        <th className="px-4 py-3 rounded-l-lg">Txn / Booking ID</th>
+                        <th className="px-4 py-3">Customer Details</th>
+                        <th className="px-4 py-3">Payment Type</th>
+                        <th className="px-4 py-3">Payment Method</th>
+                        <th className="px-4 py-3">Amount</th>
+                        <th className="px-4 py-3">Date & Time</th>
+                        <th className="px-4 py-3 rounded-r-lg text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-muted/10">
+                      {rawTxList.map((p: any) => {
+                        const custName = p.customer?.fullName || p.customerId?.fullName || 'Customer';
+                        const custPhone = p.customer?.phone || p.customerId?.phone || '';
+                        const bId = p.bookingId?._id || p.bookingId || p._id;
+                        const isAdvance = p.paymentType === 'ADVANCE';
+                        const isCash = String(p.method || p.provider || p.paymentMode || '').toUpperCase() === 'CASH';
+
+                        return (
+                          <tr key={p._id} className="hover:bg-neutral-bg/50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-primary-navy">
+                              <div>#{String(p.transactionId || p._id).slice(-8)}</div>
+                              <div className="text-xs text-neutral-muted">Booking: #{String(bId).slice(-6)}</div>
+                            </td>
+                            <td className="px-4 py-3 text-neutral-dark">
+                              <div className="font-bold">{custName}</div>
+                              {custPhone && <div className="text-xs text-neutral-muted">{custPhone}</div>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 text-xs font-extrabold rounded-full ${
+                                isAdvance ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              }`}>
+                                {isAdvance ? '15% ADVANCE ⏳' : (p.paymentType || 'FINAL')}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {isCash ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs whitespace-nowrap">
+                                  <Banknote className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  💵 Cash (Workshop)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full bg-blue-50 text-blue-800 border border-blue-200 shadow-2xs whitespace-nowrap">
+                                  <CreditCard className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                  💳 Online ({p.method === 'RAZORPAY' || !p.method ? 'Razorpay' : p.method})
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 font-extrabold text-base text-gray-900 font-mono">
+                              ₹{p.amount?.toLocaleString('en-IN') || 0}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-neutral-dark whitespace-nowrap font-mono">
+                              {new Date(p.createdAt || p.paidAt || Date.now()).toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
+                                p.status === 'SUCCESS'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : p.status === 'CREATED' || p.status === 'PENDING'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-red-100 text-red-800 border border-red-300'
+                              }`}>
+                                {p.status === 'SUCCESS' ? 'SUCCESS ✓' : p.status === 'CREATED' ? 'ORDER CREATED ⏳' : (p.status || 'PENDING')}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )
           ) : isLoadingSettlements ? (
@@ -567,30 +674,56 @@ export default function SettlementsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
 
-              {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-muted/10">
-                <span className="text-xs text-neutral-muted">
-                  Showing page {page} of {totalPages || 1} ({total} total records)
-                </span>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" /> Prev
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages || 1, p + 1))}
-                    disabled={page >= (totalPages || 1)}
-                  >
-                    Next <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
+          {/* Unified Pagination Controls for all active tabs */}
+          {currentTotal > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-gray-100">
+              <span className="text-xs text-neutral-muted">
+                Showing {Math.min((page - 1) * limit + 1, currentTotal)} to {Math.min(page * limit, currentTotal)} of {currentTotal} records (Page {page} of {currentTotalPages})
+              </span>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="h-8 px-3 text-xs font-semibold"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, currentTotalPages) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (currentTotalPages > 5 && page > 3) {
+                      pageNum = page - 2 + i;
+                      if (pageNum > currentTotalPages) pageNum = currentTotalPages - (4 - i);
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={page === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPage(pageNum)}
+                        className={`h-8 w-8 p-0 text-xs font-bold ${page === pageNum ? "bg-primary-navy text-white shadow-xs" : "text-gray-700"}`}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
                 </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(currentTotalPages, p + 1))}
+                  disabled={page >= currentTotalPages}
+                  className="h-8 px-3 text-xs font-semibold"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
               </div>
             </div>
           )}

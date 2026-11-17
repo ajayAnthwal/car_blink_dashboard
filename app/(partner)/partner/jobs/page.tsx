@@ -552,6 +552,19 @@ export default function PartnerJobsPage() {
                   {isExpanded && (
                     <ErrorBoundary>
                     <div className="p-6 border-t border-gray-100 bg-slate-50/50 space-y-6 animate-in fade-in">
+                      {/* Executive Special Instructions & Notes for Partner */}
+                      {(bData.remarks || job.assignment?.notes) && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-950 shadow-2xs space-y-1.5">
+                          <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
+                            <FileText className="w-4 h-4 text-primary-orange shrink-0" />
+                            <span>Executive Special Instructions / Notes:</span>
+                          </div>
+                          <p className="whitespace-pre-wrap break-words font-medium leading-relaxed bg-white/80 p-3 rounded-xl border border-amber-100 text-gray-800 text-xs">
+                            {bData.remarks || job.assignment?.notes}
+                          </p>
+                        </div>
+                      )}
+
                       {/* Section 1: Photos Uploads (Before & After) */}
                       {(job.status === "IN_PROGRESS" || job.status === "COMPLETED") && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

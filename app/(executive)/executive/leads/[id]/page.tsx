@@ -53,7 +53,30 @@ export default function LeadDetailsPage() {
   const [callMessage, setCallMessage] = useState({ type: "", text: "" });
   const [isCalling, setIsCalling] = useState(false);
   const [isSendingSatisfaction, setIsSendingSatisfaction] = useState(false);
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
   const error = queryError ? (queryError as Error).message : null;
+
+  useEffect(() => {
+    if (lead) {
+      setAdditionalNotes(lead.remarks || lead.assignment?.notes || "");
+    }
+  }, [lead?.remarks, lead?.assignment?.notes]);
+
+  const handleSaveAdditionalNotes = async () => {
+    if (!lead?._id && !id) return;
+    setIsSavingNotes(true);
+    try {
+      const { updateExecutiveLead } = await import("@/lib/services");
+      await updateExecutiveLead(lead?._id || id, { remarks: additionalNotes });
+      toast.success("Additional notes saved and sent to partner successfully!");
+      refetchLead();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to save additional notes");
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
 
   const handleSendSatisfaction = async () => {
     if (!lead) return;
@@ -545,6 +568,66 @@ export default function LeadDetailsPage() {
                 </div>
               );
             })()}
+          </CardContent>
+        </Card>
+
+        {/* Additional Notes for Partner / Special Instructions */}
+        <Card className="shadow-subtle border-gray-100 md:col-span-2 overflow-hidden border-l-4 border-l-primary-orange">
+          <CardHeader className="pb-3 border-b border-gray-50 bg-gradient-to-r from-orange-50/50 via-white to-white">
+            <CardTitle className="text-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center">
+                <div className="bg-orange-100/80 p-2 rounded-lg mr-3 text-primary-orange">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-gray-900 font-heading">Additional Notes &amp; Specific Instructions for Partner</span>
+                  <p className="text-xs text-gray-500 font-normal font-body">
+                    Specific requirements sent directly to partner workshops (e.g., specifying that a &quot;Paint and Dent&quot; service requires work on a specific door or bonnet). Accessible before and after forwarding.
+                  </p>
+                </div>
+              </div>
+              {lead.assignedPartnerId && (
+                <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-xs px-2.5 py-1 flex items-center gap-1 self-start sm:self-auto">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Partner Assigned
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                <span>Partner Instructions / Special Requirements</span>
+                {lead.remarks && (
+                  <span className="text-[11px] font-medium text-emerald-700 lowercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-emerald-600" /> Active on booking
+                  </span>
+                )}
+              </label>
+              <textarea
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                rows={4}
+                placeholder="Enter specific instructions for the partner (e.g., 'Paint and Dent service requires work on front passenger door and bonnet only. Client requests careful scratch repair and OEM color code finish.')..."
+                className="w-full text-sm rounded-xl border border-gray-300 bg-white p-3.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent transition-all shadow-2xs resize-y"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+              <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                <span>Saving will update the booking record and notify the assigned partner(s) in real time.</span>
+              </div>
+              <Button
+                type="button"
+                disabled={isSavingNotes || additionalNotes === (lead.remarks || lead.assignment?.notes || "")}
+                isLoading={isSavingNotes}
+                onClick={handleSaveAdditionalNotes}
+                className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Save &amp; Send Notes to Partner</span>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
