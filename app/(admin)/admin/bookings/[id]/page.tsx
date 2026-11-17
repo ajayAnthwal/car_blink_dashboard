@@ -641,6 +641,54 @@ export default function AdminBookingDetailsPage() {
                 </div>
               </div>
 
+              {/* Super Admin Financial Metrics: Commission Earned & Total Profit per Booking */}
+              {(() => {
+                const customerGrossQuote = booking.invoice?.grandTotal || booking.finalInvoiceAmount || booking.pricing?.customerGrossQuote || booking.finalAmount || booking.totalAmount || booking.acceptedBidId?.quotedAmount || booking.serviceId?.basePrice || 0;
+                const partnerBaseQuote = booking.settlement?.grossAmount || booking.pricing?.partnerBaseQuote || booking.acceptedBidId?.quotedAmount || 0;
+                const platformCommission = booking.settlement?.platformCommission ?? booking.pricing?.companyMarginAmount ?? (customerGrossQuote > partnerBaseQuote && partnerBaseQuote > 0 ? (customerGrossQuote - partnerBaseQuote) : 0);
+                const totalProfit = platformCommission;
+
+                return (
+                  <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-6 rounded-2xl text-white shadow-md border border-indigo-900/50 space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <div className="flex items-center gap-2">
+                        <IndianRupee className="w-5 h-5 text-amber-400" />
+                        <span className="font-bold text-base tracking-wide">Platform Profit & Commission Audit</span>
+                      </div>
+                      <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold uppercase">
+                        {booking.settlement ? 'Settled & Verified' : 'Live Estimate'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="bg-white/5 p-3.5 rounded-xl border border-white/10">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-300">Customer Gross</p>
+                        <p className="text-xl font-black font-mono text-white mt-1">₹{Number(customerGrossQuote).toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Total booking value</p>
+                      </div>
+
+                      <div className="bg-white/5 p-3.5 rounded-xl border border-white/10">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-300">Partner Payout</p>
+                        <p className="text-xl font-black font-mono text-amber-300 mt-1">₹{Number(partnerBaseQuote).toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Workshop net share</p>
+                      </div>
+
+                      <div className="bg-white/5 p-3.5 rounded-xl border border-white/10">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-300">Commission Earned</p>
+                        <p className="text-xl font-black font-mono text-cyan-300 mt-1">₹{Number(platformCommission).toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Exact platform margin</p>
+                      </div>
+
+                      <div className="bg-emerald-500/10 p-3.5 rounded-xl border border-emerald-500/30">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Total Profit Generated</p>
+                        <p className="text-xl font-black font-mono text-emerald-400 mt-1">₹{Number(totalProfit).toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-emerald-300/80 mt-0.5">Net profit for CarBlink</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Order Meta Info */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-2">
                 <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">

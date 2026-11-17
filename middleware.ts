@@ -122,7 +122,16 @@ export function middleware(request: NextRequest) {
 
   // Strictly enforce role-specific route boundaries with zero leakage
   if (pathname.startsWith("/customer")) {
-    if (!isLoggedIn) return NextResponse.redirect(new URL("/login", request.url));
+    if (!isLoggedIn) {
+      if (pathname.startsWith("/customer/bookings/") && (searchParams.get("paid") === "true" || searchParams.get("razorpay_payment_id"))) {
+        const url = new URL("/payment-success", request.url);
+        searchParams.forEach((val, key) => url.searchParams.set(key, val));
+        const bookingIdFromPath = pathname.split("/")[3] || "";
+        if (bookingIdFromPath) url.searchParams.set("bookingId", bookingIdFromPath);
+        return NextResponse.redirect(url);
+      }
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
     if (normalizedRole !== "CUSTOMER") {
       return NextResponse.redirect(new URL(correctDashboard, request.url));
     }

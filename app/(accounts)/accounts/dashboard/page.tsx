@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight, CreditCard, Wallet, ArrowUpRight, Bell, ExternalLink } from "lucide-react";
+import { BadgeIndianRupee, Undo2, FileText, ArrowRight, Clock, Activity, CheckCircle2, ChevronRight, CreditCard, Wallet, ArrowUpRight, Bell, ExternalLink, Banknote } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getNotificationTargetLink } from "@/components/notifications/NotificationDetailsModal";
 import {
@@ -71,6 +71,29 @@ export default function AccountsDashboardPage() {
 
   const rawTransactions = txData?.transactions || txData?.data?.transactions || (Array.isArray(txData) ? txData : []);
   const recentPayments = useMemo(() => Array.isArray(rawTransactions) ? rawTransactions.slice(0, 5) : [], [rawTransactions]);
+
+  const paymentBreakdown = useMemo(() => {
+    let onlineTotal = 0;
+    let onlineCount = 0;
+    let cashTotal = 0;
+    let cashCount = 0;
+
+    if (Array.isArray(rawTransactions)) {
+      rawTransactions.forEach((tx: any) => {
+        const method = String(tx.method || tx.provider || '').toUpperCase();
+        const amt = Number(tx.amount || 0);
+        if (method === 'CASH') {
+          cashTotal += amt;
+          cashCount += 1;
+        } else {
+          onlineTotal += amt;
+          onlineCount += 1;
+        }
+      });
+    }
+
+    return { onlineTotal, onlineCount, cashTotal, cashCount };
+  }, [rawTransactions]);
 
   const stats = data?.stats || {
     pendingRefunds: 0,
@@ -407,6 +430,35 @@ export default function AccountsDashboardPage() {
           </Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
+          {/* Online vs Cash Financial Transparency Breakdown */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-gray-50/60 border-b border-gray-100">
+            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-blue-100 shadow-2xs">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Online Collections (Razorpay/UPI)</p>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-lg font-black text-blue-900 font-mono">₹{paymentBreakdown.onlineTotal.toLocaleString('en-IN')}</span>
+                  <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{paymentBreakdown.onlineCount} Txns</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-emerald-100 shadow-2xs">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <Banknote className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Cash Collections (Workshop / Partner)</p>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-lg font-black text-emerald-900 font-mono">₹{paymentBreakdown.cashTotal.toLocaleString('en-IN')}</span>
+                  <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{paymentBreakdown.cashCount} Txns</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {recentPayments.length === 0 ? (
             <div className="p-8 text-center flex flex-col items-center justify-center">
               <CreditCard className="w-10 h-10 text-gray-300 mb-2" />
@@ -419,6 +471,7 @@ export default function AccountsDashboardPage() {
                   <TableHead className="font-semibold text-gray-700">Txn / Booking ID</TableHead>
                   <TableHead className="font-semibold text-gray-700">Customer</TableHead>
                   <TableHead className="font-semibold text-gray-700">Type</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Method</TableHead>
                   <TableHead className="font-semibold text-gray-700">Amount</TableHead>
                   <TableHead className="font-semibold text-gray-700">Date & Time</TableHead>
                   <TableHead className="font-semibold text-gray-700 text-right">Status</TableHead>
@@ -430,6 +483,7 @@ export default function AccountsDashboardPage() {
                   const custPhone = p.customer?.phone || p.customerId?.phone || '';
                   const bId = p.bookingId?._id || p.bookingId || p._id;
                   const isAdvance = p.paymentType === 'ADVANCE';
+                  const isCash = String(p.method || p.provider || '').toUpperCase() === 'CASH';
 
                   return (
                     <TableRow key={p._id} className="hover:bg-gray-50/50 transition-colors">
@@ -447,6 +501,17 @@ export default function AccountsDashboardPage() {
                         }`}>
                           {isAdvance ? 'ADVANCE (15%)' : (p.paymentType || 'FULL')}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {isCash ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <Banknote className="w-3 h-3 text-emerald-700" /> Cash (Workshop)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                            <CreditCard className="w-3 h-3 text-blue-700" /> Online ({p.method || 'Razorpay'})
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-gray-900 font-extrabold text-sm">
                         ₹{p.amount?.toLocaleString('en-IN') || 0}

@@ -17,7 +17,8 @@ const bookingSchema = z.object({
   state: z.string().optional(),
   cityId: z.string().optional(),
   preferredDate: z.string().min(1, "Preferred date is required").refine((val) => {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return val >= today;
   }, "Past dates cannot be selected for service booking"),
   preferredTime: z.string().min(1, "Preferred time is required"),
@@ -185,10 +186,55 @@ export function BookingForm({
     }
   }, [vehicles, defaultVehicleId, setValue, watch]);
 
+  const selectedDate = watch("preferredDate");
   const selectedState = watch("state");
   const selectedServiceMode = watch("serviceMode");
   const selectedPaymentMode = watch("paymentMode");
   const selectedTime = watch("preferredTime");
+
+  const todayLocalStr = React.useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  const isToday = React.useMemo(() => {
+    if (!selectedDate) return false;
+    return selectedDate === todayLocalStr;
+  }, [selectedDate, todayLocalStr]);
+
+  // Helper to determine if a slot has passed for today
+  const isSlotPast = React.useCallback((slotIdOrLabel: string) => {
+    if (!isToday) return false;
+    const now = new Date();
+    const timeMatch = slotIdOrLabel.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!timeMatch) return false;
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    const modifier = timeMatch[3].toUpperCase();
+    if (modifier === "PM" && hours < 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+
+    const slotStartTime = new Date();
+    slotStartTime.setHours(hours, minutes, 0, 0);
+
+    return now.getTime() >= slotStartTime.getTime();
+  }, [isToday]);
+
+  const allSlotsExpiredToday = React.useMemo(() => {
+    if (!isToday) return false;
+    return TIME_SLOTS.every((s) => isSlotPast(s.id));
+  }, [isToday, isSlotPast]);
+
+  // Invalidate selectedTime if date is today and that slot has already passed
+  useEffect(() => {
+    if (isToday && selectedTime && isSlotPast(selectedTime)) {
+      setValue("preferredTime", "", { shouldValidate: true });
+      toast.error("The previously selected slot has passed for today. Please pick an available time slot.", { id: "past-slot-toast" });
+    }
+  }, [isToday, selectedDate, selectedTime, isSlotPast, setValue]);
 
   // Auto-prefill State, City, and Address from saved profile
   useEffect(() => {
@@ -288,8 +334,8 @@ export function BookingForm({
                 href="/customer/garage"
                 className="inline-flex items-center gap-1 text-xs font-bold text-primary-orange hover:text-orange-600 hover:underline transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Add New Vehicle</span>
+              
+               
               </Link>
             </div>
             <Select
@@ -527,7 +573,7 @@ export function BookingForm({
               <div className="relative">
                 <input
                   type="date"
-                  min={new Date().toISOString().split('T')[0]}
+                  min={todayLocalStr}
                   {...register("preferredDate")}
                   className="w-full rounded-xl border border-neutral-muted/30 bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange shadow-sm text-neutral-dark"
                   required
@@ -557,19 +603,34 @@ export function BookingForm({
                 >
                   <option value="">-- Choose Preferred Time Slot --</option>
                   <optgroup label="🌅 Morning Slots">
-                    {TIME_SLOTS.filter(s => s.period === "Morning").map(s => (
-                      <option key={s.id} value={s.label}>{s.label}</option>
-                    ))}
+                    {TIME_SLOTS.filter(s => s.period === "Morning").map(s => {
+                      const isPast = isSlotPast(s.id);
+                      return (
+                        <option key={s.id} value={s.label} disabled={isPast}>
+                          {s.label} {isPast ? "(Passed)" : ""}
+                        </option>
+                      );
+                    })}
                   </optgroup>
                   <optgroup label="☀️ Afternoon Slots">
-                    {TIME_SLOTS.filter(s => s.period === "Afternoon").map(s => (
-                      <option key={s.id} value={s.label}>{s.label}</option>
-                    ))}
+                    {TIME_SLOTS.filter(s => s.period === "Afternoon").map(s => {
+                      const isPast = isSlotPast(s.id);
+                      return (
+                        <option key={s.id} value={s.label} disabled={isPast}>
+                          {s.label} {isPast ? "(Passed)" : ""}
+                        </option>
+                      );
+                    })}
                   </optgroup>
                   <optgroup label="🌆 Evening Slots">
-                    {TIME_SLOTS.filter(s => s.period === "Evening").map(s => (
-                      <option key={s.id} value={s.label}>{s.label}</option>
-                    ))}
+                    {TIME_SLOTS.filter(s => s.period === "Evening").map(s => {
+                      const isPast = isSlotPast(s.id);
+                      return (
+                        <option key={s.id} value={s.label} disabled={isPast}>
+                          {s.label} {isPast ? "(Passed)" : ""}
+                        </option>
+                      );
+                    })}
                   </optgroup>
                 </select>
               </div>
@@ -585,24 +646,41 @@ export function BookingForm({
               </span>
               <span className="text-[11px] text-gray-500 font-medium">Click to pick time instantly</span>
             </div>
+
+            {allSlotsExpiredToday && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>All time slots for today have ended. Please select tomorrow or an upcoming date above.</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
               {TIME_SLOTS.map((slot) => {
                 const isSelected = selectedTime === slot.label || selectedTime === slot.id;
+                const isPast = isSlotPast(slot.id);
                 return (
                   <button
                     key={slot.id}
                     type="button"
-                    onClick={() => setValue("preferredTime", slot.label, { shouldValidate: true })}
+                    disabled={isPast}
+                    onClick={() => {
+                      if (!isPast) {
+                        setValue("preferredTime", slot.label, { shouldValidate: true });
+                      }
+                    }}
+                    title={isPast ? "This slot has already passed for today" : undefined}
                     className={cn(
                       "px-3 py-2 rounded-lg text-xs font-semibold border transition-all text-center flex flex-col items-center justify-center gap-0.5",
-                      isSelected
+                      isPast
+                        ? "border-gray-200 bg-gray-100/80 text-gray-400 cursor-not-allowed opacity-50 select-none"
+                        : isSelected
                         ? "border-primary-orange bg-primary-orange text-white shadow-sm ring-2 ring-primary-orange/30 scale-[1.02]"
                         : "border-gray-200 bg-white hover:border-primary-orange/50 hover:bg-orange-50/50 text-gray-800"
                     )}
                   >
-                    <span className="font-bold">{slot.id}</span>
-                    <span className={cn("text-[10px]", isSelected ? "text-orange-100 font-medium" : "text-gray-400 font-normal")}>
-                      {slot.period}
+                    <span className={cn("font-bold", isPast && "line-through text-gray-400")}>{slot.id}</span>
+                    <span className={cn("text-[10px]", isPast ? "text-gray-400 font-medium" : isSelected ? "text-orange-100 font-medium" : "text-gray-400 font-normal")}>
+                      {isPast ? "Passed" : slot.period}
                     </span>
                   </button>
                 );

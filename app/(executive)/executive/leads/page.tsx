@@ -190,7 +190,7 @@ export default function ExecutiveLeadsPage() {
   // --- Forward Quote Modal State & Form ---
   const [forwardBidData, setForwardBidData] = useState<{ leadId: string; bids: any[]; lead?: any } | null>(null);
   const [forwardedLeadIds, setForwardedLeadIds] = useState<Set<string>>(new Set());
-  const [quoteAdjustments, setQuoteAdjustments] = useState<Record<string, { quoteAmount?: number; discountAmount?: number; adjustedAmount?: number; notes?: string }>>({});
+  const [quoteAdjustments, setQuoteAdjustments] = useState<Record<string, { quoteAmount?: number | string; discountAmount?: number | string; adjustedAmount?: number; notes?: string }>>({});
 
   const forwardForm = useForm<ForwardQuoteFormValues>({
     resolver: zodResolver(forwardQuoteSchema),
@@ -213,17 +213,26 @@ export default function ExecutiveLeadsPage() {
     const adjustmentsPayload = data.bidIds.map(bidId => {
       const adj = quoteAdjustments[bidId];
       const orig = forwardBidData.bids.find((b: any) => (b._id || b.id) === bidId)?.quotedAmount || 0;
-      const hasPriceChange = adj?.adjustedAmount !== undefined && adj.adjustedAmount > 0 && adj.adjustedAmount !== orig;
-      const hasDiscount = adj?.discountAmount !== undefined && adj.discountAmount > 0;
+      
+      const qNum = (adj?.quoteAmount !== undefined && adj.quoteAmount !== "" && !isNaN(Number(adj.quoteAmount)))
+        ? Number(adj.quoteAmount)
+        : orig;
+      const dNum = (adj?.discountAmount !== undefined && adj.discountAmount !== "" && !isNaN(Number(adj.discountAmount)))
+        ? Number(adj.discountAmount)
+        : 0;
+      const adjustedPrice = Math.max(1, qNum - dNum);
+
+      const hasPriceChange = adjustedPrice !== orig;
+      const hasDiscount = dNum > 0;
       const hasNotes = adj?.notes && adj.notes.trim().length > 0;
 
       if (!hasPriceChange && !hasDiscount && !hasNotes) return null;
 
       return {
         bidId,
-        quoteAmount: adj?.quoteAmount !== undefined ? adj.quoteAmount : orig,
-        discountAmount: adj?.discountAmount || 0,
-        adjustedAmount: adj?.adjustedAmount !== undefined ? adj.adjustedAmount : (orig - (adj?.discountAmount || 0)),
+        quoteAmount: qNum,
+        discountAmount: dNum,
+        adjustedAmount: adjustedPrice,
         notes: adj?.notes || ""
       };
     }).filter(Boolean);
@@ -1143,8 +1152,12 @@ export default function ExecutiveLeadsPage() {
                         const activeQuotePrice = currentAdjustment.quoteAmount !== undefined 
                           ? currentAdjustment.quoteAmount 
                           : (currentAdjustment.adjustedAmount !== undefined ? currentAdjustment.adjustedAmount : originalAmt);
-                        const activeDiscount = currentAdjustment.discountAmount || 0;
-                        const finalCustomerPrice = Math.max(1, activeQuotePrice - activeDiscount);
+                        const activeDiscount = currentAdjustment.discountAmount !== undefined
+                          ? currentAdjustment.discountAmount
+                          : 0;
+                        const numQuote = activeQuotePrice === "" ? 0 : Number(activeQuotePrice);
+                        const numDiscount = activeDiscount === "" ? 0 : Number(activeDiscount);
+                        const finalCustomerPrice = Math.max(1, numQuote - numDiscount);
 
                         return (
                           <div
@@ -1234,19 +1247,55 @@ export default function ExecutiveLeadsPage() {
                                         placeholder={String(originalAmt)}
                                         value={activeQuotePrice}
                                         onChange={(e) => {
-                                          const newQuote = Math.max(1, Number(e.target.value) || 0);
-                                          const disc = currentAdjustment.discountAmount || 0;
-                                          const finalPrice = Math.max(1, newQuote - disc);
+                                          const rawVal = e.target.value;
+                                          if (rawVal === "") {
+                                            setQuoteAdjustments(prev => ({
+                                              ...prev,
+                                              [bid._id]: {
+                                                ...prev[bid._id],
+                                                quoteAmount: "",
+                                                discountAmount: currentAdjustment.discountAmount,
+                                                adjustedAmount: 0,
+                                                notes: prev[bid._id]?.notes || ""
+                                              }
+                                            }));
+                                            return;
+                                          }
+                                          const valNum = Number(rawVal);
+                                          if (isNaN(valNum)) return;
+                                          const discNum = (currentAdjustment.discountAmount !== "" && currentAdjustment.discountAmount !== undefined) 
+                                            ? Number(currentAdjustment.discountAmount) 
+                                            : 0;
+                                          const finalPrice = Math.max(1, valNum - discNum);
                                           setQuoteAdjustments(prev => ({
                                             ...prev,
                                             [bid._id]: {
                                               ...prev[bid._id],
-                                              quoteAmount: newQuote,
-                                              discountAmount: disc,
+                                              quoteAmount: valNum,
+                                              discountAmount: currentAdjustment.discountAmount,
                                               adjustedAmount: finalPrice,
                                               notes: prev[bid._id]?.notes || ""
                                             }
                                           }));
+                                        }}
+                                        onBlur={(e) => {
+                                          const rawVal = e.target.value;
+                                          const valNum = Number(rawVal);
+                                          if (rawVal === "" || isNaN(valNum) || valNum <= 0) {
+                                            const discNum = (currentAdjustment.discountAmount !== "" && currentAdjustment.discountAmount !== undefined) 
+                                              ? Number(currentAdjustment.discountAmount) 
+                                              : 0;
+                                            setQuoteAdjustments(prev => ({
+                                              ...prev,
+                                              [bid._id]: {
+                                                ...prev[bid._id],
+                                                quoteAmount: originalAmt,
+                                                discountAmount: currentAdjustment.discountAmount,
+                                                adjustedAmount: Math.max(1, originalAmt - discNum),
+                                                notes: prev[bid._id]?.notes || ""
+                                              }
+                                            }));
+                                          }
                                         }}
                                         className="w-full h-10 pl-8 pr-3 bg-slate-50/50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 rounded-lg text-sm font-extrabold text-slate-900 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       />
@@ -1274,15 +1323,34 @@ export default function ExecutiveLeadsPage() {
                                         placeholder="0"
                                         value={currentAdjustment.discountAmount !== undefined ? currentAdjustment.discountAmount : ""}
                                         onChange={(e) => {
-                                          const disc = Math.max(0, Number(e.target.value) || 0);
-                                          const curQuote = currentAdjustment.quoteAmount !== undefined ? currentAdjustment.quoteAmount : originalAmt;
-                                          const finalPrice = Math.max(1, curQuote - disc);
+                                          const rawVal = e.target.value;
+                                          if (rawVal === "") {
+                                            const quoteVal = (currentAdjustment.quoteAmount !== "" && currentAdjustment.quoteAmount !== undefined)
+                                              ? Number(currentAdjustment.quoteAmount)
+                                              : originalAmt;
+                                            setQuoteAdjustments(prev => ({
+                                              ...prev,
+                                              [bid._id]: {
+                                                ...prev[bid._id],
+                                                quoteAmount: currentAdjustment.quoteAmount,
+                                                discountAmount: "",
+                                                adjustedAmount: quoteVal,
+                                                notes: prev[bid._id]?.notes || ""
+                                              }
+                                            }));
+                                            return;
+                                          }
+                                          const discNum = Math.max(0, Number(rawVal) || 0);
+                                          const quoteVal = (currentAdjustment.quoteAmount !== "" && currentAdjustment.quoteAmount !== undefined)
+                                            ? Number(currentAdjustment.quoteAmount)
+                                            : originalAmt;
+                                          const finalPrice = Math.max(1, quoteVal - discNum);
                                           setQuoteAdjustments(prev => ({
                                             ...prev,
                                             [bid._id]: {
                                               ...prev[bid._id],
-                                              quoteAmount: curQuote,
-                                              discountAmount: disc,
+                                              quoteAmount: currentAdjustment.quoteAmount,
+                                              discountAmount: discNum,
                                               adjustedAmount: finalPrice,
                                               notes: prev[bid._id]?.notes || ""
                                             }
@@ -1307,9 +1375,9 @@ export default function ExecutiveLeadsPage() {
                                       <span className="text-2xl font-black font-mono">
                                         ₹{finalCustomerPrice.toLocaleString()}
                                       </span>
-                                      {activeDiscount > 0 && (
+                                      {numDiscount > 0 && (
                                         <span className="text-xs bg-white text-emerald-800 font-black px-2 py-0.5 rounded-full shadow-2xs">
-                                          ₹{activeDiscount} OFF APPLIED
+                                          ₹{numDiscount} OFF APPLIED
                                         </span>
                                       )}
                                     </div>
@@ -1317,10 +1385,10 @@ export default function ExecutiveLeadsPage() {
 
                                   <div className="text-right text-xs text-emerald-100 font-medium sm:border-l sm:border-white/20 sm:pl-4">
                                     <div className="font-mono">
-                                      Quote: ₹{activeQuotePrice} − Disc: ₹{activeDiscount}
+                                      Quote: ₹{numQuote} − Disc: ₹{numDiscount}
                                     </div>
                                     <div className="text-[10px] text-emerald-200 mt-0.5">
-                                      {activeQuotePrice !== originalAmt
+                                      {numQuote !== originalAmt
                                         ? `(Original Workshop: ₹${originalAmt})`
                                         : "Standard Workshop Price"}
                                     </div>

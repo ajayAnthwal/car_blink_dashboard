@@ -6,7 +6,7 @@ import { useAccountsTransactions } from "@/features/accounts/hooks/useAccountsQu
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CreditCard, Search, Download, Loader2, ChevronLeft, ChevronRight, CheckCircle2, Clock } from "lucide-react";
+import { CreditCard, Search, Download, Loader2, ChevronLeft, ChevronRight, CheckCircle2, Clock, Banknote } from "lucide-react";
 
 export default function AccountsTransactionsPage() {
   const [page, setPage] = useState(1);
@@ -17,6 +17,27 @@ export default function AccountsTransactionsPage() {
   const transactions = data?.transactions || [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / limit) || 1;
+
+  const { onlineTotal, onlineCount, cashTotal, cashCount } = React.useMemo(() => {
+    let onTot = 0;
+    let onCnt = 0;
+    let cTot = 0;
+    let cCnt = 0;
+
+    transactions.forEach((t: any) => {
+      const isCash = String(t.method || '').toUpperCase() === 'CASH';
+      const amt = Number(t.amount || 0);
+      if (isCash) {
+        cTot += amt;
+        cCnt += 1;
+      } else {
+        onTot += amt;
+        onCnt += 1;
+      }
+    });
+
+    return { onlineTotal: onTot, onlineCount: onCnt, cashTotal: cTot, cashCount: cCnt };
+  }, [transactions]);
 
   const handleExportCSV = () => {
     if (transactions.length === 0) return;
@@ -53,6 +74,35 @@ export default function AccountsTransactionsPage() {
         <Button onClick={handleExportCSV} className="bg-primary-navy hover:bg-primary-navy/90 text-white font-semibold">
           <Download className="w-4 h-4 mr-2" /> Export to CSV
         </Button>
+      </div>
+
+      {/* Financial Transparency Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-blue-100 shadow-2xs">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+            <CreditCard className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Online Payments Volume (Page)</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-black text-blue-900 font-mono">₹{onlineTotal.toLocaleString('en-IN')}</span>
+              <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full">{onlineCount} Transactions</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-emerald-100 shadow-2xs">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <Banknote className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Cash Collections Volume (Page)</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-black text-emerald-900 font-mono">₹{cashTotal.toLocaleString('en-IN')}</span>
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">{cashCount} Transactions</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <Card className="shadow-subtle border-gray-100">
@@ -110,8 +160,18 @@ export default function AccountsTransactionsPage() {
                         {t.paymentType || 'PAYMENT'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-xs font-semibold text-gray-600">
-                      {t.method || 'RAZORPAY'}
+                    <td className="px-6 py-4">
+                      {String(t.method || '').toUpperCase() === 'CASH' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                          Cash (Workshop)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                          <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                          Online ({t.method || 'Razorpay'})
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-900">
                       ₹{Number(t.amount || 0).toLocaleString('en-IN')}

@@ -30,14 +30,22 @@ export default function AdminBookingsPage() {
 
   const handleExportCSV = () => {
     if (bookings.length === 0) return alert("No data to export.");
-    const headers = ["Booking ID", "Customer", "Service", "Status", "Date", "Location"];
+    const headers = ["Booking ID", "Customer", "Service", "Status", "Customer Total (INR)", "Commission Earned (INR)", "Total Profit (INR)", "Date", "Location"];
     const csvRows = [headers.join(",")];
     bookings.forEach(b => {
+      const customerGross = b.pricing?.customerGrossQuote || b.finalAmount || b.totalAmount || b.acceptedQuoteAmount || b.acceptedBidId?.quotedAmount || b.serviceId?.basePrice || 0;
+      const partnerQuote = b.pricing?.partnerBaseQuote || b.acceptedBidId?.quotedAmount || 0;
+      const commission = b.pricing?.companyMarginAmount ?? (customerGross > partnerQuote && partnerQuote > 0 ? (customerGross - partnerQuote) : 0);
+      const profit = commission;
+
       csvRows.push([
         b.bookingId || b._id,
         `"${b.customerId?.fullName || ''}"`,
         `"${b.serviceId?.name || ''}"`,
         b.status,
+        customerGross,
+        commission,
+        profit,
         `"${new Date(b.createdAt).toLocaleString()}"`,
         `"${b.cityId?.name || 'N/A'}"`
       ].join(","));
@@ -45,7 +53,7 @@ export default function AdminBookingsPage() {
     const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", `bookings_${new Date().getTime()}.csv`);
+    link.setAttribute("download", `bookings_financial_report_${new Date().getTime()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -125,13 +133,14 @@ export default function AdminBookingsPage() {
                       <th className="px-6 py-4 font-bold tracking-wider">Customer Info</th>
                       <th className="px-6 py-4 font-bold tracking-wider">Service & Vehicle</th>
                       <th className="px-6 py-4 font-bold tracking-wider">Status</th>
+                      <th className="px-6 py-4 font-bold tracking-wider">Financials & Margin</th>
                       <th className="px-6 py-4 font-bold tracking-wider text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {bookings.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-10 text-gray-400 font-medium">No bookings found for the applied filters.</td>
+                        <td colSpan={6} className="text-center py-10 text-gray-400 font-medium">No bookings found for the applied filters.</td>
                       </tr>
                     ) : (
                       bookings.map((booking: unknown) => (
@@ -176,6 +185,31 @@ export default function AdminBookingsPage() {
                             }`}>
                               {booking.status}
                             </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {(() => {
+                              const customerGross = booking.pricing?.customerGrossQuote || booking.finalAmount || booking.totalAmount || booking.acceptedQuoteAmount || booking.acceptedBidId?.quotedAmount || booking.serviceId?.basePrice || 0;
+                              const partnerQuote = booking.pricing?.partnerBaseQuote || booking.acceptedBidId?.quotedAmount || 0;
+                              const commission = booking.pricing?.companyMarginAmount ?? (customerGross > partnerQuote && partnerQuote > 0 ? (customerGross - partnerQuote) : 0);
+                              const totalProfit = commission;
+
+                              return (
+                                <div className="space-y-1 min-w-[140px]">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500 font-medium">Customer:</span>
+                                    <span className="font-bold text-gray-900 font-mono">₹{customerGross.toLocaleString('en-IN')}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500 font-medium">Commission:</span>
+                                    <span className="font-bold text-blue-700 font-mono">₹{commission.toLocaleString('en-IN')}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-0.5">
+                                    <span className="text-emerald-700 font-bold">Total Profit:</span>
+                                    <span className="font-black text-emerald-700 font-mono">₹{totalProfit.toLocaleString('en-IN')}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-4 text-right">
                             <Link
