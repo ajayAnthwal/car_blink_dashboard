@@ -1589,10 +1589,10 @@ export default function CustomerBookingDetailsPage() {
                     <span className="text-[10px] text-gray-400 font-bold uppercase block">Fuel Type</span>
                     <span className="font-bold text-gray-800 mt-0.5 block">{booking.vehicleId?.fuelType || "Petrol"}</span>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  {/* <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <span className="text-[10px] text-gray-400 font-bold uppercase block">Transmission</span>
                     <span className="font-bold text-gray-800 mt-0.5 block">{booking.vehicleId?.transmission || "Manual"}</span>
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>

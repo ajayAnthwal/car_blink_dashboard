@@ -90,7 +90,7 @@ export const roleConfig: Record<Role | "ADMIN", RoleConfigData> = {
           { name: "My Bookings", href: "/customer/bookings", icon: CalendarCheck },
           { name: "Check Quote / My Quotes", href: "/customer/quotes", icon: MessageSquareQuote },
           { name: "My Garage", href: "/customer/garage", icon: Car },
-          { name: "My Invoices", href: "/customer/invoices", icon: Receipt },
+          { name: "My Invoices", href: "/customer/invoices", icon: IndianRupee },
           { name: "My Warranties", href: "/customer/warranty", icon: ShieldCheck },
         ],
       },
