@@ -80,6 +80,61 @@ function advanceFor(totalRupees: number) {
   };
 }
 
+const WORKSHOP_TIME_SLOTS: { id: string; label: string }[] = [
+  { id: "09:00 AM", label: "09:00 AM - 10:00 AM" },
+  { id: "10:00 AM", label: "10:00 AM - 11:00 AM" },
+  { id: "11:00 AM", label: "11:00 AM - 12:00 PM" },
+  { id: "12:00 PM", label: "12:00 PM - 01:00 PM" },
+  { id: "01:00 PM", label: "01:00 PM - 02:00 PM" },
+  { id: "02:00 PM", label: "02:00 PM - 03:00 PM" },
+  { id: "03:00 PM", label: "03:00 PM - 04:00 PM" },
+  { id: "04:00 PM", label: "04:00 PM - 05:00 PM" },
+  { id: "05:00 PM", label: "05:00 PM - 06:00 PM" },
+  { id: "06:00 PM", label: "06:00 PM - 07:00 PM" },
+];
+
+function formatBookingTime(booking: any): string {
+  if (!booking) return "Not specified";
+
+  // 1. Direct slot label or time string if present (e.g. "11:00 AM - 12:00 PM")
+  const rawStr = booking.preferredTime || booking.timeSlot || booking.time;
+  if (typeof rawStr === "string" && rawStr.trim()) {
+    return rawStr.trim();
+  }
+
+  // 2. Extract from preferredDate timestamp
+  if (!booking.preferredDate) return "Not specified";
+  const dateObj = new Date(booking.preferredDate);
+  if (isNaN(dateObj.getTime())) return "Not specified";
+
+  // If midnight UTC (00:00:00.000Z), it represents an old date-only record with no specific time
+  if (dateObj.getUTCHours() === 0 && dateObj.getUTCMinutes() === 0 && dateObj.getUTCSeconds() === 0) {
+    return "Not specified";
+  }
+
+  // Convert to IST 12-hour AM/PM format (Asia/Kolkata)
+  try {
+    const formattedIST = dateObj.toLocaleTimeString("en-US", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }); // e.g. "11:00 AM"
+
+    // Check if it matches one of our standard 1-hour workshop slots
+    const matchedSlot = WORKSHOP_TIME_SLOTS.find(
+      (s) => s.id.toLowerCase() === formattedIST.toLowerCase()
+    );
+    if (matchedSlot) {
+      return matchedSlot.label;
+    }
+
+    return formattedIST;
+  } catch (e) {
+    return "Not specified";
+  }
+}
+
 export default function CustomerBookingDetailsPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
@@ -1606,7 +1661,7 @@ export default function CustomerBookingDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 sm:p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl bg-blue-50 text-secondary-blue flex items-center justify-center shrink-0">
                     <Calendar className="w-4 h-4" />
@@ -1622,6 +1677,18 @@ export default function CustomerBookingDetailsPage() {
                 </div>
 
                 <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase block">Preferred Time</span>
+                    <p className="font-bold text-gray-900 text-sm mt-0.5">
+                      {formatBookingTime(booking)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 sm:col-span-2 lg:col-span-1">
                   <div className="w-9 h-9 rounded-xl bg-orange-50 text-primary-orange flex items-center justify-center shrink-0">
                     <MapPin className="w-4 h-4" />
                   </div>

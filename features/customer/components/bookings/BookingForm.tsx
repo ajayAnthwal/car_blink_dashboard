@@ -12,22 +12,22 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import toast from "react-hot-toast";
 
 const bookingSchema = z.object({
-  vehicleId: z.string().min(1, "Vehicle is required"),
-  serviceId: z.string().min(1, "Service is required"),
+  vehicleId: z.string().min(1, "Please select your vehicle"),
+  serviceId: z.string().min(1, "Please select a required service"),
   state: z.string().optional(),
   cityId: z.string().optional(),
-  preferredDate: z.string().min(1, "Preferred date is required").refine((val) => {
+  preferredDate: z.string().min(1, "Please select your preferred service date").refine((val) => {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return val >= today;
   }, "Past dates cannot be selected for service booking"),
-  preferredTime: z.string().min(1, "Preferred time is required"),
+  preferredTime: z.string().min(1, "Please select your preferred time slot"),
   description: z.string().min(10, "Please provide a description (min 10 chars)"),
   serviceMode: z.enum(["DOORSTEP", "GARAGE_VISIT"]),
   paymentMode: z.enum(["CASH", "ONLINE"]),
   address: z.string()
     .trim()
-    .min(3, "Location is mandatory. Please detect your location or type an address/area to proceed."),
+    .min(3, "Please enter your service location or address"),
   landmark: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
@@ -47,6 +47,45 @@ export const TIME_SLOTS = [
   { id: "05:00 PM", label: "05:00 PM - 06:00 PM", period: "Evening" },
   { id: "06:00 PM", label: "06:00 PM - 07:00 PM", period: "Evening" },
 ];
+
+/**
+ * Ordered list of fields matching the visual top-to-bottom layout in the DOM.
+ */
+export const FIELD_ORDER: (keyof BookingFormValues)[] = [
+  "vehicleId",
+  "serviceId",
+  "address",
+  "preferredDate",
+  "preferredTime",
+  "description",
+];
+
+export const scrollToAndFocusField = (fieldKey: string) => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  const wrapper = document.querySelector(`[data-field="${fieldKey}"]`) as HTMLElement | null;
+  if (!wrapper) return;
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const scrollBehavior: ScrollBehavior = prefersReducedMotion ? "auto" : "smooth";
+
+  // Center the wrapper in viewport to clear the sticky header (h-16/h-20)
+  wrapper.scrollIntoView({
+    behavior: scrollBehavior,
+    block: "center",
+  });
+
+  // Find focusable input/select/textarea inside the wrapper
+  const focusable = wrapper.querySelector<HTMLElement>(
+    'select:not([disabled]), input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), [tabindex="0"]'
+  );
+
+  if (focusable && typeof focusable.focus === "function") {
+    focusable.focus({ preventScroll: true });
+  } else if (typeof wrapper.focus === "function") {
+    wrapper.focus({ preventScroll: true });
+  }
+};
 
 interface FormOption {
   _id?: string;
@@ -87,6 +126,8 @@ export function BookingForm({
     formState: { errors },
   } = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     defaultValues: {
       vehicleId: "",
       serviceId: "",
@@ -304,17 +345,29 @@ export function BookingForm({
 
   const onInvalid = (validationErrors: any) => {
     console.error("Form validation errors:", validationErrors);
-    const firstKey = Object.keys(validationErrors)[0];
-    const firstError = validationErrors[firstKey];
-    if (firstError?.message) {
-      toast.error(firstError.message);
+
+    // Find the FIRST invalid field in visual DOM order (top-to-bottom)
+    const firstInvalidField = FIELD_ORDER.find((key) => !!validationErrors[key]);
+    const firstError = firstInvalidField
+      ? validationErrors[firstInvalidField]
+      : validationErrors[Object.keys(validationErrors)[0]];
+
+    const message = firstError?.message || "Please fill all required fields correctly.";
+
+    // Show ONE deduped toast for the first invalid field
+    toast.error(message, { id: "booking-form-validation" });
+
+    // Smoothly scroll to the first invalid field and focus it
+    if (firstInvalidField) {
+      scrollToAndFocusField(firstInvalidField);
     } else {
-      toast.error("Please fill all required fields correctly.");
+      const firstKey = Object.keys(validationErrors)[0];
+      if (firstKey) scrollToAndFocusField(firstKey);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit, onInvalid)} className="space-y-8">
+    <form onSubmit={handleSubmit(handleFormSubmit, onInvalid)} noValidate className="space-y-8">
       {/* SECTION 1: Service Details */}
       <div className="bg-neutral-white p-4 md:p-6 rounded-2xl shadow-subtle border border-neutral-muted/10 space-y-6">
         <div className="flex items-center space-x-2 border-b border-neutral-muted/10 pb-4">
@@ -325,26 +378,19 @@ export function BookingForm({
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
+          <div data-field="vehicleId">
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-medium text-primary-navy">
                 Select Vehicle <span className="text-red-500 ml-0.5">*</span>
               </label>
-              <Link
-                href="/customer/garage"
-                className="inline-flex items-center gap-1 text-xs font-bold text-primary-orange hover:text-orange-600 hover:underline transition-colors"
-              >
-              
-               
-              </Link>
             </div>
             <Select
               value={watch("vehicleId")}
-              onChange={(e) => setValue("vehicleId", e.target.value)}
+              onChange={(e) => setValue("vehicleId", e.target.value, { shouldValidate: true })}
               options={vehicles.map(v => ({ value: v._id || "", label: `${v.brand || ""} ${v.model || ""}` }))}
+              error={errors.vehicleId?.message}
               required
             />
-            {errors.vehicleId && <p className="text-red-500 text-xs mt-1">{errors.vehicleId.message}</p>}
             <p className="text-[11px] text-gray-500 mt-1.5 flex items-center justify-between">
               <span>Don&apos;t see your car listed?</span>
               <Link href="/customer/garage" className="font-semibold text-primary-orange hover:underline">
@@ -353,15 +399,15 @@ export function BookingForm({
             </p>
           </div>
 
-          <div>
+          <div data-field="serviceId">
             <Select
               label="Required Service"
               value={watch("serviceId")}
-              onChange={(e) => setValue("serviceId", e.target.value)}
+              onChange={(e) => setValue("serviceId", e.target.value, { shouldValidate: true })}
               options={services.map(s => ({ value: s._id || "", label: s.name || "", group: s.category }))}
+              error={errors.serviceId?.message}
               required
             />
-            {errors.serviceId && <p className="text-red-500 text-xs mt-1">{errors.serviceId.message}</p>}
           </div>
         </div>
       </div>
@@ -375,11 +421,11 @@ export function BookingForm({
           <h3 className="text-lg font-heading font-semibold text-primary-navy">Location & Time</h3>
         </div>
 
-        <div className="space-y-4">
+        <div data-field="serviceMode" className="space-y-4">
           <label className="block text-sm font-medium text-neutral-dark">Service Mode</label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div 
-              onClick={() => setValue("serviceMode", "GARAGE_VISIT")}
+              onClick={() => setValue("serviceMode", "GARAGE_VISIT", { shouldValidate: true })}
               className={cn(
                 "flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
                 selectedServiceMode === "GARAGE_VISIT" 
@@ -397,7 +443,7 @@ export function BookingForm({
             </div>
 
             <div 
-              onClick={() => setValue("serviceMode", "DOORSTEP")}
+              onClick={() => setValue("serviceMode", "DOORSTEP", { shouldValidate: true })}
               className={cn(
                 "flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
                 selectedServiceMode === "DOORSTEP" 
@@ -417,10 +463,13 @@ export function BookingForm({
         </div>
 
         {/* MANDATORY LOCATION SECTION (Both Doorstep and Garage Visit) */}
-        <div className={cn(
-          "p-4 md:p-5 rounded-2xl border transition-all space-y-4",
-          errors.address ? "bg-red-50/40 border-red-300" : "bg-neutral-bg/60 border-neutral-muted/20"
-        )}>
+        <div
+          data-field="address"
+          className={cn(
+            "p-4 md:p-5 rounded-2xl border transition-all space-y-4",
+            errors.address ? "bg-red-50/40 border-red-500 ring-1 ring-red-400" : "bg-neutral-bg/60 border-neutral-muted/20"
+          )}
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-muted/15 pb-3">
             <div className="flex items-center">
               <div className={cn(
@@ -530,6 +579,11 @@ export function BookingForm({
               <Input
                 placeholder="Type your area, locality or full street address (e.g. Indiranagar 100ft Road, Bengaluru)..."
                 {...register("address")}
+                onChange={(e) => {
+                  register("address").onChange(e);
+                  setValue("address", e.target.value, { shouldValidate: true });
+                  if (locationSource === "auto") setLocationSource("manual");
+                }}
                 className={cn(
                   "pr-10 text-sm",
                   errors.address ? "border-red-500 focus:ring-red-400 focus:border-red-500 bg-red-50/20" : ""
@@ -565,28 +619,37 @@ export function BookingForm({
 
         <div className="pt-4 border-t border-neutral-muted/10 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
+            <div data-field="preferredDate">
               <label className="block text-sm font-medium text-neutral-dark mb-1.5 flex items-center">
-                <Calendar className="w-4 h-4 mr-2 text-primary-orange" />
-                Select Date *
+                <Calendar className={cn("w-4 h-4 mr-2", errors.preferredDate ? "text-red-500" : "text-primary-orange")} />
+                <span>Select Date</span> <span className="text-red-500 ml-0.5">*</span>
               </label>
               <div className="relative">
                 <input
                   type="date"
                   min={todayLocalStr}
                   {...register("preferredDate")}
-                  className="w-full rounded-xl border border-neutral-muted/30 bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange shadow-sm text-neutral-dark"
+                  onChange={(e) => {
+                    register("preferredDate").onChange(e);
+                    setValue("preferredDate", e.target.value, { shouldValidate: true });
+                  }}
+                  className={cn(
+                    "w-full rounded-xl border bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 shadow-sm text-neutral-dark",
+                    errors.preferredDate
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200 bg-red-50/20"
+                      : "border-neutral-muted/30 focus:border-primary-orange focus:ring-primary-orange/20"
+                  )}
                   required
                 />
               </div>
-              {errors.preferredDate && <p className="text-red-500 text-xs mt-1">{errors.preferredDate.message}</p>}
+              {errors.preferredDate && <p className="text-red-500 text-xs mt-1 font-medium">{errors.preferredDate.message}</p>}
             </div>
 
-            <div>
+            <div data-field="preferredTime">
               <label className="block text-sm font-medium text-neutral-dark mb-1.5 flex items-center justify-between">
                 <span className="flex items-center">
-                  <Clock className="w-4 h-4 mr-2 text-primary-orange" />
-                  Select Time Slot *
+                  <Clock className={cn("w-4 h-4 mr-2", errors.preferredTime ? "text-red-500" : "text-primary-orange")} />
+                  <span>Select Time Slot</span> <span className="text-red-500 ml-0.5">*</span>
                 </span>
                 {selectedTime && (
                   <span className="text-xs font-bold text-primary-orange bg-primary-orange/10 px-2 py-0.5 rounded-md">
@@ -598,7 +661,12 @@ export function BookingForm({
                 <select
                   value={selectedTime || ""}
                   onChange={(e) => setValue("preferredTime", e.target.value, { shouldValidate: true })}
-                  className="w-full rounded-xl border border-neutral-muted/30 bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange shadow-sm text-neutral-dark cursor-pointer font-medium"
+                  className={cn(
+                    "w-full rounded-xl border bg-neutral-bg px-4 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 shadow-sm text-neutral-dark cursor-pointer font-medium",
+                    errors.preferredTime
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200 bg-red-50/20"
+                      : "border-neutral-muted/30 focus:border-primary-orange focus:ring-primary-orange/20"
+                  )}
                   required
                 >
                   <option value="">-- Choose Preferred Time Slot --</option>
@@ -699,11 +767,11 @@ export function BookingForm({
           <h3 className="text-lg font-heading font-semibold text-primary-navy">Preferences</h3>
         </div>
 
-        <div className="space-y-4">
+        <div data-field="paymentMode" className="space-y-4">
           <label className="block text-sm font-medium text-neutral-dark">Payment Mode</label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div 
-              onClick={() => setValue("paymentMode", "ONLINE")}
+              onClick={() => setValue("paymentMode", "ONLINE", { shouldValidate: true })}
               className={cn(
                 "flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
                 selectedPaymentMode === "ONLINE" 
@@ -721,7 +789,7 @@ export function BookingForm({
             </div>
 
             <div 
-              onClick={() => setValue("paymentMode", "CASH")}
+              onClick={() => setValue("paymentMode", "CASH", { shouldValidate: true })}
               className={cn(
                 "flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
                 selectedPaymentMode === "CASH" 
@@ -740,19 +808,28 @@ export function BookingForm({
           </div>
         </div>
 
-        <div>
+        <div data-field="description">
           <label className="block text-sm font-medium text-neutral-dark mb-2 flex items-center">
-            <PenLine className="w-4 h-4 mr-2 text-neutral-muted" />
-            Description of Issue
+            <PenLine className={cn("w-4 h-4 mr-2", errors.description ? "text-red-500" : "text-neutral-muted")} />
+            <span>Description of Issue</span> <span className="text-red-500 ml-0.5">*</span>
           </label>
           <textarea
             {...register("description")}
+            onChange={(e) => {
+              register("description").onChange(e);
+              setValue("description", e.target.value, { shouldValidate: true });
+            }}
             rows={4}
             placeholder="Please describe the issue or service requirements in detail (e.g. Engine making noise, AC not cooling)..."
-            className="flex w-full rounded-xl border border-neutral-muted/40 bg-neutral-white px-4 py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:border-primary-orange focus:ring-primary-orange/20 resize-none shadow-sm"
+            className={cn(
+              "flex w-full rounded-xl border bg-neutral-white px-4 py-3 text-sm transition-colors focus:outline-none focus:ring-2 resize-none shadow-sm",
+              errors.description
+                ? "border-red-500 focus:border-red-500 focus:ring-red-200 bg-red-50/20"
+                : "border-neutral-muted/40 focus:border-primary-orange focus:ring-primary-orange/20"
+            )}
             required
           />
-          {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
+          {errors.description && <p className="text-red-500 text-xs mt-1 font-medium">{errors.description.message}</p>}
         </div>
       </div>
 

@@ -20,6 +20,7 @@ import CustomerSatisfactionWidget from "@/components/customer/CustomerSatisfacti
 import CustomerSavingsModal from "@/components/customer/CustomerSavingsModal";
 import CustomerPaymentHistoryModal from "@/components/customer/CustomerPaymentHistoryModal";
 import LiveBookingStatusTracker from "@/components/customer/LiveBookingStatusTracker";
+import CustomerNamePromptModal from "@/components/customer/CustomerNamePromptModal";
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
@@ -1241,6 +1242,7 @@ export default function CustomerDashboardPage() {
         payments={safePayments}
         totalSpent={stats.totalSpent}
       />
+      <CustomerNamePromptModal />
     </div>
   );
 }
