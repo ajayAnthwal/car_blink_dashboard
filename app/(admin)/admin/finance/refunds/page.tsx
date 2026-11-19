@@ -210,7 +210,7 @@ export default function AdminRefundsPage() {
                 {selectedPayment && (
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                      Refund Amount (Max: ₹{selectedPayment.amount})
+                      Total Payment / Refund Base (Max: ₹{selectedPayment.amount})
                     </label>
                     <Input
                       type="number"
@@ -220,6 +220,22 @@ export default function AdminRefundsPage() {
                       onChange={(e) => setRefundAmount(Number(e.target.value))}
                       required
                     />
+                    {Number(refundAmount) > 0 && (
+                      <div className="mt-2 p-3 bg-neutral-50 border border-neutral-200 rounded-lg text-xs space-y-1">
+                        <div className="flex justify-between text-neutral-600">
+                          <span>Total Refund Base:</span>
+                          <span className="font-semibold">₹{Number(refundAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-amber-700 font-medium">
+                          <span>15% Platform Fee (Retained by CarBlink):</span>
+                          <span>-₹{(Number(refundAmount) * 0.15).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-emerald-700 font-bold border-t border-neutral-200 pt-1">
+                          <span>Net Disbursal to Customer (85%):</span>
+                          <span>₹{(Number(refundAmount) * 0.85).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

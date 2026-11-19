@@ -1,30 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-// Mock basic API fetcher since we know the routes
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "";
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("carblink_admin_token") || localStorage.getItem("carblink_token");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
-
-const fetchJson = async (url: string, options: RequestInit = {}) => {
-  const res = await fetch(`${API_URL}${url}`, {
-    ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...options.headers,
-    },
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "An error occurred");
-  }
-  return res.json();
-};
+import { apiClient } from "@/lib/axios";
 
 // Helper to safely extract arrays from API responses
 const extractArray = (res: any, key: string) => {
@@ -44,13 +19,14 @@ export const useRefunds = (params?: { page?: number; limit?: number; status?: st
       if (params?.status) {
         filterStr = `status=${params.status}`;
       }
-      const pageStr = `page=${params?.page || 1}&limit=${params?.limit || 10}`;
+      const pageStr = `page=${params?.page || 1}&limit=${params?.limit || 50}`;
       const queryStr = filterStr ? `?${pageStr}&${filterStr}` : `?${pageStr}`;
       
-      const res = await fetchJson(`/super-admin/refunds${queryStr}`);
+      const res = await apiClient.get(`/super-admin/refunds${queryStr}`);
+      const data = res.data;
       return {
-        refunds: extractArray(res, "refunds"),
-        total: res?.total || res?.data?.pagination?.total || extractArray(res, "refunds").length
+        refunds: extractArray(data, "refunds"),
+        total: data?.total || data?.data?.pagination?.total || extractArray(data, "refunds").length
       };
     },
   });
@@ -60,8 +36,8 @@ export const useEligiblePaymentsForRefund = () => {
   return useQuery({
     queryKey: ["admin", "eligible-refunds"],
     queryFn: async () => {
-      const res = await fetchJson(`/super-admin/refunds/eligible-payments`);
-      return extractArray(res, "payments");
+      const res = await apiClient.get(`/super-admin/refunds/eligible-payments`);
+      return extractArray(res.data, "payments");
     },
   });
 };
@@ -69,10 +45,10 @@ export const useEligiblePaymentsForRefund = () => {
 export const useInitiateRefundMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => fetchJson(`/super-admin/refunds`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+    mutationFn: async (data: any) => {
+      const res = await apiClient.post(`/super-admin/refunds`, data);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "refunds"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "eligible-refunds"] });
@@ -83,9 +59,10 @@ export const useInitiateRefundMutation = () => {
 export const useApproveRefundMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => fetchJson(`/super-admin/refunds/${id}/approve`, {
-      method: 'PATCH',
-    }),
+    mutationFn: async (id: string) => {
+      const res = await apiClient.patch(`/super-admin/refunds/${id}/approve`);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "refunds"] });
     },

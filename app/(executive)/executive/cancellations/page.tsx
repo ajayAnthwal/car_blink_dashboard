@@ -124,11 +124,12 @@ export default function ExecutiveCancellationsPage() {
     setNotification(null);
 
     const paid = booking.paymentDetails?.advancePaymentAmount || booking.finalAmount || booking.estimatedAmount || 0;
+    const defaultPlatformFee = Number((paid * 0.15).toFixed(2));
     if (type === "FORWARD") {
       setForwardForm({
         authorizedRefundAmount: paid,
-        deductionAmount: 0,
-        deductionReason: "",
+        deductionAmount: defaultPlatformFee,
+        deductionReason: "15% CarBlink Platform Fee",
         notes: "",
       });
     } else if (type === "RETAIN") {
@@ -197,12 +198,16 @@ export default function ExecutiveCancellationsPage() {
       return;
     }
     try {
+      const grossBase = Number(forwardForm.authorizedRefundAmount) || 0;
+      const deduction = Number(forwardForm.deductionAmount) || 0;
+      const netCustomerRefund = Math.max(0, Number((grossBase - deduction).toFixed(2)));
+
       await forwardMutation.mutateAsync({
         id: selectedBooking._id,
         notes: forwardForm.notes,
-        deductionAmount: Number(forwardForm.deductionAmount) || 0,
-        deductionReason: forwardForm.deductionReason,
-        authorizedRefundAmount: Number(forwardForm.authorizedRefundAmount) || 0,
+        deductionAmount: deduction,
+        deductionReason: forwardForm.deductionReason || "15% CarBlink Platform Fee",
+        authorizedRefundAmount: netCustomerRefund,
       });
       setNotification({ type: "success", text: "Cancellation and refund request forwarded to Accounts Desk." });
       setModalType(null);
@@ -764,7 +769,7 @@ export default function ExecutiveCancellationsPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-neutral-600">Deduction (Inspection / Convenience Fee):</span>
+                  <span className="text-neutral-600">Deduction (15% Platform Fee / Inspection):</span>
                   <span className="font-semibold text-red-600">
                     -₹{(Number(forwardForm.deductionAmount) || 0).toLocaleString("en-IN")}
                   </span>

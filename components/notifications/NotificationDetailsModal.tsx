@@ -108,7 +108,32 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     return { label: "View Accounts", href: "/accounts/dashboard" };
   }
 
-  // 1. Partner Onboarding, Verification, Approval, & KYC (HIGH PRIORITY OVER GENERIC IDS)
+  // 1. Refunds & Reimbursements (HIGHEST PRIORITY - must run before generic cancellation or booking checks)
+  if (
+    payload.refundId ||
+    payload.refund_id ||
+    titleLower.includes("refund") ||
+    msgLower.includes("refund")
+  ) {
+    if (role === "SUPER_ADMIN" || role === "ADMIN") {
+      return { label: "View Refund Requests", href: "/admin/finance/refunds" };
+    }
+    if (role === "ACCOUNTS") {
+      return { label: "Review Refund", href: "/accounts/refunds" };
+    }
+    if (role === "EXECUTIVE") {
+      return { label: "Review Refund", href: "/executive/cancellations" };
+    }
+    if (role === "CUSTOMER") {
+      return { label: "View Booking Details", href: bId ? `/customer/bookings/${bId}` : "/customer/dashboard" };
+    }
+    if (role === "PARTNER") {
+      return { label: "View Job Status", href: "/partner/jobs" };
+    }
+    return { label: "View Refunds", href: "/admin/finance/refunds" };
+  }
+
+  // 2. Partner Onboarding, Verification, Approval, & KYC (HIGH PRIORITY OVER GENERIC IDS)
   if (
     partnerId ||
     titleLower.includes("partner") ||
@@ -291,9 +316,7 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     titleLower.includes("earnings") ||
     msgLower.includes("earnings") ||
     titleLower.includes("wallet") ||
-    msgLower.includes("wallet") ||
-    titleLower.includes("refund") ||
-    msgLower.includes("refund")
+    msgLower.includes("wallet")
   ) {
     if (role === "ACCOUNTS") return { label: "View Settlements", href: "/accounts/settlements" };
     if (role === "PARTNER") return { label: "View My Wallet & Payouts", href: "/partner/wallet" };
