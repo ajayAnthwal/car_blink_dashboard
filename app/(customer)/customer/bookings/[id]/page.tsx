@@ -1030,7 +1030,7 @@ export default function CustomerBookingDetailsPage() {
                         </div>
 
                         <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between text-xs">
-                          <span className="text-gray-600 font-medium">Advance Payable Now:</span>
+                         <span className="text-gray-600 font-medium">Advance Platform Fee Now:</span>
                           <span className="font-black text-slate-900 font-mono">₹{quoteAdvance.toLocaleString("en-IN")}</span>
                         </div>
 
