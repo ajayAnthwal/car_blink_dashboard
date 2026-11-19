@@ -2,12 +2,13 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useCustomerStatus, useVerifyCustomerMutation } from "@/features/executive/hooks/useExecutiveQueries";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, Loader2, Phone, Mail, Clock, CheckCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Loader2, Phone, Mail, Clock, CheckCircle, Search, ChevronLeft, ChevronRight, Wallet } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 
 export default function CustomerStatusPage() {
@@ -164,25 +165,32 @@ export default function CustomerStatusPage() {
 
                     {/* Verification / Action */}
                     <TableCell className="align-top text-right">
-                      {!customer.isVerified ? (
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-xs text-warning font-medium mb-1 flex items-center">
-                            Not Verified
-                          </span>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleVerify(customer._id)}
-                            className="bg-primary-orange text-white hover:bg-orange-600 border-none w-28"
-                          >
-                            Verify Now
+                      <div className="flex flex-col items-end gap-1.5">
+                        {!customer.isVerified ? (
+                          <>
+                            <span className="text-xs text-warning font-medium flex items-center">
+                              Not Verified
+                            </span>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleVerify(customer._id)}
+                              className="bg-primary-orange text-white hover:bg-orange-600 border-none w-28"
+                            >
+                              Verify Now
+                            </Button>
+                          </>
+                        ) : (
+                          <div className="flex items-center text-success text-xs font-semibold gap-1">
+                            <CheckCircle className="w-4 h-4" /> Verified
+                          </div>
+                        )}
+                        <Link href={`/executive/wallet?customerId=${customer._id}`}>
+                          <Button size="sm" variant="outline" className="text-xs font-bold gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 w-28 h-8">
+                            <Wallet className="w-3.5 h-3.5" /> Wallet
                           </Button>
-                        </div>
-                      ) : (
-                        <div className="flex justify-end pr-2 text-success items-center h-full">
-                          <CheckCircle className="w-6 h-6" />
-                        </div>
-                      )}
+                        </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

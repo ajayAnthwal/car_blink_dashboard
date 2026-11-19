@@ -100,6 +100,7 @@ export const roleConfig: Record<Role | "ADMIN", RoleConfigData> = {
           { name: "About CarBlink", href: "/customer/about", icon: Info },
           { name: "My Reviews", href: "/customer/reviews", icon: Star },
           { name: "Queries & Support", href: "/customer/support", icon: HelpCircle },
+          { name: "Wallet", href: "/customer/wallet", icon: Wallet },
           { name: "Profile", href: "/customer/profile", icon: User },
         ],
       },
@@ -151,6 +152,7 @@ export const roleConfig: Record<Role | "ADMIN", RoleConfigData> = {
         items: [
           { name: "Dashboard", href: "/executive/dashboard", icon: LayoutDashboard },
           { name: "Customer Status", href: "/executive/customer-status", icon: Users },
+          { name: "Customer Wallets", href: "/executive/wallet", icon: Wallet },
           { name: "Partner Status", href: "/executive/partner-status", icon: Briefcase },
         ],
       },

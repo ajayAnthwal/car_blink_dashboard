@@ -4,7 +4,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X, Bell, Info, Zap, CalendarClock, CreditCard, CheckCircle2, ExternalLink, Clock, User, Building2, FileText, Tag } from "lucide-react";
+import { X, Bell, Info, Zap, CalendarClock, CreditCard, CheckCircle2, ExternalLink, Clock, User, Building2, FileText, Tag, Wallet } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 
@@ -304,6 +304,20 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     if (role === "EXECUTIVE") return { label: "View Warranties", href: "/executive/warranties" };
   }
 
+  // 7.5 Customer & Partner Wallets
+  if (
+    payload.transactionId ||
+    payload.walletId ||
+    titleLower.includes("wallet") ||
+    msgLower.includes("wallet")
+  ) {
+    if (role === "CUSTOMER") return { label: "View Wallet", href: "/customer/wallet" };
+    if (role === "PARTNER") return { label: "View My Wallet & Payouts", href: "/partner/wallet" };
+    if (role === "EXECUTIVE") return { label: "Customer Wallets", href: "/executive/wallet" };
+    if (role === "ACCOUNTS") return { label: "View Settlements", href: "/accounts/settlements" };
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return { label: "View Finance Settlements", href: "/admin/finance/settlements" };
+  }
+
   // 8. Settlements / Payouts / Payments / Earnings
   if (
     payload.settlementId ||
@@ -314,9 +328,7 @@ export const getNotificationTargetLink = (notification: any, userRole: string = 
     titleLower.includes("settlement") ||
     msgLower.includes("settlement") ||
     titleLower.includes("earnings") ||
-    msgLower.includes("earnings") ||
-    titleLower.includes("wallet") ||
-    msgLower.includes("wallet")
+    msgLower.includes("earnings")
   ) {
     if (role === "ACCOUNTS") return { label: "View Settlements", href: "/accounts/settlements" };
     if (role === "PARTNER") return { label: "View My Wallet & Payouts", href: "/partner/wallet" };
@@ -358,6 +370,11 @@ export function NotificationDetailsModal({
   const actionLink = getNotificationTargetLink(notification, userRole);
 
   const getCategoryIcon = () => {
+    const titleL = (notification.title || "").toLowerCase();
+    const msgL = (notification.message || "").toLowerCase();
+    if (titleL.includes("wallet") || msgL.includes("wallet")) {
+      return <Wallet className="w-5 h-5 text-blue-600" />;
+    }
     switch (category) {
       case "SYSTEM":
         return <Info className="w-5 h-5 text-blue-500" />;

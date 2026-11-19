@@ -1581,3 +1581,26 @@ export const createPaymentLink = async (data: { bookingId: string; paymentType: 
   return response.data;
 };
 
+// Customer Wallet Services
+export const getCustomerWallet = async (page = 1, limit = 10) => {
+  const response = await apiClient.get(`/customer/wallet?page=${page}&limit=${limit}`);
+  return response.data;
+};
+
+// Executive Customer Wallet Services
+export const getExecutiveCustomerWallet = async (customerId: string) => {
+  const response = await apiClient.get(`/executive/wallet/customer/${customerId}`);
+  return response.data;
+};
+
+export const adjustExecutiveCustomerWallet = async (data: {
+  customerId: string;
+  type: 'CREDIT' | 'DEBIT';
+  amount: number;
+  note: string;
+  idempotencyKey?: string;
+}) => {
+  const response = await apiClient.post('/executive/wallet/adjust', data);
+  return response.data;
+};
+
