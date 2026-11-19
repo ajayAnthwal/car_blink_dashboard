@@ -29,6 +29,7 @@ export default function AdminBookingDetailsPage() {
   const [customAmount, setCustomAmount] = useState("");
   const [overridePayment, setOverridePayment] = useState(false);
   const [bypassReason, setBypassReason] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const booking = bookingRes?.data?._id ? bookingRes.data : (bookingRes?._id ? bookingRes : (bookingRes?.data || bookingRes));
 
@@ -41,8 +42,24 @@ export default function AdminBookingDetailsPage() {
     ? allLogs.filter((l: any) => l.payload?.bookingId === id || l.endpoint?.includes(id as string))
     : [];
 
-  const handleManualBypass = async (e: React.FormEvent) => {
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!bypassReason.trim()) {
+      toast.error("Audit requirement: Please enter reason/notes for this manual override!");
+      return;
+    }
+    if (bypassReason.trim().length < 3) {
+      toast.error("Reason must be at least 3 characters long.");
+      return;
+    }
+    if (customAmount && (isNaN(Number(customAmount)) || Number(customAmount) <= 0)) {
+      toast.error("Custom quote price must be a valid number greater than 0.");
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmExecution = async () => {
     if (!bypassReason.trim()) {
       toast.error("Audit requirement: Please enter reason/notes for this manual override!");
       return;
@@ -60,6 +77,7 @@ export default function AdminBookingDetailsPage() {
     try {
       await manualAssignMutation.mutateAsync({ id: id as string, data: payload });
       toast.success("⚡ Super Admin manual bypass executed successfully & logged to audit!");
+      setShowConfirmModal(false);
       setBypassReason("");
       setSelectedPartnerId("");
       setSelectedExecutiveId("");
@@ -67,9 +85,11 @@ export default function AdminBookingDetailsPage() {
       setCustomAmount("");
       setOverridePayment(false);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to execute manual bypass.");
+      toast.error(err?.response?.data?.message || err?.message || "Failed to execute manual bypass.");
     }
   };
+
+  const handleManualBypass = handleOpenConfirm;
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) {
@@ -999,6 +1019,99 @@ export default function AdminBookingDetailsPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* ⚠️ Super Admin Manual Override Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 text-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center flex-shrink-0 text-amber-400">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">Confirm Manual Override</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  You are about to execute a Super Admin workflow bypass. This action is permanently logged to the audit trail.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/60 text-xs space-y-2.5">
+              <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                <span className="text-slate-400 font-semibold">Booking ID:</span>
+                <span className="font-mono font-bold text-white">{id}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                <span className="text-slate-400 font-semibold">Partner Assignment:</span>
+                <span className="font-medium text-amber-300">
+                  {selectedPartnerId 
+                    ? (partners.find((p: any) => (p._id || p.id) === selectedPartnerId)?.businessName || selectedPartnerId)
+                    : "No Change (Keep Current)"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                <span className="text-slate-400 font-semibold">Executive Assignment:</span>
+                <span className="font-medium text-blue-300">
+                  {selectedExecutiveId 
+                    ? (executives.find((e: any) => (e._id || e.id) === selectedExecutiveId)?.fullName || selectedExecutiveId)
+                    : "No Change (Keep Current)"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                <span className="text-slate-400 font-semibold">Forced Booking Status:</span>
+                <span className="font-bold text-white">
+                  {forcedStatus || "No Change (Keep Current)"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                <span className="text-slate-400 font-semibold">Custom Quote Amount:</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {customAmount ? `₹${Number(customAmount).toLocaleString()}` : "No Change (Keep Current)"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                <span className="text-slate-400 font-semibold">Payment Bypass:</span>
+                <span className={`font-bold ${overridePayment ? "text-amber-400" : "text-slate-400"}`}>
+                  {overridePayment ? "YES (Mark Advance as PAID)" : "NO (Standard)"}
+                </span>
+              </div>
+              <div className="pt-1">
+                <span className="text-slate-400 font-semibold block mb-1">Audit Reason:</span>
+                <p className="text-slate-200 italic bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/40 break-words">
+                  "{bypassReason.trim()}"
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={manualAssignMutation.isPending}
+                onClick={() => setShowConfirmModal(false)}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={manualAssignMutation.isPending}
+                onClick={handleConfirmExecution}
+                className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-950 bg-amber-400 hover:bg-amber-500 shadow-lg flex items-center gap-2 transition disabled:opacity-50"
+              >
+                {manualAssignMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Executing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5" /> Confirm & Execute Override
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 📜 Action Logs & Audit Trail for this Booking */}
       <Card className="bg-white/90 backdrop-blur-md shadow-sm border-gray-200 mt-8 rounded-3xl overflow-hidden">
