@@ -112,6 +112,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Store in cookie for server-side verification
     Cookies.set("role", newUser.role, getCookieOpts());
     Cookies.set("user_role", newUser.role, getCookieOpts());
+    if (newUser) {
+      try {
+        localStorage.setItem("car_blink_user", JSON.stringify(newUser));
+        Cookies.set("car_blink_user", JSON.stringify(newUser), getCookieOpts());
+      } catch (e) {}
+    }
     await setSessionCookie(newAccessToken, newUser.role);
   };
 
@@ -145,6 +151,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               Cookies.set("accessToken", storedAccessToken, getCookieOpts());
               Cookies.set("car_blink_access_token", storedAccessToken, getCookieOpts());
               localStorage.setItem("car_blink_access_token", storedAccessToken);
+              try {
+                localStorage.setItem("car_blink_user", JSON.stringify(resolvedUser));
+                Cookies.set("car_blink_user", JSON.stringify(resolvedUser), getCookieOpts());
+              } catch (e) {}
               setIsLoading(false);
               return;
             }
