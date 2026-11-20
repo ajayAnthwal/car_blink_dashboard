@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, AlertTriangle, FileText } from "lucide-react";
+import { Target, Loader2, MapPin, Calendar, Car, Wrench, X, AlertTriangle, FileText, Receipt } from "lucide-react";
 import { usePartnerLeads, useCreateBidMutation, useWalletStatement } from "@/features/partner/hooks/usePartnerQueries";
 
 export default function LeadsPage() {
@@ -225,21 +225,81 @@ export default function LeadsPage() {
               <form onSubmit={handlePlaceBid} className="space-y-4">
                 <div>
                   <Input
-                    label="Quoted Amount (₹) (All-Inclusive 18% GST)"
+                    label="Service Amount"
                     type="number"
                     min="1"
+                    step="any"
                     placeholder="e.g. 1500"
                     value={quotedAmount}
                     onChange={(e) => setQuotedAmount(e.target.value)}
                     required
                   />
-                  {quotedAmount && !isNaN(Number(quotedAmount)) && Number(quotedAmount) > 0 && (
-                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-                      <span>Base Value: <strong>₹{(Number(quotedAmount) / 1.18).toFixed(2)}</strong></span>
-                      <span>18% GST: <strong>₹{(Number(quotedAmount) - (Number(quotedAmount) / 1.18)).toFixed(2)}</strong></span>
-                      <span className="text-emerald-700 font-bold">Total: ₹{Number(quotedAmount).toLocaleString('en-IN')}</span>
-                    </div>
-                  )}
+                  {quotedAmount && !isNaN(Number(quotedAmount)) && Number(quotedAmount) > 0 && (() => {
+                    const amount = Number(quotedAmount);
+                    const govTaxes = amount - (amount / 1.18);
+                    const convenienceFee = amount * 0.03;
+                    const totalPlatformShare = amount * 0.15;
+                    const platformFee = totalPlatformShare / 1.18;
+                    const gstOnPlatformFee = totalPlatformShare - platformFee;
+                    const estimatedSettlement = Math.max(0, amount - govTaxes - convenienceFee - platformFee - gstOnPlatformFee);
+
+                    const formatCurrency = (val: number) => {
+                      return val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    };
+
+                    return (
+                      <div className="mt-2.5 bg-slate-50/90 rounded-2xl p-3.5 border border-slate-200/90 space-y-2.5 text-xs shadow-xs">
+                        <div className="flex items-center justify-between font-semibold text-gray-800 pb-2 border-b border-slate-200">
+                          <span className="flex items-center gap-1.5 text-primary-navy">
+                            <Receipt className="w-3.5 h-3.5 text-primary-orange" />
+                            <span>Payment Breakdown</span>
+                          </span>
+                          <span className="font-mono text-gray-900 font-bold">₹{formatCurrency(amount)}</span>
+                        </div>
+
+                        <div className="space-y-1.5 text-gray-600">
+                          <div className="flex items-center justify-between text-gray-800 font-medium">
+                            <span>Service Amount</span>
+                            <span className="font-mono font-semibold">₹{formatCurrency(amount)}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">Government Taxes</span>
+                            <span className="font-mono font-medium text-rose-600">− ₹{formatCurrency(govTaxes)}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">Convenience Fee</span>
+                            <span className="font-mono font-medium text-rose-600">− ₹{formatCurrency(convenienceFee)}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">CarBlink Platform Fee</span>
+                            <span className="font-mono font-medium text-rose-600">− ₹{formatCurrency(platformFee)}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">GST on CarBlink Platform Fee</span>
+                            <span className="font-mono font-medium text-rose-600">− ₹{formatCurrency(gstOnPlatformFee)}</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2.5 border-t border-slate-200/90 flex items-center justify-between bg-emerald-50/90 -mx-3.5 -mb-3.5 p-3 rounded-b-2xl border-t border-emerald-100">
+                          <div>
+                            <span className="font-bold text-emerald-950 block text-xs">
+                              Estimated Partner Settlement
+                            </span>
+                            <span className="text-[10px] text-emerald-700 block">
+                              Net payout after deductions
+                            </span>
+                          </div>
+                          <span className="font-black text-emerald-700 text-base font-mono">
+                            ₹{formatCurrency(estimatedSettlement)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 
                 <Input

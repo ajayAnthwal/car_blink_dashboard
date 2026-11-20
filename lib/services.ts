@@ -624,6 +624,37 @@ export const updateExecutiveLead = async (id: string, data: { followUpDate?: str
   return response.data;
 };
 
+// Notes Approval Workflow Services
+export const sendNoteToCustomer = async (id: string, data: { noteText: string; version?: number }) => {
+  const response = await apiClient.post(`/executive/leads/${id}/notes/send-to-customer`, data);
+  return response.data;
+};
+
+export const verifyExecutiveNote = async (id: string, data: { version: number }) => {
+  const response = await apiClient.post(`/executive/leads/${id}/notes/verify`, data);
+  return response.data;
+};
+
+export const forwardNoteToPartner = async (id: string, data: { version: number }) => {
+  const response = await apiClient.post(`/executive/leads/${id}/notes/forward-to-partner`, data);
+  return response.data;
+};
+
+export const resendNoteToCustomer = async (id: string, data: { newNoteText: string; reason?: string; version: number }) => {
+  const response = await apiClient.post(`/executive/leads/${id}/notes/resend`, data);
+  return response.data;
+};
+
+export const sendNoteReminderToCustomer = async (id: string) => {
+  const response = await apiClient.post(`/executive/leads/${id}/notes/remind`);
+  return response.data;
+};
+
+export const respondToServiceNote = async (id: string, data: { action: 'ACCEPTED' | 'EDITED'; editedNote?: string; version: number }) => {
+  const response = await apiClient.post(`/customer/bookings/${id}/notes/respond`, data);
+  return response.data;
+};
+
 export const convertWebsiteLeadToBooking = async (id: string, data: { serviceId: string; cityId: string; vehicleBrand: string; vehicleModel: string }) => {
   const response = await apiClient.post(`/executive/leads/${id}/convert`, data);
   return response.data;

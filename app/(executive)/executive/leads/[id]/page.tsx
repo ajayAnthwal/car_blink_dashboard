@@ -33,6 +33,8 @@ export default function LeadDetailsPage() {
     socket.on("payment_status_update", handleUpdate);
     socket.on("payment_received", handleUpdate);
     socket.on("payment_updated", handleUpdate);
+    socket.on("booking_notes_customer_responded", handleUpdate);
+    socket.on("booking_notes_pending_review", handleUpdate);
     socket.on("booking_confirmed", handleUpdate);
     socket.on("booking_status_update", handleUpdate);
     socket.on("satisfaction_response", handleUpdate);
@@ -55,13 +57,21 @@ export default function LeadDetailsPage() {
   const [isSendingSatisfaction, setIsSendingSatisfaction] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [showResendModal, setShowResendModal] = useState(false);
+  const [resendReason, setResendReason] = useState("");
   const error = queryError ? (queryError as Error).message : null;
 
   useEffect(() => {
     if (lead) {
-      setAdditionalNotes(lead.remarks || lead.assignment?.notes || "");
+      if (lead.notesWorkflowEnabled && lead.notesWorkflow?.currentNote) {
+        setAdditionalNotes(lead.notesWorkflow.currentNote);
+      } else {
+        setAdditionalNotes(lead.remarks || lead.assignment?.notes || "");
+      }
     }
-  }, [lead?.remarks, lead?.assignment?.notes]);
+  }, [lead?.remarks, lead?.assignment?.notes, lead?.notesWorkflow?.currentNote, lead?.notesWorkflowEnabled]);
 
   const handleSaveAdditionalNotes = async () => {
     if (!lead?._id && !id) return;
@@ -75,6 +85,105 @@ export default function LeadDetailsPage() {
       toast.error(err?.response?.data?.message || err.message || "Failed to save additional notes");
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  const handleSendToCustomer = async () => {
+    if (!lead?._id && !id) return;
+    const clean = additionalNotes.trim();
+    if (!clean || clean.length < 3) {
+      toast.error("Note must be at least 3 characters.");
+      return;
+    }
+    setIsSavingNotes(true);
+    try {
+      const { sendNoteToCustomer } = await import("@/lib/services");
+      await sendNoteToCustomer(lead._id || id, {
+        noteText: clean,
+        version: lead.notesWorkflow?.version,
+      });
+      toast.success("Service note sent to customer for review!");
+      refetchLead();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to send note to customer");
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleVerifyNote = async () => {
+    if (!lead?._id && !id) return;
+    setIsSavingNotes(true);
+    try {
+      const { verifyExecutiveNote } = await import("@/lib/services");
+      await verifyExecutiveNote(lead._id || id, {
+        version: lead.notesWorkflow?.version || 1,
+      });
+      toast.success("Service note verified successfully!");
+      refetchLead();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to verify note");
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleForwardToPartner = async () => {
+    if (!lead?._id && !id) return;
+    setIsSavingNotes(true);
+    try {
+      const { forwardNoteToPartner } = await import("@/lib/services");
+      await forwardNoteToPartner(lead._id || id, {
+        version: lead.notesWorkflow?.version || 1,
+      });
+      toast.success("Verified note forwarded to partner workshop!");
+      setShowForwardModal(false);
+      refetchLead();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to forward note");
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleResendToCustomer = async () => {
+    if (!lead?._id && !id) return;
+    const clean = additionalNotes.trim();
+    if (!clean || clean.length < 3) {
+      toast.error("Note must be at least 3 characters.");
+      return;
+    }
+    setIsSavingNotes(true);
+    try {
+      const { resendNoteToCustomer } = await import("@/lib/services");
+      await resendNoteToCustomer(lead._id || id, {
+        newNoteText: clean,
+        reason: resendReason.trim() || undefined,
+        version: lead.notesWorkflow?.version || 1,
+      });
+      toast.success("Revised note sent to customer for review!");
+      setShowResendModal(false);
+      setResendReason("");
+      refetchLead();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to resend note");
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleSendReminder = async () => {
+    if (!lead?._id && !id) return;
+    setIsSendingReminder(true);
+    try {
+      const { sendNoteReminderToCustomer } = await import("@/lib/services");
+      await sendNoteReminderToCustomer(lead._id || id);
+      toast.success("Reminder sent to customer!");
+      refetchLead();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to send reminder");
+    } finally {
+      setIsSendingReminder(false);
     }
   };
 
@@ -572,64 +681,384 @@ export default function LeadDetailsPage() {
         </Card>
 
         {/* Additional Notes for Partner / Special Instructions */}
-        <Card className="shadow-subtle border-gray-100 md:col-span-2 overflow-hidden border-l-4 border-l-primary-orange">
-          <CardHeader className="pb-3 border-b border-gray-50 bg-gradient-to-r from-orange-50/50 via-white to-white">
-            <CardTitle className="text-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center">
-                <div className="bg-orange-100/80 p-2 rounded-lg mr-3 text-primary-orange">
-                  <FileText className="w-5 h-5" />
+        {lead.notesWorkflowEnabled ? (
+          <Card className="shadow-subtle border-gray-100 md:col-span-2 overflow-hidden border-l-4 border-l-primary-orange">
+            <CardHeader className="pb-3 border-b border-gray-50 bg-gradient-to-r from-orange-50/50 via-white to-white">
+              <CardTitle className="text-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center">
+                  <div className="bg-orange-100/80 p-2 rounded-lg mr-3 text-primary-orange">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-gray-900 font-heading">Additional Notes &amp; Specific Instructions for Partner</span>
+                    <p className="text-xs text-gray-500 font-normal font-body">
+                      Customer-verified service instructions. Review by customer required before forwarding to partner workshop.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {lead.notesWorkflow?.status === "PENDING_CUSTOMER_REVIEW" && (
+                    <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-xs px-2.5 py-1 flex items-center gap-1 font-bold">
+                      <Clock className="w-3.5 h-3.5 text-amber-600" /> Waiting for Customer Review
+                    </Badge>
+                  )}
+                  {lead.notesWorkflow?.status === "CUSTOMER_SUBMITTED" && (
+                    <Badge className="bg-blue-100 text-blue-900 border-blue-300 text-xs px-2.5 py-1 flex items-center gap-1 font-bold">
+                      <FileText className="w-3.5 h-3.5 text-blue-600" /> Customer Submitted ({lead.notesWorkflow?.customerAction || "REVIEWED"})
+                    </Badge>
+                  )}
+                  {lead.notesWorkflow?.status === "EXECUTIVE_VERIFIED" && (
+                    <Badge className="bg-purple-100 text-purple-900 border-purple-300 text-xs px-2.5 py-1 flex items-center gap-1 font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" /> Executive Verified (Ready to Forward)
+                    </Badge>
+                  )}
+                  {lead.notesWorkflow?.status === "FORWARDED_TO_PARTNER" && (
+                    <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 text-xs px-2.5 py-1 flex items-center gap-1 font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Forwarded to Workshop ✓
+                    </Badge>
+                  )}
+                  {!lead.notesWorkflow?.status && (
+                    <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-300 text-xs px-2.5 py-1">
+                      Draft / Not Sent
+                    </Badge>
+                  )}
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Show Original vs Customer Edit Comparison if customer responded */}
+              {lead.notesWorkflow?.customerAction === "EDITED" && lead.notesWorkflow?.customerEditedNote && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                      <User className="w-3 h-3 text-slate-400" /> Executive&apos;s Original Note
+                    </span>
+                    <p className="text-xs text-slate-700 bg-white p-2.5 rounded-xl border border-slate-200 leading-relaxed italic">
+                      &quot;{lead.notesWorkflow.originalExecutiveNote}&quot;
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-blue-600" /> Customer&apos;s Edited Version
+                    </span>
+                    <p className="text-xs font-semibold text-blue-950 bg-blue-50/80 p-2.5 rounded-xl border border-blue-200 leading-relaxed">
+                      &quot;{lead.notesWorkflow.customerEditedNote}&quot;
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {lead.notesWorkflow?.customerAction === "ACCEPTED" && (
+                <div className="bg-emerald-50/80 p-3 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Customer accepted your instructions without any changes on {lead.notesWorkflow?.customerRespondedAt ? new Date(lead.notesWorkflow.customerRespondedAt).toLocaleString() : "recently"}.</span>
+                </div>
+              )}
+
+              {/* Textarea for Note */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    {lead.notesWorkflow?.status === "FORWARDED_TO_PARTNER"
+                      ? "Active Workshop Instructions"
+                      : "Service Note & Instructions"}
+                  </label>
+                  {lead.notesWorkflow?.version && (
+                    <span className="text-[10px] text-gray-400 font-mono font-bold">
+                      Version #{lead.notesWorkflow.version}
+                    </span>
+                  )}
+                </div>
+
+                <textarea
+                  value={additionalNotes}
+                  onChange={(e) => setAdditionalNotes(e.target.value)}
+                  rows={4}
+                  disabled={isSavingNotes || lead.notesWorkflow?.status === "FORWARDED_TO_PARTNER"}
+                  placeholder="Enter specific instructions for the partner (e.g., 'Paint and Dent service requires work on front passenger door and bonnet only. Client requests careful scratch repair and OEM color code finish.')..."
+                  className="w-full text-sm rounded-xl border border-gray-300 bg-white p-3.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent transition-all shadow-2xs resize-y disabled:bg-slate-50 disabled:text-slate-700"
+                />
+
+                <p className="text-[11px] text-gray-500 font-medium italic">
+                  💡 This note will be visible to the customer and, after you forward it, to the partner.
+                </p>
+              </div>
+
+              {/* Dynamic Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-gray-100">
+                <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                  <span>
+                    {lead.notesWorkflow?.status === "PENDING_CUSTOMER_REVIEW"
+                      ? "Customer has been notified. Waiting for customer approval or edits."
+                      : lead.notesWorkflow?.status === "CUSTOMER_SUBMITTED"
+                      ? "Customer submitted their response. Click Verify to approve for forwarding."
+                      : lead.notesWorkflow?.status === "EXECUTIVE_VERIFIED"
+                      ? "Note is verified! Click Forward to dispatch to the workshop partner."
+                      : lead.notesWorkflow?.status === "FORWARDED_TO_PARTNER"
+                      ? "Note is active and visible to the partner workshop."
+                      : "Customer will review this note before it reaches the workshop."}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                  {/* Status 1: None / Draft */}
+                  {(!lead.notesWorkflow?.status) && (
+                    <Button
+                      type="button"
+                      disabled={isSavingNotes || !additionalNotes.trim() || additionalNotes.trim().length < 3}
+                      isLoading={isSavingNotes}
+                      onClick={handleSendToCustomer}
+                      className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send to Customer for Review</span>
+                    </Button>
+                  )}
+
+                  {/* Status 2: PENDING_CUSTOMER_REVIEW */}
+                  {lead.notesWorkflow?.status === "PENDING_CUSTOMER_REVIEW" && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSendingReminder}
+                        isLoading={isSendingReminder}
+                        onClick={handleSendReminder}
+                        className="text-xs h-10 px-4 rounded-xl border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                      >
+                        Send Reminder to Customer
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={isSavingNotes}
+                        isLoading={isSavingNotes}
+                        onClick={() => setShowResendModal(true)}
+                        className="text-xs h-10 px-4 rounded-xl bg-slate-800 text-white hover:bg-slate-900"
+                      >
+                        Revise &amp; Resend
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Status 3: CUSTOMER_SUBMITTED */}
+                  {lead.notesWorkflow?.status === "CUSTOMER_SUBMITTED" && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSavingNotes}
+                        onClick={() => setShowResendModal(true)}
+                        className="text-xs h-10 px-4 rounded-xl border-slate-300"
+                      >
+                        Send Back for Changes
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={isSavingNotes}
+                        isLoading={isSavingNotes}
+                        onClick={handleVerifyNote}
+                        className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Verify Note</span>
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Status 4: EXECUTIVE_VERIFIED */}
+                  {lead.notesWorkflow?.status === "EXECUTIVE_VERIFIED" && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSavingNotes}
+                        onClick={() => setShowResendModal(true)}
+                        className="text-xs h-10 px-4 rounded-xl border-slate-300"
+                      >
+                        Send Back for Changes
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={isSavingNotes}
+                        isLoading={isSavingNotes}
+                        onClick={() => setShowForwardModal(true)}
+                        className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm flex items-center gap-1.5"
+                      >
+                        <Share className="w-3.5 h-3.5" />
+                        <span>Forward to Partner Workshop</span>
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Status 5: FORWARDED_TO_PARTNER */}
+                  {lead.notesWorkflow?.status === "FORWARDED_TO_PARTNER" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSavingNotes}
+                      onClick={() => setShowResendModal(true)}
+                      className="text-xs h-9 px-4 rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100"
+                    >
+                      Amend &amp; Send Revision
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Legacy Card: Flag OFF (100% exact existing behavior) */
+          <Card className="shadow-subtle border-gray-100 md:col-span-2 overflow-hidden border-l-4 border-l-primary-orange">
+            <CardHeader className="pb-3 border-b border-gray-50 bg-gradient-to-r from-orange-50/50 via-white to-white">
+              <CardTitle className="text-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center">
+                  <div className="bg-orange-100/80 p-2 rounded-lg mr-3 text-primary-orange">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-gray-900 font-heading">Additional Notes &amp; Specific Instructions for Partner</span>
+                    <p className="text-xs text-gray-500 font-normal font-body">
+                      Specific requirements sent directly to partner workshops (e.g., specifying that a &quot;Paint and Dent&quot; service requires work on a specific door or bonnet). Accessible before and after forwarding.
+                    </p>
+                  </div>
+                </div>
+                {lead.assignedPartnerId && (
+                  <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-xs px-2.5 py-1 flex items-center gap-1 self-start sm:self-auto">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Partner Assigned
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>Partner Instructions / Special Requirements</span>
+                  {lead.remarks && (
+                    <span className="text-[11px] font-medium text-emerald-700 lowercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" /> Active on booking
+                    </span>
+                  )}
+                </label>
+                <textarea
+                  value={additionalNotes}
+                  onChange={(e) => setAdditionalNotes(e.target.value)}
+                  rows={4}
+                  placeholder="Enter specific instructions for the partner (e.g., 'Paint and Dent service requires work on front passenger door and bonnet only. Client requests careful scratch repair and OEM color code finish.')..."
+                  className="w-full text-sm rounded-xl border border-gray-300 bg-white p-3.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent transition-all shadow-2xs resize-y"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                  <span>Saving will update the booking record and notify the assigned partner(s) in real time.</span>
+                </div>
+                <Button
+                  type="button"
+                  disabled={isSavingNotes || additionalNotes === (lead.remarks || lead.assignment?.notes || "")}
+                  isLoading={isSavingNotes}
+                  onClick={handleSaveAdditionalNotes}
+                  className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Save &amp; Send Notes to Partner</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Modal: Confirmation before Forwarding to Partner */}
+        {showForwardModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+              <div className="flex items-center gap-3 text-primary-orange">
+                <div className="w-10 h-10 rounded-2xl bg-orange-100 flex items-center justify-center">
+                  <Share className="w-5 h-5 text-primary-orange" />
                 </div>
                 <div>
-                  <span className="font-bold text-gray-900 font-heading">Additional Notes &amp; Specific Instructions for Partner</span>
-                  <p className="text-xs text-gray-500 font-normal font-body">
-                    Specific requirements sent directly to partner workshops (e.g., specifying that a &quot;Paint and Dent&quot; service requires work on a specific door or bonnet). Accessible before and after forwarding.
-                  </p>
+                  <h3 className="font-bold text-gray-900 text-base">Forward to Workshop?</h3>
+                  <p className="text-xs text-gray-500">Workshop partner will receive verified note</p>
                 </div>
               </div>
-              {lead.assignedPartnerId && (
-                <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-xs px-2.5 py-1 flex items-center gap-1 self-start sm:self-auto">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Partner Assigned
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
-                <span>Partner Instructions / Special Requirements</span>
-                {lead.remarks && (
-                  <span className="text-[11px] font-medium text-emerald-700 lowercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3 text-emerald-600" /> Active on booking
-                  </span>
-                )}
-              </label>
-              <textarea
-                value={additionalNotes}
-                onChange={(e) => setAdditionalNotes(e.target.value)}
-                rows={4}
-                placeholder="Enter specific instructions for the partner (e.g., 'Paint and Dent service requires work on front passenger door and bonnet only. Client requests careful scratch repair and OEM color code finish.')..."
-                className="w-full text-sm rounded-xl border border-gray-300 bg-white p-3.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent transition-all shadow-2xs resize-y"
-              />
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-              <div className="text-xs text-gray-500 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-primary-orange shrink-0" />
-                <span>Saving will update the booking record and notify the assigned partner(s) in real time.</span>
+              <p className="text-xs text-gray-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                &quot;{lead.notesWorkflow?.currentNote || additionalNotes}&quot;
+              </p>
+              <p className="text-xs text-slate-500">
+                Once forwarded, this verified instruction will be visible immediately to the workshop partner on their job card and dashboard.
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowForwardModal(false)}
+                  disabled={isSavingNotes}
+                  className="text-xs h-9 px-4 rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleForwardToPartner}
+                  disabled={isSavingNotes}
+                  isLoading={isSavingNotes}
+                  className="text-xs h-9 px-4 rounded-xl bg-primary-orange hover:bg-orange-600 text-white font-bold"
+                >
+                  Confirm &amp; Forward
+                </Button>
               </div>
-              <Button
-                type="button"
-                disabled={isSavingNotes || additionalNotes === (lead.remarks || lead.assignment?.notes || "")}
-                isLoading={isSavingNotes}
-                onClick={handleSaveAdditionalNotes}
-                className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Save &amp; Send Notes to Partner</span>
-              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
+
+        {/* Modal: Resend note for customer revision loop */}
+        {showResendModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+              <div className="flex items-center gap-3 text-primary-navy">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center">
+                  <RotateCw className="w-5 h-5 text-secondary-blue" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Send Back for Customer Changes</h3>
+                  <p className="text-xs text-gray-500">Revise note and request customer review</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-700">Optional Reason for revision:</label>
+                <input
+                  type="text"
+                  value={resendReason}
+                  onChange={(e) => setResendReason(e.target.value)}
+                  placeholder="E.g., Price adjustment requested or scope clarified..."
+                  className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-orange"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { setShowResendModal(false); setResendReason(""); }}
+                  disabled={isSavingNotes}
+                  className="text-xs h-9 px-4 rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleResendToCustomer}
+                  disabled={isSavingNotes}
+                  isLoading={isSavingNotes}
+                  className="text-xs h-9 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold"
+                >
+                  Send Revised Note
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Assignments & Bids */}
         <Card className="shadow-subtle border-gray-100 md:col-span-2">

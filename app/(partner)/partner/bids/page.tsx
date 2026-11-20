@@ -264,11 +264,25 @@ export default function PartnerBidsPage() {
                       {/* Financial & Time Cards */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100">
-                          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Quoted Amount</p>
+                          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Service Amount</p>
                           <p className="text-xl font-black text-primary-orange flex items-center">
                             <IndianRupee className="w-4 h-4 mr-0.5" />
-                            {Number(bid.originalQuotedAmount ?? bid.quotedAmount ?? 0).toLocaleString("en-IN")}
+                            {Number(bid.originalQuotedAmount ?? bid.quotedAmount ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
+                          {(() => {
+                            const q = Number(bid.originalQuotedAmount ?? bid.quotedAmount ?? 0);
+                            if (q <= 0) return null;
+                            const govTaxes = q - (q / 1.18);
+                            const conv = q * 0.03;
+                            const pf = (q * 0.15) / 1.18;
+                            const gstPf = (q * 0.15) - pf;
+                            const net = Math.max(0, q - govTaxes - conv - pf - gstPf);
+                            return (
+                              <p className="text-[10px] text-emerald-700 font-bold mt-1">
+                                Est. Settlement: ₹{net.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            );
+                          })()}
                         </div>
 
                         <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">

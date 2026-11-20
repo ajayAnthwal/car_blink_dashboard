@@ -251,6 +251,10 @@ export default function CustomerDashboardPage() {
     return (additionalPartsPending || []).filter(b => b && !safeList.includes(String(b?._id || b?.id || "")));
   }, [additionalPartsPending, dismissedPartsIds]);
 
+  const notesPendingReview = useMemo(() => {
+    return safeBookings.filter(b => b?.notesWorkflow?.status === 'PENDING_CUSTOMER_REVIEW');
+  }, [safeBookings]);
+
   const handleDismissConfirmed = () => {
     setDismissedConfirmedBanner(true);
     try {
@@ -374,6 +378,40 @@ export default function CustomerDashboardPage() {
             </div>
           </div>
          
+        </div>
+      )}
+
+      {/* Service Notes Review Required Banner */}
+      {notesPendingReview.length > 0 && (
+        <div className="bg-gradient-to-r from-orange-50 via-amber-50/80 to-orange-50 border-2 border-primary-orange/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md w-full min-w-0 relative">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 bg-primary-orange text-white rounded-2xl flex items-center justify-center shadow-md shrink-0">
+              <FileText className="w-5 h-5 sm:w-8 sm:h-8" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="bg-primary-orange text-white font-extrabold text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                  INSTRUCTIONS REVIEW REQUIRED 📝
+                </span>
+                <span className="text-xs font-bold text-orange-900">
+                  {notesPendingReview.length} Booking(s) Waiting For Your Approval
+                </span>
+              </div>
+              <h3 className="font-bold text-gray-950 text-sm sm:text-lg break-words">
+                Special Service Instructions Added by Service Team
+              </h3>
+              <p className="text-gray-700 text-xs sm:text-sm font-medium break-words mt-0.5">
+                Our executive added specific instructions: &quot;{notesPendingReview[0]?.notesWorkflow?.currentNote || 'Specific instructions added'}&quot;. Please review and accept or edit.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button asChild className="w-full sm:w-auto bg-primary-orange hover:bg-orange-600 text-white font-bold rounded-xl shadow-md text-xs sm:text-sm px-6 py-2.5">
+              <Link href={`/customer/bookings/${notesPendingReview[0]?._id || notesPendingReview[0]?.id || ''}#service-notes`}>
+                Review Instructions <ArrowRight className="w-4 h-4 ml-2" />
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
 

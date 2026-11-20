@@ -51,6 +51,7 @@ export default function PartnerDashboardPage() {
     const refreshAll = () => {
       queryClient.invalidateQueries({ queryKey: ["partner", "jobs"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "earnings"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "bids"] });
     };
     const refreshLeads = () => {
       queryClient.invalidateQueries({ queryKey: ["partner", "leads"] });
@@ -60,12 +61,16 @@ export default function PartnerDashboardPage() {
     socket.on("job_completed", refreshAll);
     socket.on("booking_confirmed", refreshAll);
     socket.on("job_updated", refreshAll);
+    socket.on("job_cancelled", refreshAll);
+    socket.on("booking_cancelled", refreshAll);
     return () => {
       socket.off("new_lead", refreshLeads);
       socket.off("job_started", refreshAll);
       socket.off("job_completed", refreshAll);
       socket.off("booking_confirmed", refreshAll);
       socket.off("job_updated", refreshAll);
+      socket.off("job_cancelled", refreshAll);
+      socket.off("booking_cancelled", refreshAll);
     };
   }, [socket, queryClient]);
 

@@ -24,14 +24,19 @@ import {
   useMarkOfflinePaymentMutation,
   useVerifyOfflinePaymentMutation
 } from "@/features/partner/hooks/usePartnerQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSocket } from "@/lib/SocketContext";
 
 export default function PartnerJobsPage() {
-  const [activeTab, setActiveTab] = useState<"ALL" | "IN_PROGRESS" | "NOT_STARTED" | "COMPLETED">("ALL");
+  const [activeTab, setActiveTab] = useState<"ALL" | "IN_PROGRESS" | "NOT_STARTED" | "COMPLETED" | "CANCELLED">("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [quickPinCode, setQuickPinCode] = useState("");
   const [verifyStatusResult, setVerifyStatusResult] = useState<{ type: "success" | "error" | ""; text: string }>({ type: "", text: "" });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
 
   // Fetch jobs with pagination and status filter from query
   const queryParams = useMemo(() => {
@@ -44,6 +49,24 @@ export default function PartnerJobsPage() {
 
   const { data: jobsData, isLoading: isLoadingJobs, refetch: refetchJobs } = usePartnerJobs(queryParams);
   const { data: staffList = [], isLoading: isLoadingStaff } = usePartnerStaff();
+
+  // Real-time socket listener for cancellation events
+  useEffect(() => {
+    if (!socket) return;
+    const handleJobCancelled = () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "bids"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "leads"] });
+      refetchJobs();
+    };
+    socket.on("job_cancelled", handleJobCancelled);
+    socket.on("booking_cancelled", handleJobCancelled);
+    return () => {
+      socket.off("job_cancelled", handleJobCancelled);
+      socket.off("booking_cancelled", handleJobCancelled);
+    };
+  }, [socket, queryClient, refetchJobs]);
 
   const allJobsRaw = jobsData?.jobs || [];
   const totalJobsCount = jobsData?.total || allJobsRaw.length;
@@ -290,6 +313,8 @@ export default function PartnerJobsPage() {
     switch (status?.toUpperCase()) {
       case "COMPLETED":
         return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><CheckCircle2 className="w-3.5 h-3.5" /> Completed</span>;
+      case "CANCELLED":
+        return <span className="bg-red-50 text-red-700 border border-red-200 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><ShieldAlert className="w-3.5 h-3.5 text-red-600" /> Cancelled</span>;
       case "VERIFIED":
         return <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Verified / Work Ready</span>;
       case "IN_PROGRESS":
@@ -439,6 +464,14 @@ export default function PartnerJobsPage() {
               }`}
             >
               Completed ({stats.completed})
+            </button>
+            <button
+              onClick={() => { setActiveTab("CANCELLED"); setPage(1); }}
+              className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all duration-200 shrink-0 ${
+                activeTab === "CANCELLED" ? "bg-white text-red-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Cancelled
             </button>
           </div>
 
@@ -800,17 +833,37 @@ export default function PartnerJobsPage() {
                         <h4 className="font-bold text-sm text-gray-200 border-b border-gray-800 pb-3 flex items-center justify-between gap-2">
                           <span className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                            {job.status === "COMPLETED" ? "Service Completed & Settlement Summary" : (job.status === "IN_PROGRESS" ? "Step 2: Service Completion & Actions" : "Job Status & Work Start Actions")}
+                            {job.status === "COMPLETED" ? "Service Completed & Settlement Summary" : (job.status === "CANCELLED" ? "Job Status: Cancelled" : (job.status === "IN_PROGRESS" ? "Step 2: Service Completion & Actions" : "Job Status & Work Start Actions"))}
                           </span>
                           {job.status === "COMPLETED" && (
                             <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
                               Work Finished
                             </span>
                           )}
+                          {job.status === "CANCELLED" && (
+                            <span className="text-[10px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/30">
+                              Cancelled
+                            </span>
+                          )}
                         </h4>
 
+                        {/* Cancelled State Alert Banner */}
+                        {job.status === "CANCELLED" && (
+                          <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 p-4 rounded-2xl text-red-300">
+                            <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-bold text-red-200">
+                                Booking Cancelled by Administration
+                              </p>
+                              <p className="text-[11px] text-gray-300">
+                                This booking has been cancelled. All partner actions, verification, and service work are blocked.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Mandatory Gate: Not Verified yet */}
-                        {job.status !== "IN_PROGRESS" && job.status !== "COMPLETED" && !(bData.isVerifiedByPartner || job.status === "VERIFIED") && (
+                        {job.status !== "IN_PROGRESS" && job.status !== "COMPLETED" && job.status !== "CANCELLED" && !(bData.isVerifiedByPartner || job.status === "VERIFIED") && (
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl">
                             <div className="space-y-1">
                               <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
@@ -849,7 +902,7 @@ export default function PartnerJobsPage() {
                         )}
 
                         {/* Verified / Work Ready State */}
-                        {job.status !== "IN_PROGRESS" && job.status !== "COMPLETED" && (bData.isVerifiedByPartner || job.status === "VERIFIED") && (
+                        {job.status !== "IN_PROGRESS" && job.status !== "COMPLETED" && job.status !== "CANCELLED" && (bData.isVerifiedByPartner || job.status === "VERIFIED") && (
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl">
                             <div className="space-y-1">
                               <p className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
@@ -990,7 +1043,7 @@ export default function PartnerJobsPage() {
                                     <span className="font-bold text-white">₹{totalVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between items-center text-gray-400 font-medium">
-                                    <span>CarBlink Platform Fee (15%)</span>
+                                    <span>CarBlink Platform Fee</span>
                                     <span className="font-bold text-red-400">- ₹{platformFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between items-center text-emerald-400 font-bold text-sm pt-2 border-t border-slate-700">

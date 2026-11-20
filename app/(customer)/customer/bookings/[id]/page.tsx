@@ -174,6 +174,29 @@ export default function CustomerBookingDetailsPage() {
   const [selectedImageModal, setSelectedImageModal] = useState<string | null>(null);
   const [isSharingLink, setIsSharingLink] = useState<string | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [customerEditedText, setCustomerEditedText] = useState("");
+  const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+
+  const handleCustomerRespondNote = async (action: "ACCEPTED" | "EDITED") => {
+    if (!booking?._id && !id) return;
+    setIsSubmittingNote(true);
+    try {
+      const { respondToServiceNote } = await import("@/lib/services");
+      await respondToServiceNote(booking?._id || id, {
+        action,
+        editedNote: action === "EDITED" ? customerEditedText.trim() : undefined,
+        version: booking?.notesWorkflow?.version || 1,
+      });
+      toast.success(action === "ACCEPTED" ? "Instructions accepted!" : "Changes submitted for verification!");
+      setIsEditingNote(false);
+      refetchBooking();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to submit response");
+    } finally {
+      setIsSubmittingNote(false);
+    }
+  };
 
   useEffect(() => {
     if (booking?.paymentMode) {
@@ -925,6 +948,144 @@ export default function CustomerBookingDetailsPage() {
       {/* ======================================================== */}
       {/* 3. HERO ACTION CARD: Stage-Based Focus Card              */}
       {/* ======================================================== */}
+
+      {/* SERVICE NOTES WORKFLOW SECTION FOR CUSTOMER */}
+      {Boolean(booking?.notesWorkflow && booking?.notesWorkflow?.status) && (
+        <Card id="service-notes" className="border-2 border-primary-orange/40 shadow-md rounded-3xl overflow-hidden bg-white mb-6">
+          <div className="bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 px-6 py-4 border-b border-orange-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-orange-100 text-primary-orange flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-heading font-black text-sm text-gray-950 uppercase tracking-wide">
+                  Special Service Instructions from Service Team
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {booking.notesWorkflow.source || "CarBlink Executive"}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              {booking.notesWorkflow.status === "PENDING_CUSTOMER_REVIEW" && (
+                <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-bold text-xs px-3 py-1">
+                  Action Required: Please Review
+                </Badge>
+              )}
+              {booking.notesWorkflow.status === "CUSTOMER_SUBMITTED" && (
+                <Badge className="bg-blue-100 text-blue-900 border-blue-300 font-bold text-xs px-3 py-1">
+                  Submitted — Waiting for Executive Verification
+                </Badge>
+              )}
+              {["EXECUTIVE_VERIFIED", "FORWARDED_TO_PARTNER"].includes(booking.notesWorkflow.status) && (
+                <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 font-bold text-xs px-3 py-1">
+                  Verified &amp; Dispatched to Workshop ✓
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <CardContent className="p-6 space-y-4">
+            {/* Show Current Note Content */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                Instruction Details:
+              </span>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-sm text-gray-800 leading-relaxed font-medium">
+                &quot;{booking.notesWorkflow.currentNote}&quot;
+              </div>
+            </div>
+
+            {/* If In PENDING_CUSTOMER_REVIEW, allow Accept as is or Edit */}
+            {booking.notesWorkflow.status === "PENDING_CUSTOMER_REVIEW" && (
+              <div className="space-y-4 pt-2 border-t border-gray-100">
+                {!isEditingNote ? (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <p className="text-xs text-gray-500">
+                      Do these instructions accurately reflect what you want done on your vehicle?
+                    </p>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditingNote(true);
+                          setCustomerEditedText(booking.notesWorkflow?.currentNote || "");
+                        }}
+                        disabled={isSubmittingNote}
+                        className="w-full sm:w-auto text-xs h-10 px-4 rounded-xl border-slate-300"
+                      >
+                        Edit / Suggest Changes
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => handleCustomerRespondNote("ACCEPTED")}
+                        disabled={isSubmittingNote}
+                        isLoading={isSubmittingNote}
+                        className="w-full sm:w-auto text-xs h-10 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-1.5" /> Accept As Is
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Expanded Inline Edit Box */
+                  <div className="space-y-3 bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-800">
+                        Edit Instructions for the Workshop:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingNote(false)}
+                        className="text-xs text-gray-500 hover:text-gray-800 font-semibold underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <textarea
+                      value={customerEditedText}
+                      onChange={(e) => setCustomerEditedText(e.target.value)}
+                      rows={3}
+                      placeholder="Add your edits or specific clarifications..."
+                      className="w-full text-xs sm:text-sm p-3 rounded-xl border border-amber-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-orange"
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsEditingNote(false)}
+                        disabled={isSubmittingNote}
+                        className="text-xs h-9 px-3 rounded-xl"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => handleCustomerRespondNote("EDITED")}
+                        disabled={isSubmittingNote || customerEditedText.trim().length < 3}
+                        isLoading={isSubmittingNote}
+                        className="text-xs h-9 px-4 rounded-xl bg-primary-orange hover:bg-orange-600 text-white font-bold"
+                      >
+                        Submit Changes
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Read-Only State for other statuses */}
+            {booking.notesWorkflow.status === "CUSTOMER_SUBMITTED" && (
+              <div className="text-xs text-blue-800 bg-blue-50/70 p-3 rounded-xl border border-blue-200 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Your response has been submitted to our operations executive for verification. You will be notified when it is dispatched to the workshop.</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* -------------------------------------------------------- */}
       {/* STAGE 1: QUOTES PENDING / SELECTION                      */}
