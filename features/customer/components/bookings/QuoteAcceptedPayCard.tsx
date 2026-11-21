@@ -216,30 +216,7 @@ export default function QuoteAcceptedPayCard({
         </div>
       </div>
 
-      {/* 6. Light Green Rounded Cancellation & Refund Row */}
-      <div className="bg-[#EDFDF4] border border-[#BBF7D0] rounded-2xl p-4 mb-5 flex items-start gap-3.5">
-        <div className="mt-0.5 shrink-0" aria-hidden="true">
-          {/* Green circular rupee refund icon */}
-          <div className="w-7 h-7 rounded-full flex items-center justify-center relative">
-            <svg className="w-7 h-7 text-[#16A34A]" viewBox="0 0 24 24" fill="none">
-              <path d="M20 12A8 8 0 0 0 7.5 5.5L6 7" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M6 3v4h4" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M4 12a8 8 0 0 0 12.5 6.5L18 17" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M18 21v-4h-4" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              <text x="12" y="15" textAnchor="middle" fill="#16A34A" fontSize="9" fontWeight="900" fontFamily="sans-serif">₹</text>
-            </svg>
-          </div>
-        </div>
-        <div className="min-w-0">
-          <h4 className="font-bold text-sm text-slate-900 leading-tight">
-            Cancellation &amp; Refund
-          </h4>
-          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-            Cancel your booking and get <strong className="font-bold text-slate-900">90%</strong> of your booking amount refunded.{" "}
-            <strong className="font-bold text-slate-900">10%</strong> is charged as a platform fee.
-          </p>
-        </div>
-      </div>
+    
 
       {/* 7. Full-width Large Orange Gradient Rounded Button */}
       <Button
