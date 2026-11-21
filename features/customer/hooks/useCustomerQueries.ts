@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBookings, getPaymentHistory, getWarranties, getCustomerStats, getGarageVehicles, getServices, getCities, getVehicleBrands, getVehicleModels, getCurrentUserProfile, getSupportTickets, createGarageVehicle, updateGarageVehicle, deleteGarageVehicle, createSupportTicket, replySupportTicket, createBooking, cancelBooking, selectBookingQuote, respondToJobExtension, getBookingQuotes, getMyReviews, createReview, checkSubscriptionValidity, purchaseSubscription, getWarrantyById, requestRSA, applyReferral, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, initiatePayment, getBookingById, canReviewBooking, applyCouponToBooking, getCustomerInvoices } from "@/lib/services";
+import { getBookings, getPaymentHistory, getWarranties, getCustomerStats, getGarageVehicles, getServices, getCities, getVehicleBrands, getVehicleModels, getCurrentUserProfile, acceptCustomerTerms, getSupportTickets, createGarageVehicle, updateGarageVehicle, deleteGarageVehicle, createSupportTicket, replySupportTicket, createBooking, cancelBooking, selectBookingQuote, respondToJobExtension, getBookingQuotes, getMyReviews, createReview, checkSubscriptionValidity, purchaseSubscription, getWarrantyById, requestRSA, applyReferral, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, initiatePayment, getBookingById, canReviewBooking, applyCouponToBooking, getCustomerInvoices } from "@/lib/services";
 import { Booking, Payment, Warranty } from "@/lib/types";
 
 // Helper to safely extract arrays from the API responses
@@ -249,6 +249,17 @@ export const useUserProfile = () => {
     queryFn: async () => {
       const res = await getCurrentUserProfile();
       return res?.data?.profile || res?.data || res;
+    },
+  });
+};
+
+export const useAcceptTermsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (version: string) => acceptCustomerTerms(version),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer", "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["user"] });
     },
   });
 };

@@ -18,6 +18,9 @@ interface User {
   email: string;
   phone: string;
   role: Role;
+  isTermsAccepted?: boolean;
+  termsAcceptedAt?: string | null;
+  termsVersion?: string | null;
 }
 
 interface AuthContextType {

@@ -302,6 +302,11 @@ export const getCustomerStats = async () => {
   return response.data;
 };
 
+export const acceptCustomerTerms = async (version: string) => {
+  const response = await apiClient.post("/customer/terms/accept", { version });
+  return response.data;
+};
+
 export const createBooking = async (data: { vehicleId: string; serviceId: string; cityId: string; description: string; preferredDate: string; latitude?: number; longitude?: number }) => {
   // If cityId is just a string name from the package, provide a valid dummy hex ID to bypass backend format validation
   let validCityId = data.cityId;

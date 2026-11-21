@@ -55,6 +55,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import QuoteProcessingState from "@/components/customer/QuoteProcessingState";
+import QuoteAcceptedPayCard from "@/features/customer/components/bookings/QuoteAcceptedPayCard";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { verifyPayment, createPaymentLink } from "@/lib/services";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -731,60 +732,62 @@ export default function CustomerBookingDetailsPage() {
       {/* ======================================================== */}
       {/* 1. TOP HEADER: Clean Navigation, Reference & Support     */}
       {/* ======================================================== */}
-      <div className="bg-white border border-gray-200/90 rounded-3xl p-5 sm:p-7 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <button 
-                onClick={() => router.push('/customer/bookings')}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200/80 px-2.5 py-1 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Bookings
-              </button>
-              <span className="text-xs text-gray-400 font-mono font-semibold">
-                #BK-{(booking._id || id).slice(-8).toUpperCase()}
-              </span>
-              {getStatusBadge(booking.status)}
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-heading font-black text-primary-navy tracking-tight">
-              {booking.serviceId?.name || "Car Service Booking"}
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center gap-1.5">
-              <Car className="w-4 h-4 text-primary-orange shrink-0" />
-              <span>{vehicleName}</span>
-              {booking.vehicleId?.registrationNumber && (
-                <span className="bg-gray-100 text-gray-800 font-mono text-[11px] font-bold px-2 py-0.5 rounded border border-gray-200">
-                  {booking.vehicleId.registrationNumber}
+      {!isStage2 && (
+        <div className="bg-white border border-gray-200/90 rounded-3xl p-5 sm:p-7 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button 
+                  onClick={() => router.push('/customer/bookings')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200/80 px-2.5 py-1 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" /> Bookings
+                </button>
+                <span className="text-xs text-gray-400 font-mono font-semibold">
+                  #BK-{(booking._id || id).slice(-8).toUpperCase()}
                 </span>
-              )}
-            </p>
-          </div>
+                {getStatusBadge(booking.status)}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-heading font-black text-primary-navy tracking-tight">
+                {booking.serviceId?.name || "Car Service Booking"}
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center gap-1.5">
+                <Car className="w-4 h-4 text-primary-orange shrink-0" />
+                <span>{vehicleName}</span>
+                {booking.vehicleId?.registrationNumber && (
+                  <span className="bg-gray-100 text-gray-800 font-mono text-[11px] font-bold px-2 py-0.5 rounded border border-gray-200">
+                    {booking.vehicleId.registrationNumber}
+                  </span>
+                )}
+              </p>
+            </div>
 
-          {/* Quick Header Actions: Support & Cancel */}
-          <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push(`/customer/support?bookingId=${id}`)}
-              className="border-gray-200 hover:border-primary-orange text-gray-700 hover:text-primary-orange text-xs font-bold rounded-xl h-10 px-3.5 gap-1.5 shadow-2xs"
-            >
-              <HelpCircle className="w-4 h-4 text-primary-orange" />
-              <span>Need Help?</span>
-            </Button>
-
-            {!isStage5 && booking.status !== 'CANCELLED' && booking.status !== 'CANCELLATION_REQUESTED' && !showCancel && (
+            {/* Quick Header Actions: Support & Cancel */}
+            <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={() => setShowCancel(true)}
-                className="text-gray-400 hover:text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl h-10 px-3 transition-colors"
+                onClick={() => router.push(`/customer/support?bookingId=${id}`)}
+                className="border-gray-200 hover:border-primary-orange text-gray-700 hover:text-primary-orange text-xs font-bold rounded-xl h-10 px-3.5 gap-1.5 shadow-2xs"
               >
-                Cancel
+                <HelpCircle className="w-4 h-4 text-primary-orange" />
+                <span>Need Help?</span>
               </Button>
-            )}
+
+              {!isStage5 && booking.status !== 'CANCELLED' && booking.status !== 'CANCELLATION_REQUESTED' && !showCancel && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCancel(true)}
+                  className="text-gray-400 hover:text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl h-10 px-3 transition-colors"
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Cancellation Requested Banner */}
       {booking.status === 'CANCELLATION_REQUESTED' && (
@@ -899,51 +902,53 @@ export default function CustomerBookingDetailsPage() {
       {/* ======================================================== */}
       {/* 2. PROGRESS TRACKER: Clean 5-Step Milestones Stepper     */}
       {/* ======================================================== */}
-      <div className="bg-slate-900 rounded-3xl p-5 sm:p-7 text-white shadow-md relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-orange/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary-orange animate-ping" />
-              <span className="text-xs font-black uppercase tracking-wider text-primary-orange">
-                Live Service Progress
+      {!isStage2 && (
+        <div className="bg-slate-900 rounded-3xl p-5 sm:p-7 text-white shadow-md relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary-orange/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary-orange animate-ping" />
+                <span className="text-xs font-black uppercase tracking-wider text-primary-orange">
+                  Live Service Progress
+                </span>
+              </div>
+              <span className="text-xs text-slate-300 font-semibold bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                Stage {currentStageNum} of 5: {milestones[currentStageNum - 1]?.label || "Service"}
               </span>
             </div>
-            <span className="text-xs text-slate-300 font-semibold bg-white/10 px-3 py-1 rounded-full border border-white/10">
-              Stage {currentStageNum} of 5: {milestones[currentStageNum - 1]?.label || "Service"}
-            </span>
-          </div>
 
-          {/* 5-Step Progress Stepper */}
-          <div className="grid grid-cols-5 gap-2 pt-1">
-            {milestones.map((m) => {
-              const isPassed = m.num < currentStageNum;
-              const isCurrent = m.num === currentStageNum;
-              return (
-                <div key={m.num} className="space-y-2 text-center">
-                  <div className={`h-2 rounded-full transition-all ${
-                    isPassed 
-                      ? "bg-emerald-500" 
-                      : isCurrent 
-                      ? "bg-primary-orange ring-2 ring-primary-orange/40" 
-                      : "bg-white/15"
-                  }`} />
-                  <div className="hidden sm:block">
-                    <p className={`text-xs font-bold ${
-                      isCurrent ? "text-primary-orange" : isPassed ? "text-emerald-400" : "text-slate-400"
-                    }`}>
-                      {m.label}
-                    </p>
-                    <p className="text-[10px] text-slate-400 leading-tight">
-                      {m.desc}
-                    </p>
+            {/* 5-Step Progress Stepper */}
+            <div className="grid grid-cols-5 gap-2 pt-1">
+              {milestones.map((m) => {
+                const isPassed = m.num < currentStageNum;
+                const isCurrent = m.num === currentStageNum;
+                return (
+                  <div key={m.num} className="space-y-2 text-center">
+                    <div className={`h-2 rounded-full transition-all ${
+                      isPassed 
+                        ? "bg-emerald-500" 
+                        : isCurrent 
+                        ? "bg-primary-orange ring-2 ring-primary-orange/40" 
+                        : "bg-white/15"
+                    }`} />
+                    <div className="hidden sm:block">
+                      <p className={`text-xs font-bold ${
+                        isCurrent ? "text-primary-orange" : isPassed ? "text-emerald-400" : "text-slate-400"
+                      }`}>
+                        {m.label}
+                      </p>
+                      <p className="text-[10px] text-slate-400 leading-tight">
+                        {m.desc}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ======================================================== */}
       {/* 3. HERO ACTION CARD: Stage-Based Focus Card              */}
@@ -1230,110 +1235,51 @@ export default function CustomerBookingDetailsPage() {
       {/* STAGE 2: ADVANCE PAYMENT TO LOCK SERVICE SLOT            */}
       {/* -------------------------------------------------------- */}
       {isStage2 && (
-        <Card id="advance-payment-section" className="border-2 border-primary-orange shadow-lg rounded-3xl overflow-hidden bg-gradient-to-br from-orange-50/70 via-white to-amber-50/40">
-          <div className="bg-gradient-to-r from-primary-orange to-amber-600 px-6 py-3.5 text-white flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5" />
-              <span className="font-heading font-black text-sm uppercase tracking-wide">
-                Step 2: Pay Partial payment to Lock Service Slot
-              </span>
-            </div>
-            <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
-              Instant Workshop Unlock
-            </span>
-          </div>
+        <div id="advance-payment-section" className="scroll-mt-24 py-2 space-y-4">
+          <QuoteAcceptedPayCard
+            quoteAmount={calculatedTotalAmount}
+            advanceAmount={remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)}
+            remainingAmount={remainingAmount}
+            isLoading={isExtensionProcessing}
+            onPay={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")}
+            onBack={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/customer/bookings');
+              }
+            }}
+            onShareLink={(channel) => handleSharePaymentLink("ADVANCE", channel)}
+            isSharingLink={isSharingLink}
+            copiedType={copiedType}
+            onPayFull={() => handleInitiatePayment(remainingAmount, "FULL")}
+          />
 
-          <CardContent className="p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-orange-200/60">
-              <div className="space-y-1.5 max-w-xl">
-                <h3 className="font-heading font-black text-xl sm:text-2xl text-slate-900 tracking-tight">
-                  Quote Accepted! Complete Advance Deposit
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-                  To guarantee your workshop booking slot and activate CarBlink warranty, complete the advance deposit. Direct workshop contact, phone, and Google Maps location will unlock immediately.
-                </p>
-                <div className="flex items-center gap-2 pt-1 text-xs text-emerald-700 font-bold">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>100% Refundable if cancelled before workshop visit</span>
-                </div>
-              </div>
-
-              {/* Price Callout */}
-              <div className="bg-white p-5 rounded-2xl border-2 border-primary-orange/40 shadow-sm text-center md:text-right shrink-0 min-w-[220px]">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
-                  ADVANCE DEPOSIT PAYABLE
-                </span>
-                <p className="text-3xl font-black text-primary-orange font-heading mt-0.5">
-                  ₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')}
-                </p>
-                <p className="text-[11px] text-slate-600 font-semibold mt-1">
-                  Total Quote: ₹{calculatedTotalAmount.toLocaleString('en-IN')} <span className="text-emerald-700 font-bold">(Incl. 18% GST)</span>
-                </p>
-                <div className="mt-1.5 inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-200">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                  <span>No Extra Taxes at Workshop</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Action Buttons */}
-            <div className="space-y-3">
-              <div className="max-w-md space-y-2">
-                <Button 
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-2xl py-6 font-black text-base sm:text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 border border-emerald-500/40" 
-                  onClick={() => handleInitiatePayment(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1), "ADVANCE")} 
-                  isLoading={isExtensionProcessing}
+          {/* Unobtrusive Booking Reference & Quick Support */}
+          <div className="text-center text-xs text-slate-400 py-1 flex items-center justify-center gap-3">
+            <span className="font-mono">#BK-{(booking._id || id).slice(-8).toUpperCase()}</span>
+            <span>•</span>
+            <button 
+              type="button" 
+              onClick={() => router.push(`/customer/support?bookingId=${id}`)}
+              className="hover:text-primary-orange underline font-medium"
+            >
+              Need Help?
+            </button>
+            {!showCancel && (
+              <>
+                <span>•</span>
+                <button 
+                  type="button" 
+                  onClick={() => setShowCancel(true)}
+                  className="hover:text-red-500 font-medium"
                 >
-                  <IndianRupee className="w-5 h-5 text-white" />
-                  <span>Pay Partial payment Now (₹{(remainingForAdvance > 0 ? remainingForAdvance : Math.min(remainingAmount, advanceAmount || 1)).toLocaleString('en-IN')}) &rarr;</span>
-                </Button>
-
-                {/* Shareable Advance Payment Link */}
-                <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl space-y-2 mt-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                    <Share2 className="w-3.5 h-3.5 text-primary-orange" />
-                    <span>Need someone else to pay? (Forward Link)</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Share this link with anyone. They can pay the advance via UPI / Google Pay / Card without logging in.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 pt-0.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSharePaymentLink("ADVANCE", "whatsapp")}
-                      isLoading={isSharingLink === "ADVANCE_whatsapp"}
-                      className="border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
-                    >
-                      <MessageCircle className="w-4 h-4 text-emerald-600" />
-                      <span>WhatsApp Share</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSharePaymentLink("ADVANCE", "copy")}
-                      isLoading={isSharingLink === "ADVANCE_copy"}
-                      className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
-                    >
-                      <Copy className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{copiedType === "ADVANCE" ? "Copied! ✓" : "Copy Link"}</span>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 text-xs text-slate-500">
-                <button
-                  type="button"
-                  onClick={() => handleInitiatePayment(remainingAmount, "FULL")}
-                  className="font-bold text-primary-navy hover:underline inline-flex items-center gap-1"
-                >
-                  Want to pay full ₹{remainingAmount.toLocaleString('en-IN')} upfront instead? Click here &rarr;
+                  Cancel Booking
                 </button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* -------------------------------------------------------- */}

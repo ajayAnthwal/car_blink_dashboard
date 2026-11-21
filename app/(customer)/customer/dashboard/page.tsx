@@ -21,6 +21,7 @@ import CustomerSavingsModal from "@/components/customer/CustomerSavingsModal";
 import CustomerPaymentHistoryModal from "@/components/customer/CustomerPaymentHistoryModal";
 import LiveBookingStatusTracker from "@/components/customer/LiveBookingStatusTracker";
 import CustomerNamePromptModal from "@/components/customer/CustomerNamePromptModal";
+import CustomerTermsModal from "@/components/customer/CustomerTermsModal";
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
@@ -1281,6 +1282,7 @@ export default function CustomerDashboardPage() {
         totalSpent={stats.totalSpent}
       />
       <CustomerNamePromptModal />
+      <CustomerTermsModal />
     </div>
   );
 }
