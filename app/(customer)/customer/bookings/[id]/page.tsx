@@ -1216,10 +1216,12 @@ export default function CustomerBookingDetailsPage() {
                         <Button
                           onClick={() => handleSelectQuoteWithOption(quote, quoteTotal, "ADVANCE")}
                           isLoading={isAcceptingThis}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-sm sm:text-base py-4 sm:py-4.5 rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5"
+                          className="w-full h-auto min-h-[44px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-sm sm:text-base py-3 sm:py-3.5 px-4 rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 whitespace-normal"
                         >
                           {/* <IndianRupee className="w-5 h-5 text-white" /> */}
-                          <span>Accept Quote &amp; Pay Partial payment (₹{quoteAdvance})</span>
+                          <span className="min-w-0 text-center leading-snug break-words text-balance">
+                            Accept Quote &amp; Pay Partial payment <span className="whitespace-nowrap">(₹{quoteAdvance})</span>
+                          </span>
                         </Button>
                       </div>
                     );
